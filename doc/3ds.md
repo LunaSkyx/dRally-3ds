@@ -1,18 +1,18 @@
 ﻿# Nintendo 3DS port
 
 Branch `3ds`, based on upstream `920d85a`.
-Windows remains the reference build â€” this branch does not touch it.
+Windows remains the reference build - this branch does not touch it.
 
 ## Status (2026-09-21): runs on the emulator, playable
 
 | | |
 |---|---|
-| Runs in **Azahar** | yes â€” boots, menus, name entry, in-game |
+| Runs in **Azahar** | yes - boots, menus, name entry, in-game |
 | Runs on real hardware | not tested yet (next step; `3dslink` or copy the `.3dsx` to the SD card) |
 | Input | d-pad/circle pad steer, R accelerate, L brake, **front end:** A confirm + B select, **race:** A horn, B boost, Y shoot, X mine, ZL/ZR boost/shoot, START pause, SELECT opens the 3DS software keyboard, L+R+START quits (the mapping follows the display mode - see the table below) |
 | Video | direct top-screen framebuffer output, double buffered, box-filtered downscale for the 640x480 menus |
 | Speed | engine logic keeps its ~70 fps; presentation is the bottleneck (12-27 fps in the emulator). The emulator itself is a big part of that - measure on hardware |
-| Sound | **works** â€” needs the DSP firmware `sdmc:/3ds/dspfirm.cdc` (Luma3DS provides it on real hardware; for Azahar copy it from your own console to `%APPDATA%\azahar\sdmc\3ds\dspfirm.cdc`). The mixer runs at the DAC's native 32728 Hz: the DOS default of 22050 Hz made everything play 1.48x too fast because the 3DS DAC does not resample |
+| Sound | **works** - needs the DSP firmware `sdmc:/3ds/dspfirm.cdc` (Luma3DS provides it on real hardware; for Azahar copy it from your own console to `%APPDATA%\azahar\sdmc\3ds\dspfirm.cdc`). The mixer runs at the DAC's native 32728 Hz: the DOS default of 22050 Hz made everything play 1.48x too fast because the 3DS DAC does not resample |
 | Known gaps | `___59720h` was ported (keyboard path only, joystick branches omitted); some menus/dialogs may still be unimplemented upstream (they print `TODO` and `exit(1)`) |
 
 ### Release package
@@ -120,9 +120,9 @@ The release build is untouched: without `-DDR3_PROFILE` every profiler call comp
 
 ### Things learned the hard way (all handled in the code)
 
-1. **Working directory** â€” the engine opens `ENGINE.BPA` etc. relative to the CWD; on the 3DS that is
+1. **Working directory** - the engine opens `ENGINE.BPA` etc. relative to the CWD; on the 3DS that is
    not the game folder, so the game crashed right after startup. `platform_3ds/dr3_paths.c` fixes it.
-2. **Azahar pauses the app at start** (`Debugging_DelayStartForLLEModules`) â€” with an empty NAND this
+2. **Azahar pauses the app at start** (`Debugging_DelayStartForLLEModules`) - with an empty NAND this
    leaves *every* homebrew on a black screen. Set `delay_start_for_lle_modules=false` in
    `%APPDATA%\azahar\config\qt-config.ini` (Azahar must be closed while editing, it rewrites the file
    on exit).
@@ -135,7 +135,7 @@ The release build is untouched: without `-DDR3_PROFILE` every profiler call comp
 
 ## Why there is no SDL shim
 
-SDL 2.30.11 already ships a **native Nintendo 3DS backend** â€” `src/video/n3ds` (GSP framebuffer),
+SDL 2.30.11 already ships a **native Nintendo 3DS backend** - `src/video/n3ds` (GSP framebuffer),
 `src/audio/n3ds` (ndsp), `src/joystick/n3ds` (hid), `src/thread/timer/file/filesystem/power/sensor/
 locale/main/n3ds`, plus `docs/README-n3ds.md` and CMake support. devkitPro does *not* package SDL2
 for the 3DS (only `3ds-sdl` = SDL 1.2), so SDL2 is built from source here.
@@ -147,7 +147,7 @@ Consequences that shape this port:
 | only the **software renderer** exists | the hot path is index8 â†’ 32-bit conversion; `platform_3ds/dr3_blit.c` does it via a palette LUT (unit-tested) |
 | frame-buffer driver (`CreateWindowFramebuffer`) | presenting via a cached streaming texture (as the PS Vita port does) is the plan for the display patch |
 | `SDL2main` needed for ROMFS | `LIBS := -lSDL2 -lctru -lm` plus the 3DS rules |
-| **cooperative threading on one core** â€” a thread only yields on `SDL_Delay` / blocking waits | the Vita port's "remove all `SDL_Delay`" patch must NOT be copied blindly: the engine's sound thread would starve. Keep a small yield |
+| **cooperative threading on one core** - a thread only yields on `SDL_Delay` / blocking waits | the Vita port's "remove all `SDL_Delay`" patch must NOT be copied blindly: the engine's sound thread would starve. Keep a small yield |
 | New 3DS clock boost + extra L2 cache on by default | good for the frame budget; the old 3DS remains the risk case |
 | joystick backend reports **buttons**, not keys | `platform_3ds/dr3_input.c` turns the pad into the SDL scancodes the engine expects |
 
@@ -168,7 +168,7 @@ Consequences that shape this port:
 
 Removing the multiplayer objects was tried and **fails to link**: menus, race code and the chat box
 reference multiplayer symbols unconditionally (`___61278h`, `___61518h`, `___618c4h`, `npg_zero`,
-`npg_peekb`, `npg_override`, `dRChatbox_clear/getFont/getLine`, plus data from `__mp_data.c`) â€”
+`npg_peekb`, `npg_override`, `dRChatbox_clear/getFont/getLine`, plus data from `__mp_data.c`) -
 20 unresolved externals. The inert SDL_net stub keeps the object list identical to the working
 Windows configuration; multiplayer simply cannot connect (it could not on PC either).
 
@@ -179,7 +179,7 @@ Windows configuration; multiplayer simply cannot connect (it could not on PC eit
 | D-pad / circle pad / c-stick | steer (`LEFT`/`RIGHT`, `KP_4`/`KP_6`), up/down also accelerate/brake (`A`/`Z`) |
 | R | accelerate (`A`) |
 | L | brake / reverse (`Z`) |
-| A | front end: confirm (`RETURN` â€” exactly one key so dialogues see it)   /   race: horn (`SPACE`) |
+| A | front end: confirm (`RETURN` - exactly one key so dialogues see it)   /   race: horn (`SPACE`) |
 | B | front end: select (`SPACE`)   /   race: **boost** (`LSHIFT`) |
 | Y | race: **shoot** (`LCTRL`) |
 | X | race: **drop mine** (`LALT`) |
