@@ -142,7 +142,7 @@ ALL_OBJS := $(addprefix $(BUILD)/, $(UNI_OBJS) $(LINUX_OBJS) $(RACE_OBJS) $(MENU
 # home screen metadata (icon + title shown by the Homebrew Launcher)
 APP_TITLE   ?= dRally 3DS
 APP_DESC    := Death Rally (1996) engine port
-APP_AUTHOR  := urxp / dRally, 3DS port
+APP_AUTHOR  := LunaSkyx - dRally 3DS port
 APP_ICON    ?= $(CTRULIB)/default_icon.png
 
 all: $(OUTPUT).3dsx
