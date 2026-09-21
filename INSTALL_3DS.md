@@ -1,10 +1,10 @@
-# dRally on the Nintendo 3DS
+﻿# dRally on the Nintendo 3DS
 
 A native port of the dRally engine (Death Rally, 1996) for the Nintendo 3DS, built with devkitARM,
 libctru and SDL2 (using SDL2's own n3ds backend).
 
 > This project contains **no game data** and is **not affiliated with Remedy Entertainment**.
-> It needs the data files of an original Death Rally copy that you own — exactly like the Linux port.
+> It needs the data files of an original Death Rally copy that you own â€” exactly like the Linux port.
 
 ## What works
 
@@ -22,7 +22,7 @@ game are still unimplemented upstream (they print a `TODO` and quit).
 ## Requirements
 
 * a 3DS with homebrew support (Luma3DS + Homebrew Launcher)
-* `sdmc:/3ds/dspfirm.cdc` for sound — Luma3DS creates it automatically on real hardware.  Without it
+* `sdmc:/3ds/dspfirm.cdc` for sound â€” Luma3DS creates it automatically on real hardware.  Without it
   the game is simply silent.
 * your own Death Rally data files
 
@@ -39,15 +39,15 @@ game are still unimplemented upstream (they print a `TODO` and quit).
        CDROM.INI                     (contains "./CINEM")            
        CINEM/SANIM.HAF  CINEM/ENDANI.HAF  CINEM/ENDANI0.HAF
 
-   `README.txt` and `dr3_controls.txt` in the archive are the German quick guide and the optional
-   control configuration - they can stay there.
+   `README.txt` and `dr3_controls.txt` in the archive are the quick guide and the optional control
+   configuration - they can stay there.
 
 2. Start `dRally_3ds.3dsx` from the Homebrew Launcher.
 3. At the first start the game asks for a driver name: press **SELECT** to open the 3DS software
    keyboard, type a name, confirm with OK and then press **A**.
 
 The game writes `DR.CFG` (progress and settings) into the same folder, and a log to
-`sdmc:/drally_3ds.log` — that log is the first place to look if something goes wrong.
+`sdmc:/drally_3ds.log` â€” that log is the first place to look if something goes wrong.
 
 ## Controls (default)
 
@@ -117,6 +117,6 @@ the 3DS build compiles exactly the same sources as the other platforms).
 
 ## Credits
 
-* [urxp/dRally](https://github.com/urxp/dRally) — the engine port this branch is based on
+* [urxp/dRally](https://github.com/urxp/dRally) â€” the engine port this branch is based on
 * SDL2 (zlib licence), libctru (zlib licence), devkitARM/newlib
 * see `THIRD_PARTY.md`
