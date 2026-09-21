@@ -8,8 +8,7 @@ This branch adds a native Nintendo 3DS port of the engine - no SDL shim, it uses
 backend, writes the 8 bit screen straight into the double buffered framebuffer, feeds the DSP at its
 native 32728 Hz, translates the pad into the engine's keyboard scancodes (fully remappable through
 `dr3_controls.txt`) and uses the otherwise unused bottom screen for the controls and the current
-driver standings.  There is also an optional profiler build that measures the frame budget on the
-console itself and rotates measurement variants automatically.
+driver standings.
 
 * **installation, controls and configuration: [INSTALL_3DS.md](INSTALL_3DS.md)**
 * technical notes, measurements and the profiler build: [doc/3ds.md](doc/3ds.md)
