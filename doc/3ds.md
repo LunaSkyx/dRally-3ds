@@ -37,6 +37,10 @@ meets the engine, the things worth knowing:
   in the race yet and stand in grid rows of their own behind the four start slots the track file provides
   (`race___49bd4h.c`), the in-race car list stops at `DR3_HUD_CARS` rows because its fourth row already
   ends at row 177 of the 200, and the bottom screen map draws every car of the race (`dr3_bottom.c`).
+  Screens that hard-wire four cars need a look too: the results list (`___36068h.c`, drawn by
+  `___38184h_cdecl`) fills its four rows from the first four cars only, so a twelve car race left rows
+  unset and sent an arbitrary index into `s_6c[]` and the screen buffer - it now falls back to the grid's
+  own seats and clamps whatever it is handed.
   `dr3_log.c`/`dr3_log.h` carry the build's step trace (`[dr3] chaos step ...`), which is what makes a
   hang outside the race loop (results, front end) readable from the log
 

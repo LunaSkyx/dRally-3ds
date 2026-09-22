@@ -53,6 +53,35 @@ void ___36068h_cdecl(__DWORD__ A1){
 	}
 	else {
 
+#if defined(DR3_CHAOS)
+		/*
+		 * The four rows of this list are drawn from the racer index found here: it is used both as an
+		 * index into s_6c[] and as the row pitch of the pictures (___38184h_cdecl, and 0x13*index
+		 * below), so it can only hold one of the four racers the list has room for.  The original loop
+		 * fills the rows from the first four cars of the race and only when one of them finished
+		 * 1st..4th - in a four car race that is the same thing, in the chaos test build (twelve cars)
+		 * the top four are usually somewhere else, which left rows unset and sent a garbage index into
+		 * s_6c[...] and the screen buffer.
+		 *
+		 * So the rows start as the grid's own seats (the racers this screen is written for) and only a
+		 * finisher the list can draw overwrites one of them.
+		 */
+		for(i = 0; i < 4; ++i){
+
+			const int seat = B(i+___1a0ef8h);
+
+			B(esp+i) = (((seat >= 0) && (seat < 4)) ? seat : i);
+		}
+
+		n = -1;
+		while(++n < 4){
+
+			const int pos = D(0x54*n+D(___1a1028h)+___1de7d0h+0x40);
+			const int who = B(n+___1a0ef8h);
+
+			if((pos >= 1) && (pos <= 4) && (who >= 0) && (who < 4)) B(esp+pos-1) = who;
+		}
+#else
 		n = -1;
 		while(++n < 4){
 
@@ -61,6 +90,7 @@ void ___36068h_cdecl(__DWORD__ A1){
 			if(D(0x54*n+D(___1a1028h)+___1de7d0h+0x40) == 3) B(esp+2) = B(n+___1a0ef8h);
 			if(D(0x54*n+D(___1a1028h)+___1de7d0h+0x40) == 4) B(esp+3) = B(n+___1a0ef8h);
 		}
+#endif
 	}
 
 	if(A1 == 0){

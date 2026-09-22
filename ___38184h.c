@@ -45,6 +45,20 @@ void ___38184h_cdecl(__DWORD__ A1, __POINTER__ A2){
 	D(esp+0x30) = eax;
 	ecx = 0x4;
 	memcpy(esp+0x14, A2, ecx);
+#if defined(DR3_CHAOS)
+	/*
+	 * The caller hands over four racer indices and they are used to index s_6c[] below (rank, name,
+	 * face).  The chaos test build is the one place where a race can hold more cars than the four
+	 * this screen was written for, so nothing out of range is allowed through - a name would be
+	 * strcpy'd out of whatever the index pointed at.
+	 */
+	edx = 0;
+	while(edx < 4){
+
+		if((int)B(esp+0x14+edx) >= 0x14) B(esp+0x14+edx) = 0;
+		edx++;
+	}
+#endif
 	eax = D(esp+0x30);
 	ebp = 4*eax;
 	ebp += eax;
