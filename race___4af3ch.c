@@ -1,4 +1,5 @@
 #include "drally.h"
+#include "platform_3ds/dr3_chaos.h"
 #include "drally_structs_free.h"
 
 #pragma pack(1)
@@ -170,7 +171,7 @@ void race___4af3ch(void){
 	}
 
 	n = -1;
-	while(++n < 4){
+	while(++n < DR3_MAX_CARS){
 
 		s_35e[n].XLocation = (float)(int)(TRX_WIDTH-1-(int)(double)s_35e[n].XLocation);
 		s_35e[n].YLocation = (float)(int)(TRX_HEIGHT-1-(int)(double)s_35e[n].YLocation);

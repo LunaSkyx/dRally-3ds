@@ -213,12 +213,45 @@ void bpa_read(BPA * bpa, __POINTER__ dst){
         if(dst){
             
             //printf("[%s] Extracting ... %12s [%d]\n", bpa->file, bpa_entry_name(bpa), bpa_entry_size(bpa));
+#if defined(__3DS__) && defined(DR3_CHAOS)
+            /*
+             * A read that comes up short leaves the caller with half a picture (the chaos test build saw
+             * grey lines in the car sprites and cars that were there but invisible) and it is also what
+             * makes a BPA header look malformed.  The chaos build checks the count, reads the entry again
+             * once and zero fills whatever is still missing, so nothing parses stale bytes.
+             */
+            {
+                size_t  want = bpa_entry_size(bpa);
+                long    at   = ftell(bpa->fd);
+                size_t  got  = fread(dst, 1, want, bpa->fd);
+
+                if(got != want){
+
+                    dr3_log("[dr3] chaos: short read of %s from %s (%u of %u bytes) - retrying",
+                            bpa_entry_name(bpa), bpa->file, (unsigned)got, (unsigned)want);
+                    dr3_log_flush();
+
+                    fseek(bpa->fd, at, SEEK_SET);
+                    got = fread(dst, 1, want, bpa->fd);
+
+                    if(got != want){
+
+                        dr3_log("[dr3] chaos: retry gave %u of %u bytes - the rest is zeroed",
+                                (unsigned)got, (unsigned)want);
+                        dr3_log_flush();
+
+                        memset((__BYTE__ *)dst + got, 0, want - got);
+                    }
+
+                    bpa->entry++;
+                    return;
+                }
+            }
+
+            /* the read went through - nothing more to do here */
+#else
             fread(dst, 1, bpa_entry_size(bpa), bpa->fd);
-/*
-            FILE * fd = fopen(bpa_entry_name(bpa), "wb");
-            fwrite(dst, 1, bpa_entry_size(bpa), fd);
-            fclose(fd);
-*/
+#endif
         }
         else {
 

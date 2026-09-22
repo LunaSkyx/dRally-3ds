@@ -1,4 +1,5 @@
 #include "drally.h"
+#include "platform_3ds/dr3_chaos.h"
 #include "drally_structs_free.h"
 
 	extern __BYTE__ ___1de580h[];
@@ -15,7 +16,7 @@ void race___400ech(void){
 	s_94 = (struct_94_t *)___1de580h;
 
 	n = -1;
-	while(++n < 4){
+	while(++n < DR3_MAX_CARS){
 	
 		s_54[n].__10 = 100-(s_94[n].__18+1023)/1024;	// Damage
 		s_54[n].__40 = s_94[n].__54;					// Bonus income multiplier
