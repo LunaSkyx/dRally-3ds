@@ -12,6 +12,7 @@
 
 #include "../platform_3ds/dr3_blit.h"
 #include "../platform_3ds/dr3_input_map.h"
+#include "../platform_3ds/dr3_laptime.h"
 #include "../platform_3ds/dr3_minimap.h"
 
 static int g_failed;
@@ -718,6 +719,68 @@ static void test_minimap_incremental(void)
           buf[24 * 32 + 24]);
 }
 
+static void test_laptime(void)
+{
+    char t[16];
+
+    printf("- lap time formatting\n");
+
+    /* the engine's triples: minutes / seconds / hundredths */
+    dr3_laptime_format(t, sizeof(t), 0, 0, 0);
+    CHECK(strcmp(t, "0:00.00") == 0, "zero time: got '%s'", t);
+
+    dr3_laptime_format(t, sizeof(t), 1, 2, 3);
+    CHECK(strcmp(t, "1:02.03") == 0, "m:ss.cc padding: got '%s'", t);
+
+    dr3_laptime_format(t, sizeof(t), 12, 59, 99);
+    CHECK(strcmp(t, "12:59.99") == 0, "two digit minutes: got '%s'", t);
+
+    /* hundredths and seconds roll over instead of printing a field the row cannot show */
+    dr3_laptime_format(t, sizeof(t), 0, 75, 123);
+    CHECK(strcmp(t, "1:16.23") == 0, "roll over: got '%s'", t);
+
+    /* negative input is clamped - a time row must never show '-' */
+    dr3_laptime_format(t, sizeof(t), -1, -2, -3);
+    CHECK(strcmp(t, "0:00.00") == 0, "negative input: got '%s'", t);
+
+    /* the tick variant uses the engine's own arithmetic: 70 ticks = 1 s, 1.42 * rest = hundredths */
+    dr3_laptime_format_ticks(t, sizeof(t), 0);
+    CHECK(strcmp(t, "0:00.00") == 0, "ticks 0: got '%s'", t);
+
+    dr3_laptime_format_ticks(t, sizeof(t), 70);
+    CHECK(strcmp(t, "0:01.00") == 0, "ticks 70: got '%s'", t);
+
+    dr3_laptime_format_ticks(t, sizeof(t), 69);
+    CHECK(strcmp(t, "0:00.97") == 0, "ticks 69 (1.42 * 69 = 97): got '%s'", t);
+
+    dr3_laptime_format_ticks(t, sizeof(t), 70 * 60);
+    CHECK(strcmp(t, "1:00.00") == 0, "ticks of one minute: got '%s'", t);
+
+    dr3_laptime_format_ticks(t, sizeof(t), (70 * 119) + 69);
+    CHECK(strcmp(t, "1:59.97") == 0, "ticks 1:59.97: got '%s'", t);
+
+    dr3_laptime_format_ticks(t, sizeof(t), -5);
+    CHECK(strcmp(t, "0:00.00") == 0, "negative ticks: got '%s'", t);
+
+    /* "nothing driven yet" is what the times row prints as dashes, and it has to be as wide as a
+       real time so the three columns of the row stay aligned */
+    CHECK(dr3_laptime_is_set(0, 0, 0) == 0, "an all zero triple counts as set");
+    CHECK(dr3_laptime_is_set(0, 0, 1) == 1, "one hundredth is not seen as set");
+
+    dr3_laptime_format_or_unset(t, sizeof(t), 0, 0, 0);
+    CHECK(strcmp(t, DR3_LAPTIME_UNSET) == 0, "unset time: got '%s'", t);
+    CHECK(strlen(DR3_LAPTIME_UNSET) == strlen("0:42.90"), "unset time is not as wide as a real one");
+
+    dr3_laptime_format_or_unset(t, sizeof(t), 0, 42, 90);
+    CHECK(strcmp(t, "0:42.90") == 0, "set time: got '%s'", t);
+
+    /* a short buffer is truncated and terminated, never overrun */
+    memset(t, 0x7f, sizeof(t));
+    t[sizeof(t) - 1] = 0;
+    dr3_laptime_format_ticks(t, 5, 70 * 119);
+    CHECK((strcmp(t, "1:59") == 0) && (t[4] == 0), "short buffer: got '%s'", t);
+}
+
 int main(void)
 {
     printf("dRally 3DS port - host tests\n\n");
@@ -735,6 +798,7 @@ int main(void)
     test_minimap_pixel_formats();
     test_minimap_track_colors();
     test_minimap_incremental();
+    test_laptime();
 
     printf("\n%d checks, %d failures\n", g_checks, g_failed);
     return g_failed ? 1 : 0;

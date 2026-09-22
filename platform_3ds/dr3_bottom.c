@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT (see LICENSE and THIRD_PARTY.md)
  */
 #include "dr3_bottom.h"
+#include "dr3_laptime.h"
 #include "dr3_log.h"
 #include "dr3_minimap.h"
 
@@ -30,6 +31,26 @@ extern int       MY_CAR_IDX;
 extern int       NUM_OF_CARS;
 extern int       NUM_OF_LAPS;
 
+/*
+ * The lap times of the race that is running (bss.c):
+ *   LAP_PREVIOUS_*  the clock of the lap that is on right now (race___40db4h.c hands it the running
+ *                   tick counter every frame, so it *is* the live lap time)
+ *   LAP_BEST_*      the best lap of this race (zeroed when a race starts, ___33010h.c)
+ *   LAP_RECORD_*    the record of the player's car for this track (loaded at race setup from the
+ *                   lap record table, ___33010h.c, and overwritten as soon as he beats it)
+ *   ___243cb8h      the lap that was just finished, as a raw tick counter (70 ticks per second)
+ */
+extern int       LAP_PREVIOUS_MIN;
+extern int       LAP_PREVIOUS_SEC;
+extern int       LAP_PREVIOUS_100;
+extern int       LAP_BEST_MIN;
+extern int       LAP_BEST_SEC;
+extern int       LAP_BEST_100;
+extern int       LAP_RECORD_MIN;
+extern int       LAP_RECORD_SEC;
+extern int       LAP_RECORD_100;
+extern __BYTE__  ___243cb8h[];
+
 /* the per-driver colours used by the front end (3 bytes per entry, menu_main.c) */
 extern __BYTE__ *___1a0fb8h;
 
@@ -55,7 +76,17 @@ static char        dr3_bottom_track_name[24]; /* the human readable name, e.g. "
 static int         dr3_bottom_map_dirty;      /* the geometry line still has to be logged */
 static int         dr3_bottom_map_full = 1;   /* the next map draw has to repaint everything */
 static char        dr3_bottom_map_hdr[96];    /* text currently on the map page */
+static char        dr3_bottom_map_times[96];
 static char        dr3_bottom_map_ftr[96];
+
+/*
+ * The record of the player's car, as it was last seen.  When it changes the player just beat it (the
+ * engine also plays SFX_LAP_RECORD and writes the new time back into the record table) - that is worth
+ * a moment on the screen.  The -1 marks "not seen yet", so the record that comes with the race does
+ * not flash.
+ */
+static int          dr3_bottom_rec_seen[3] = { -1, -1, -1 };
+static unsigned int dr3_bottom_rec_flash_ms;   /* until this tick the flash is shown */
 #endif
 
 /* ------------------------------------------------------------------ controls --- */
@@ -286,15 +317,22 @@ int dr3_bottom_build_lines(char out[DR3_BOTTOM_LINES][DR3_BOTTOM_LINE_LEN])
 /* ------------------------------------------------------------------ map page --- */
 
 /*
- * libctru's console font is 8x8 on the 320x240 bottom screen: 40 columns, 30 rows.  Row 1 carries
- * the track name, row 30 the race status, and the minimap is painted into the band in between.
- * Those two lines are the only text on this page - the console only repaints the cells it prints,
- * so the pixels survive until the page is left (then the screen is cleared).
+ * libctru's console font is 8x8 on the 320x240 bottom screen: 40 columns, 30 rows.  Three text rows
+ * belong to this page - row 1 (track name and the running lap clock), row 2 (last, best and record
+ * lap) and row 30 (position and lap of the race) - and the minimap is painted into the band between
+ * them.  Those rows are the only text here: the console only repaints the cells it prints, so the map
+ * pixels survive until the page is left (then the screen is cleared).
  */
 #define DR3_BOTTOM_TEXT_W  38      /* < 40: a full row would wrap and could scroll the screen */
-#define DR3_BOTTOM_MAP_Y   8       /* = one text row, right below the header */
-#define DR3_BOTTOM_MAP_H   224     /* 240 - 2*8: the band between header and footer */
+#define DR3_BOTTOM_MAP_Y   16      /* = two text rows: the header plus the lap times below it */
+#define DR3_BOTTOM_MAP_H   216     /* 240 - 3*8: the band between the times row and the footer */
 #define DR3_BOTTOM_MAP_W   320
+
+/* the lap clock is part of this page, so it is refreshed more often than the text block (500 ms) */
+#define DR3_BOTTOM_MAP_MS  125     /* eight times a second */
+
+/* how long the "*** NEW RECORD ***" notice stays on the times row after the record was beaten */
+#define DR3_RECORD_FLASH_MS 3000
 
 /*
  * The colour the player picked for his car: the engine keeps the per-driver colours in
@@ -392,13 +430,14 @@ static void dr3_bottom_draw_map_page(void)
 
     {
         /*
-         * The map page keeps its text in the cache below and only rewrites the two text rows when
+         * The map page keeps its text in the cache below and only rewrites its three text rows when
          * something in them changed - and it never clears the screen except when the page is entered,
          * because a clear would also wipe the map band.  Everything else (the markers) goes through
          * dr3_minimap_draw_incremental(), so the pixels of the static map are written exactly once
          * per race: that is what removed the flicker.
          */
         char           header[96];
+        char           times[96];
         char           footer[96];
         int            lap = 0, pos = 0, text_changed;
 
@@ -425,25 +464,85 @@ static void dr3_bottom_draw_map_page(void)
         }
 
         {
-            /* the map name, centred - that is what the header is for */
-            const char * title = dr3_bottom_track_name[0] ? dr3_bottom_track_name : "-";
-            const int    len   = (int)strlen(title);
-            const int    pad   = (len < DR3_BOTTOM_TEXT_W) ? ((DR3_BOTTOM_TEXT_W - len) / 2) : 0;
+            /*
+             * Row 1: the map name on the left and the clock of the lap that is on right now on the
+             * right.  LAP_PREVIOUS_* *is* that clock - the engine keeps the running lap in it
+             * (race___40db4h.c) and only hands it over to LAP_BEST_* / LAP_RECORD_* when the lap is
+             * finished.  Before the first lap time exists the right side carries the tap hint instead:
+             * the hint is needed once, the clock is needed every lap.
+             */
+            char        clock[16];
+            const char *title  = dr3_bottom_track_name[0] ? dr3_bottom_track_name : "-";
+            int         name_w, title_w = (int)strlen(title);
 
-            snprintf(header, sizeof(header), "%*s%s", pad, "", title);
+            if (dr3_laptime_is_set(LAP_PREVIOUS_MIN, LAP_PREVIOUS_SEC, LAP_PREVIOUS_100)) {
+                char t[16];
+
+                dr3_laptime_format(t, sizeof(t), LAP_PREVIOUS_MIN, LAP_PREVIOUS_SEC, LAP_PREVIOUS_100);
+                snprintf(clock, sizeof(clock), "LAP %s", t);
+            }
+            else {
+                snprintf(clock, sizeof(clock), "%s", "tap = off");
+            }
+
+            name_w = DR3_BOTTOM_TEXT_W - (int)strlen(clock);
+            if (name_w < 0) name_w = 0;
+            if (title_w > name_w) title_w = name_w;
+
+            snprintf(header, sizeof(header), "%-*.*s%s", name_w, title_w, title, clock);
         }
 
-        snprintf(footer, sizeof(footer), "POS %d/%d  LAP %d/%d  tap: off",
+        {
+            /*
+             * Row 2: the lap times.  LAST is the lap that was just finished - the engine keeps it as a
+             * tick counter in ___243cb8h - BEST is the best lap of this race and REC the record of this
+             * car on this track, which the engine overwrites the moment it is beaten: the row then
+             * shows the player his own new record right away.
+             */
+            char last[16], best[16], rec[16];
+
+            if (D(___243cb8h) > 0) dr3_laptime_format_ticks(last, sizeof(last), (int)D(___243cb8h));
+            else                   snprintf(last, sizeof(last), "%s", DR3_LAPTIME_UNSET);
+
+            dr3_laptime_format_or_unset(best, sizeof(best), LAP_BEST_MIN, LAP_BEST_SEC, LAP_BEST_100);
+            dr3_laptime_format_or_unset(rec, sizeof(rec), LAP_RECORD_MIN, LAP_RECORD_SEC, LAP_RECORD_100);
+
+            /*
+             * A record row that changed means the record was just beaten (the engine plays
+             * SFX_LAP_RECORD for it as well).  The record that comes with the track must not flash -
+             * that is what the -1 in dr3_bottom_rec_seen marks.
+             */
+            if ((LAP_RECORD_MIN != dr3_bottom_rec_seen[0]) || (LAP_RECORD_SEC != dr3_bottom_rec_seen[1]) ||
+                (LAP_RECORD_100 != dr3_bottom_rec_seen[2])) {
+
+                if (dr3_bottom_rec_seen[0] >= 0) dr3_bottom_rec_flash_ms = SDL_GetTicks() + DR3_RECORD_FLASH_MS;
+
+                dr3_bottom_rec_seen[0] = LAP_RECORD_MIN;
+                dr3_bottom_rec_seen[1] = LAP_RECORD_SEC;
+                dr3_bottom_rec_seen[2] = LAP_RECORD_100;
+            }
+
+            if (dr3_bottom_rec_flash_ms && ((int)(dr3_bottom_rec_flash_ms - SDL_GetTicks()) > 0)) {
+                snprintf(times, sizeof(times), "*** NEW RECORD %s ***", rec);
+            }
+            else {
+                snprintf(times, sizeof(times), "LAST %s BEST %s REC %s", last, best, rec);
+            }
+        }
+
+        snprintf(footer, sizeof(footer), "POS %d/%d  LAP %d/%d",
                  pos, (NUM_OF_CARS > 0) ? NUM_OF_CARS : 0,
                  lap, (NUM_OF_LAPS > 0) ? NUM_OF_LAPS : 0);
 
         text_changed = (strcmp(header, dr3_bottom_map_hdr) != 0) ||
+                       (strcmp(times,  dr3_bottom_map_times) != 0) ||
                        (strcmp(footer, dr3_bottom_map_ftr) != 0);
 
         if (dr3_bottom_map_full) {
-            /* entering the page: clear once, print both text lines and paint the whole map */
-            printf("\x1b[2J\x1b[1;1H%-38.38s\x1b[30;1H%-38.38s", header, footer);
+            /* entering the page: clear once, print the three text lines and paint the whole map */
+            printf("\x1b[2J\x1b[1;1H%-38.38s\x1b[2;1H%-38.38s\x1b[30;1H%-38.38s", header, times, footer);
             snprintf(dr3_bottom_map_hdr, sizeof(dr3_bottom_map_hdr), "%s", header);
+            snprintf(dr3_bottom_map_times, sizeof(dr3_bottom_map_times), "%s", times);
             snprintf(dr3_bottom_map_ftr, sizeof(dr3_bottom_map_ftr), "%s", footer);
 
             n_cars = dr3_bottom_read_cars(cars, 4);
@@ -456,9 +555,10 @@ static void dr3_bottom_draw_map_page(void)
         }
 
         if (text_changed) {
-            /* only the two text rows - the map band below is left alone */
-            printf("\x1b[1;1H%-38.38s\x1b[30;1H%-38.38s", header, footer);
+            /* only the three text rows - the map band below them is left alone */
+            printf("\x1b[1;1H%-38.38s\x1b[2;1H%-38.38s\x1b[30;1H%-38.38s", header, times, footer);
             snprintf(dr3_bottom_map_hdr, sizeof(dr3_bottom_map_hdr), "%s", header);
+            snprintf(dr3_bottom_map_times, sizeof(dr3_bottom_map_times), "%s", times);
             snprintf(dr3_bottom_map_ftr, sizeof(dr3_bottom_map_ftr), "%s", footer);
         }
     }
@@ -498,6 +598,10 @@ void dr3_bottom_track_loaded(const void *mask, const void *image, const void *pa
     /* the shape of the map as text, so a log from a console/emulator is enough to check it */
     if (dr3_minimap_ascii(preview, sizeof(preview), 40, 18) > 0) dr3_log("minimap preview:\n%s", preview);
 
+    /* a new race brings its own record row: the first sight of it must not flash */
+    dr3_bottom_rec_seen[0] = dr3_bottom_rec_seen[1] = dr3_bottom_rec_seen[2] = -1;
+    dr3_bottom_rec_flash_ms = 0;
+
     /* show the map right away - it is the interesting page while racing.  If the player hid the
        screen on purpose, it stays hidden. */
     if (!dr3_bottom_is_hidden()) {
@@ -530,8 +634,10 @@ void dr3_bottom_update(void)
 
 #if !defined(DR3_PROFILE)
     static int          last_view = -1;                 /* no page drawn yet */
-    /* the minimap follows the cars, so that page is refreshed a bit faster than the text block */
-    const unsigned int  interval = ((dr3_bottom_view == DR3_VIEW_MAP) && !dr3_bottom_hidden) ? 250u : 500u;
+    /* the minimap follows the cars and carries the running lap clock, so that page is refreshed far
+       more often than the text block */
+    const unsigned int  interval = ((dr3_bottom_view == DR3_VIEW_MAP) && !dr3_bottom_hidden)
+                                   ? (unsigned int)DR3_BOTTOM_MAP_MS : 500u;
 #else
     const unsigned int  interval = 500u;                /* twice a second is plenty */
 #endif

@@ -96,8 +96,10 @@ show up as drivers.  It refreshes at most once per second and only when the text
 
 #### Minimap (bottom screen, race only)
 
-A race uses that screen for something better: the whole track with every car on it.  It is the only
-page there, a tap switches between map and dark.
+A race uses that screen for something better: the whole track with every car on it, plus the lap times.
+It is the only page there, a tap switches between map and dark.  Three console rows belong to it - the
+track name with the running lap clock, the last/best/record lap and the race position - and the map is
+painted into the band between them.
 
 * the map is built **once per race** from the engine's own track mask (`TRX_MAS`, one byte per track
   pixel, low nibble = surface) and cached as a small bitmap of at most 320x224:
@@ -110,14 +112,28 @@ page there, a tap switches between map and dark.
   share of the block (brightened by a quarter) - so a desert track looks sandy and a night track
   dark.  The palette range is 0..63 or 0..100 depending on the file, so the brightest entry is
   scaled to 255 first.  Without an image/palette the fixed scheme (`DR3_MAP_COL_*`) is the fallback
-* the map keeps the track's aspect ratio (letterboxed and centred between the header line and the
-  status line, so a 1016x716 or 960x600 track is not stretched).  The header shows **the map's name**
-  ("Suburbia", "Downtown", ..., centred) - the very names the front end uses (`___18d492h`), resolved
-  from the loaded track id plus the reverse flag, because the second season half drives the same tracks
-  backwards under different names (`race_main.c` does that lookup, the platform layer only prints it).
-  The status line below shows position/lap and the tap hint
+* the map keeps the track's aspect ratio (letterboxed and centred inside its band - `y=16`, 320x216:
+  below the two text rows and above the footer - so a 1016x716 or 960x600 track is not stretched).
+  Row 1 shows **the map's name** on the left ("Suburbia", "Downtown", ...) - the very names the front
+  end uses (`___18d492h`), resolved from the loaded track id plus the reverse flag, because the second
+  season half drives the same tracks backwards under different names (`race_main.c` does that lookup,
+  the platform layer only prints it).  On its right the **running lap clock** ticks; as long as no lap
+  time exists yet, that spot carries the tap hint instead - the hint is needed once, the clock every
+  lap.  Row 30 below the map shows the position and the lap of the race
 * the cars come from `struct_35e_t ___1e6ed0h[4]` (`XLocation`/`YLocation` in track pixels, `Lap`,
-  `Position`); this page refreshes four times a second instead of twice
+  `Position`); this page refreshes **eight** times a second instead of twice (`DR3_BOTTOM_MAP_MS`),
+  because the lap clock lives on it
+* **row 2 carries the lap times**: `LAST` (the lap that was just finished), `BEST` (the best lap of this
+  race) and `REC` (the record of this car on this track).  All three come from the engine's own globals:
+  `LAP_PREVIOUS_*` is the clock of the lap that is running (`race___40db4h.c` keeps updating it every
+  frame, so it *is* the live lap time), `LAP_BEST_*` is zeroed when a race starts (`___33010h.c`) and
+  `LAP_RECORD_*` is loaded from the lap record table for **the player's car** (the same `DR3_RECORD_CAR`
+  wrap the seventh car needed) and overwritten the moment it is beaten.  The finished lap is also kept
+  as a raw tick counter (`D(___243cb8h)`, 70 ticks per second), which `platform_3ds/dr3_laptime.c`
+  converts with the engine's own arithmetic - what the screen shows is what the game would show.  A time
+  that was never driven prints as `-:--.--`, so the three columns stay aligned, and a record that just
+  fell turns the row into `*** NEW RECORD 0:39.80 ***` for three seconds - the engine plays
+  `SFX_LAP_RECORD` for the very same moment
 * no border is drawn any more, and the player marker is a rounded blob in **his own car colour**
   (the per-driver colours that the front end uses live in menu_main.c's `___1a0fb8h`, indexed by
   `racer_t.color`; yellow stays as the fallback) with a dark outline, so it remains readable on bright
@@ -231,10 +247,11 @@ Consequences that shape this port:
 | `platform_3ds/dr3_input.c` / `.h` | wraps `SDL_PollEvent`: pad â†’ synthetic `SDL_KEYDOWN/UP` events, plus the `L+R+START` quit combo |
 | `platform_3ds/dr3_input_map.c` / `.h` | the button â†’ scancode table (data only, unit-tested) |
 | `platform_3ds/dr3_blit.c` / `.h` | palette â†’ 32-bit LUT and an integer-only nearest-neighbour / centred scaler (unit-tested) |
-| `platform_3ds/dr3_bottom.c` / `.h` | the bottom screen: controls + driver standings, the minimap page and the tap handling (libctru console, plus direct framebuffer pixels for the map) |
+| `platform_3ds/dr3_bottom.c` / `.h` | the bottom screen: controls + driver standings, the minimap page with its lap clocks and the tap handling (libctru console, plus direct framebuffer pixels for the map) |
 | `platform_3ds/dr3_minimap.c` / `.h` | track mask -> classified minimap bitmap, canvas drawing, ASCII log preview; no platform header, fully unit-tested |
+| `platform_3ds/dr3_laptime.c` / `.h` | lap times as text for the bottom screen (`m:ss.cc` from the engine's minute/seconds/hundredths triples and from a raw tick counter, using the engine's own arithmetic); no platform header, unit-tested |
 | `platform_3ds/sdl2_net_stub/` | inert SDL_net so the multiplayer code compiles and links |
-| `tests/test_dr3.c`, `tests/Dr3Tests.vcxproj`, `tests/build_tests.ps1` | host unit tests (421 checks), runnable **without** a 3DS toolchain |
+| `tests/test_dr3.c`, `tests/Dr3Tests.vcxproj`, `tests/build_tests.ps1` | host unit tests (438 checks), runnable **without** a 3DS toolchain |
 | `events.c` | engine patch 1: `while(dr3_poll_event(&e))` under `#if defined(__3DS__)` |
 | `drally_linux_c.c` | engine patch 2 (display): window created as the fixed 400x240 top screen, **no SDL renderer**, `__PRESENTSCREEN__` converts the 8-bit screen with the palette LUT straight into the window surface and calls `SDL_UpdateWindowSurface`; `SDL_SetWindowSize` calls are skipped |
 
@@ -428,9 +445,9 @@ so the renderer is not created at all on the 3DS.
 
 | Check | Command | Result |
 |---|---|---|
-| Portable logic | `tests\build_tests.ps1` (MSVC) | **421 checks, 0 failures** - LUT byte order + masks (`SDL_PIXELFORMAT_RGBA8888` as used by the 3DS), centred/scaled blit pixels, full pad â†’ scancode map, quit combo |
+| Portable logic | `tests\build_tests.ps1` (MSVC) | **438 checks, 0 failures** - LUT byte order + masks (`SDL_PIXELFORMAT_RGBA8888` as used by the 3DS), centred/scaled blit pixels, full pad â†’ scancode map, quit combo |
 | Minimap against the real tracks | `logs\minimap_probe.c` (local throwaway host tool, not committed: `old_bpa_read` + `bpk_decode4` + `dr3_minimap_build`) | reads `TR*.BPA` from the original game data, prints the class shares and an ASCII preview - `TR7 1016x716 -> 254x179 (step 4), road 17625 / soft 10171 / other 17670` and `TR1 960x600 -> 320x200 (step 3)`, both previews show a recognisable circuit |
-| Whole engine with `-D__3DS__` | `scripts\gen_3ds_check.ps1` â†’ `tests\dRally3DSCheck.vcxproj` | **333 translation units compile and link** (exit 0) - validates every `#if defined(__3DS__)` path with the real SDL2 headers, catching typos/prototype errors before devkitARM exists |
+| Whole engine with `-D__3DS__` | `scripts\gen_3ds_check.ps1` â†’ `tests\dRally3DSCheck.vcxproj` | **334 translation units compile and link** (exit 0) - validates every `#if defined(__3DS__)` path with the real SDL2 headers, catching typos/prototype errors before devkitARM exists |
 | Windows regression | `scripts\build_windows.ps1 -GameDir dRally-3ds -SkipDeps -SkipStage` | still builds (exit 0) |
 | Emulator | `Azahar` in `C:\Program Files\Azahar` | installed, ready for the first `.3dsx` |
 

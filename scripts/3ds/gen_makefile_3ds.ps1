@@ -123,6 +123,7 @@ EXTRA_OBJS := platform_3ds/dr3_input.o \
               platform_3ds/dr3_input_map.o \
               platform_3ds/dr3_blit.o \
               platform_3ds/dr3_minimap.o \
+              platform_3ds/dr3_laptime.o \
               platform_3ds/dr3_log.o \
               platform_3ds/dr3_paths.o \
               platform_3ds/dr3_fb.o \
