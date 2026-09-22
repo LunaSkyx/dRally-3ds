@@ -78,7 +78,8 @@ show up as drivers.  It refreshes at most once per second and only when the text
   (`GAS = R, UP, STICK_UP, B`).  A function belongs to the front end, a race or both, so the same
   button can confirm a menu entry and honk the horn (`platform_3ds/dr3_input_map.c`)
 * tapping the bottom screen switches the controls/standings (or the profiler statistics) off and on
-  again; the state is kept in `dr3_bottom_hidden`
+  again; the state is kept in `dr3_bottom_hidden`.  During a race a tap cycles **standings -> minimap
+  -> off** instead (see below)
 
 * the engine's own `printf()` output is sent to the log file (`#define printf(...) dr3_log(__VA_ARGS__)`
   in drally.h, __3DS__ only): libctru's console makes stdout draw onto the bottom screen, and the
@@ -91,6 +92,39 @@ show up as drivers.  It refreshes at most once per second and only when the text
   was visible as flicker.  The release build prints a fixed height of padded lines (so removed lines are
   overwritten) and only when the content changed; the profiler overlay collects its output in a buffer
   (`dr3_out()`) and writes it once, including the clear, so the update is atomic
+
+#### Minimap (bottom screen, race only)
+
+A race has a second page on that screen: the whole track with every car on it.
+
+* the map is built **once per race** from the engine's own track mask (`TRX_MAS`, one byte per track
+  pixel, low nibble = surface) and cached as a small bitmap of at most 320x224:
+  `0xf` = hard surface (the racing line), `0x0..0x3` = soft ground, everything else = scenery.
+  A `step x step` block is classified by the share of its groups, so roads much thinner than the
+  step still survive (`step` is chosen so the map fits - 3..5 for the shipped tracks)
+* the map keeps the track's aspect ratio (letterboxed and centred between the header line and the
+  status line, so a 1016x716 or 960x600 track is not stretched), and shows the player as a yellow
+  marker with a dark outline and the other cars in red.  The player is drawn last so no other car can
+  cover him
+* the cars come from `struct_35e_t ___1e6ed0h[4]` (`XLocation`/`YLocation` in track pixels, `Lap`,
+  `Position`); this page refreshes four times a second instead of twice
+* every race writes one summary line plus an ASCII preview into `sdmc:/drally_3ds.log`, so the
+  classification can be checked from a log without looking at the screen:
+
+  ```
+  [dr3] minimap: TR7 1016x716 track -> 254x179 map (step 4): road 17625, soft 10171, other 17670, none 0
+  minimap preview:
+  ::::....#######..::::::::::::::....:::::
+  :::...############.::::::::::.........:
+  ...
+  ```
+
+`platform_3ds/dr3_minimap.c` has no platform dependency at all - the framebuffer is described by a
+small `dr3_canvas_t` with per-axis strides, which turns the rotated 3DS buffer into a detail instead
+of a special case - and is unit-tested on the host, negative y stride included.  The engine hooks are
+one line in `race_main.c` (behind the reverse-track mirroring, so a mirrored race gets a mirrored
+map) and one in `race_memory.c` (the map is dropped before the track memory is freed); outside the
+3DS release build both compile to nothing (see `platform_3ds/dr3_bottom.h`).
 
 The profiler build keeps that screen for the profiler (`-DDR3_PROFILE` disables `dr3_bottom`).
 
@@ -159,8 +193,10 @@ Consequences that shape this port:
 | `platform_3ds/dr3_input.c` / `.h` | wraps `SDL_PollEvent`: pad â†’ synthetic `SDL_KEYDOWN/UP` events, plus the `L+R+START` quit combo |
 | `platform_3ds/dr3_input_map.c` / `.h` | the button â†’ scancode table (data only, unit-tested) |
 | `platform_3ds/dr3_blit.c` / `.h` | palette â†’ 32-bit LUT and an integer-only nearest-neighbour / centred scaler (unit-tested) |
+| `platform_3ds/dr3_bottom.c` / `.h` | the bottom screen: controls + driver standings, the minimap page and the tap handling (libctru console, plus direct framebuffer pixels for the map) |
+| `platform_3ds/dr3_minimap.c` / `.h` | track mask -> classified minimap bitmap, canvas drawing, ASCII log preview; no platform header, fully unit-tested |
 | `platform_3ds/sdl2_net_stub/` | inert SDL_net so the multiplayer code compiles and links |
-| `tests/test_dr3.c`, `tests/Dr3Tests.vcxproj`, `tests/build_tests.ps1` | host unit tests (295 checks), runnable **without** a 3DS toolchain |
+| `tests/test_dr3.c`, `tests/Dr3Tests.vcxproj`, `tests/build_tests.ps1` | host unit tests (395 checks), runnable **without** a 3DS toolchain |
 | `events.c` | engine patch 1: `while(dr3_poll_event(&e))` under `#if defined(__3DS__)` |
 | `drally_linux_c.c` | engine patch 2 (display): window created as the fixed 400x240 top screen, **no SDL renderer**, `__PRESENTSCREEN__` converts the 8-bit screen with the palette LUT straight into the window surface and calls `SDL_UpdateWindowSurface`; `SDL_SetWindowSize` calls are skipped |
 
@@ -253,8 +289,9 @@ so the renderer is not created at all on the 3DS.
 
 | Check | Command | Result |
 |---|---|---|
-| Portable logic | `tests\build_tests.ps1` (MSVC) | **295 checks, 0 failures** - LUT byte order + masks (`SDL_PIXELFORMAT_RGBA8888` as used by the 3DS), centred/scaled blit pixels, full pad â†’ scancode map, quit combo |
-| Whole engine with `-D__3DS__` | `scripts\gen_3ds_check.ps1` â†’ `tests\dRally3DSCheck.vcxproj` | **330 translation units compile and link** (exit 0) - validates every `#if defined(__3DS__)` path with the real SDL2 headers, catching typos/prototype errors before devkitARM exists |
+| Portable logic | `tests\build_tests.ps1` (MSVC) | **395 checks, 0 failures** - LUT byte order + masks (`SDL_PIXELFORMAT_RGBA8888` as used by the 3DS), centred/scaled blit pixels, full pad â†’ scancode map, quit combo |
+| Minimap against the real tracks | `logs\minimap_probe.c` (local throwaway host tool, not committed: `old_bpa_read` + `bpk_decode4` + `dr3_minimap_build`) | reads `TR*.BPA` from the original game data, prints the class shares and an ASCII preview - `TR7 1016x716 -> 254x179 (step 4), road 17625 / soft 10171 / other 17670` and `TR1 960x600 -> 320x200 (step 3)`, both previews show a recognisable circuit |
+| Whole engine with `-D__3DS__` | `scripts\gen_3ds_check.ps1` â†’ `tests\dRally3DSCheck.vcxproj` | **333 translation units compile and link** (exit 0) - validates every `#if defined(__3DS__)` path with the real SDL2 headers, catching typos/prototype errors before devkitARM exists |
 | Windows regression | `scripts\build_windows.ps1 -GameDir dRally-3ds -SkipDeps -SkipStage` | still builds (exit 0) |
 | Emulator | `Azahar` in `C:\Program Files\Azahar` | installed, ready for the first `.3dsx` |
 

@@ -7,8 +7,8 @@ The main goal of this project is to create a port of Death Rally (1996) running 
 This branch adds a native Nintendo 3DS port of the engine - no SDL shim, it uses SDL2's own n3ds
 backend, writes the 8 bit screen straight into the double buffered framebuffer, feeds the DSP at its
 native 32728 Hz, translates the pad into the engine's keyboard scancodes (fully remappable through
-`dr3_controls.txt`) and uses the otherwise unused bottom screen for the controls and the current
-driver standings.
+`dr3_controls.txt`) and uses the otherwise unused bottom screen for the controls, the current driver
+standings and - during a race - a minimap of the track with every car on it.
 
 * **installation, controls and configuration: [INSTALL_3DS.md](INSTALL_3DS.md)**
 * technical notes, measurements and the profiler build: [doc/3ds.md](doc/3ds.md)

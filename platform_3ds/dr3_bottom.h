@@ -4,7 +4,9 @@
  */
 /*
  * dr3_bottom.h - the bottom screen of the 3DS shows the controls (left) and the current driver
- * standings (right), in the style of the Death Rally front end.
+ * standings (right), in the style of the Death Rally front end.  During a race a second page with a
+ * minimap of the current track can be selected (tap the screen to cycle: standings -> minimap ->
+ * off), see dr3_minimap.c.
  *
  * The game never draws to the bottom screen, so it is free for this.  The console needs the gfx state
  * that SDL's n3ds video driver creates with gfxInit(), so it is initialised lazily (doing it earlier
@@ -24,7 +26,8 @@ int  dr3_bottom_console_ensure(void);
 /* Fills "out" with the controls/standings block and returns the number of lines written. */
 int  dr3_bottom_build_lines(char out[DR3_BOTTOM_LINES][DR3_BOTTOM_LINE_LEN]);
 
-/* Tapping the bottom screen switches the information off and on again.
+/* Tapping the bottom screen switches the information off and on again (and, during a race, cycles
+   through the minimap page).
    dr3_bottom_touch() reacts to every tap, dr3_bottom_touch_ex() ignores taps whose Y coordinate is
    inside [ignore_y0, ignore_y1) - the profiler build uses that for its audio rate buttons. */
 void dr3_bottom_touch(void);
@@ -39,4 +42,24 @@ void dr3_bottom_update(void);
 /* Flush + swap the bottom screen after printing. */
 void dr3_bottom_flush(void);
 
+/*
+ * Minimap hooks.  The race code hands over the track mask as soon as a track is decoded
+ * (race___42824h.c) and drops it again when the track memory is freed (race_memory.c), so the port
+ * never keeps a pointer that the engine has released.  Outside the 3DS release build - and in the
+ * profiler build, which owns the bottom screen itself - both calls compile to nothing, so the engine
+ * code needs no #if of its own.
+ */
+#if defined(__3DS__) && defined(DR3_USE_GFX) && !defined(DR3_PROFILE)
+
+void dr3_bottom_track_loaded(const void *mask, int mask_w, int mask_h, const char *track_id);
+void dr3_bottom_track_unloaded(void);
+
+#else
+
+#define dr3_bottom_track_loaded(mask, mask_w, mask_h, track_id) ((void)0)
+#define dr3_bottom_track_unloaded()                             ((void)0)
+
+#endif /* 3DS release build */
+
 #endif /* DR3_BOTTOM_H */
+

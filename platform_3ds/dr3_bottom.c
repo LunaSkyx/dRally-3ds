@@ -4,6 +4,7 @@
  */
 #include "dr3_bottom.h"
 #include "dr3_log.h"
+#include "dr3_minimap.h"
 
 #include "drally.h"
 
@@ -12,6 +13,7 @@
 #undef printf
 #endif
 #include "drally_structs_fixed.h"
+#include "drally_structs_free.h"
 
 #include <3ds.h>
 #include <SDL.h>
@@ -22,9 +24,30 @@
 extern __BYTE__  ___1a01e0h[];
 extern __BYTE__  ___1a1ef8h[];
 
+/* the cars of the running race: positions in track pixels, lap and position (bss.c) */
+extern struct_35e_t ___1e6ed0h[4];
+extern int       MY_CAR_IDX;
+extern int       NUM_OF_CARS;
+extern int       NUM_OF_LAPS;
+
 #define DR3_BOTTOM_TOP 10          /* how many drivers the standings list shows */
 
 static int  dr3_bottom_ready;
+
+/*
+ * Two pages share the bottom screen: the controls/standings block (text, printed by libctru's
+ * console) and the minimap (pixels written straight into the framebuffer, see dr3_minimap.c).
+ * Tapping cycles through text -> map -> off.  Without a loaded track - or in the profiler build,
+ * which owns the screen itself - the map page is skipped.
+ */
+#define DR3_VIEW_TEXT 0
+#define DR3_VIEW_MAP  1
+
+#if !defined(DR3_PROFILE)
+static int         dr3_bottom_view;
+static char        dr3_bottom_track_id[16];
+static int         dr3_bottom_map_dirty;      /* page switched: the text has to be printed once */
+#endif
 
 /* ------------------------------------------------------------------ controls --- */
 
@@ -41,7 +64,8 @@ static const char *const dr3_bottom_controls[] = {
     "START     pause",
     "SELECT    keyboard",
     "L+R+START quit",
-    "(menu: A=ok B=next)"
+    "(menu: A=ok B=next)",
+    "(tap: map / hide)"
 };
 
 /* ---------------------------------------------------------------- standings --- */
@@ -118,14 +142,44 @@ void dr3_bottom_flush(void)
 /* --------------------------------------------------------------- tap to hide --- */
 
 /* Fixed height of the block we print, so that lines which disappear (e.g. "your rank") are
-   overwritten instead of staying on screen - and so that we never have to clear the whole screen. */
-#define DR3_BOTTOM_PRINT_ROWS 17
+   overwritten instead of staying on screen - and so that we never have to clear the whole screen.
+   2 header rows + 14 control rows + a blank + the player row = 18. */
+#define DR3_BOTTOM_PRINT_ROWS 18
 
 static int dr3_bottom_hidden;
 
 int dr3_bottom_is_hidden(void) { return dr3_bottom_hidden; }
 
 void dr3_bottom_touch(void) { dr3_bottom_touch_ex(-1, -1); }
+
+#if !defined(DR3_PROFILE)
+/* Tapping the screen cycles standings -> minimap -> off.  Without a loaded track there is no map
+   page, so the plain on/off behaviour of the first release is kept. */
+static void dr3_bottom_cycle_view(void)
+{
+    const int map_available = dr3_minimap_ready();
+
+    if (dr3_bottom_hidden) {
+        dr3_bottom_hidden    = 0;
+        dr3_bottom_view      = map_available ? DR3_VIEW_MAP : DR3_VIEW_TEXT;
+        dr3_bottom_map_dirty = 1;
+
+        dr3_log("[dr3] bottom screen: %s page", map_available ? "minimap" : "ranking");
+        return;
+    }
+
+    if (map_available && (dr3_bottom_view == DR3_VIEW_TEXT)) {
+        dr3_bottom_view      = DR3_VIEW_MAP;
+        dr3_bottom_map_dirty = 1;
+
+        dr3_log("[dr3] bottom screen: minimap page");
+        return;
+    }
+
+    dr3_bottom_hidden = 1;
+    dr3_log("[dr3] bottom screen hidden (tap to switch it back)");
+}
+#endif
 
 void dr3_bottom_touch_ex(int ignore_y0, int ignore_y1)
 {
@@ -145,8 +199,12 @@ void dr3_bottom_touch_ex(int ignore_y0, int ignore_y1)
         const unsigned int y = touch.py;
 
         if (!((ignore_y0 >= 0) && (y >= (unsigned int)ignore_y0) && (y < (unsigned int)ignore_y1))) {
+#if defined(DR3_PROFILE)
             dr3_bottom_hidden = !dr3_bottom_hidden;
             dr3_log("[dr3] bottom screen %s (tap to switch it back)", dr3_bottom_hidden ? "hidden" : "shown");
+#else
+            dr3_bottom_cycle_view();
+#endif
         }
     }
 
@@ -178,7 +236,7 @@ int dr3_bottom_build_lines(char out[DR3_BOTTOM_LINES][DR3_BOTTOM_LINE_LEN])
     ++rows;
 
     for (i = 0; i < n_controls && rows < DR3_BOTTOM_LINES; ++i) {
-        char right[24] = "";
+        char right[64] = "";
 
         if (i < DR3_BOTTOM_TOP && i < n) dr3_bottom_rank_line(right, sizeof(right), i + 1, &list[i]);
 
@@ -198,7 +256,7 @@ int dr3_bottom_build_lines(char out[DR3_BOTTOM_LINES][DR3_BOTTOM_LINE_LEN])
 
             for (i = 0; i < n; ++i) {
                 if (list[i].is_player) {
-                    char right[24];
+                    char right[64];
 
                     dr3_bottom_rank_line(right, sizeof(right), i + 1, &list[i]);
                     snprintf(out[rows], DR3_BOTTOM_LINE_LEN, "%-19s%.21s", "your rank", right);
@@ -212,6 +270,129 @@ int dr3_bottom_build_lines(char out[DR3_BOTTOM_LINES][DR3_BOTTOM_LINE_LEN])
     return rows;
 }
 
+#if !defined(DR3_PROFILE)
+/* ------------------------------------------------------------------ map page --- */
+
+/*
+ * libctru's console font is 8x8 on the 320x240 bottom screen: 40 columns, 30 rows.  Row 1 carries
+ * the track name, row 30 the race status, and the minimap is painted into the band in between.
+ * Those two lines are the only text on this page - the console only repaints the cells it prints,
+ * so the pixels survive until the page is left (then the screen is cleared).
+ */
+#define DR3_BOTTOM_TEXT_W  38      /* < 40: a full row would wrap and could scroll the screen */
+#define DR3_BOTTOM_MAP_Y   8       /* = one text row, right below the header */
+#define DR3_BOTTOM_MAP_H   224     /* 240 - 2*8: the band between header and footer */
+#define DR3_BOTTOM_MAP_W   320
+
+/* Reads the cars of the running race (positions in track pixels).  Returns how many were written. */
+static int dr3_bottom_read_cars(dr3_map_car_t *out, int max)
+{
+    const struct_35e_t *s  = ___1e6ed0h;
+    const int           me = ((MY_CAR_IDX >= 0) && (MY_CAR_IDX < 4)) ? MY_CAR_IDX : 0;
+    int                 n  = NUM_OF_CARS;
+    int                 i;
+
+    if (n < 0) n = 0;
+    if (n > 4) n = 4;
+    if (n > max) n = max;
+
+    for (i = 0; i < n; ++i) {
+        out[i].x         = s[i].XLocation;
+        out[i].y         = s[i].YLocation;
+        out[i].is_player = (i == me);
+
+        /* before the first frame of a race the array holds zeros - nothing to draw then */
+        out[i].valid     = (out[i].x >= 1.0f) && (out[i].y >= 1.0f);
+    }
+
+    return n;
+}
+
+static void dr3_bottom_draw_map_page(void)
+{
+    dr3_canvas_t  canvas;
+    dr3_map_car_t cars[4];
+    uint16_t      w = 0, h = 0;
+    uint32_t *    fb = (uint32_t *)gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, &w, &h);
+    int           n_cars;
+
+    if (!fb || (w <= 0) || (h <= 0)) return;
+
+    if (dr3_bottom_map_dirty) {
+        /* generous on purpose: gcc's -Wformat-truncation otherwise complains about the theoretical
+           worst case of four %d arguments (the real strings are far shorter) */
+        char header[96];
+        char footer[96];
+        int  lap = 0, pos = 0;
+
+        if ((MY_CAR_IDX >= 0) && (MY_CAR_IDX < 4)) {
+            lap = (int)___1e6ed0h[MY_CAR_IDX].Lap;
+            pos = (int)___1e6ed0h[MY_CAR_IDX].Position;
+        }
+
+        snprintf(header, sizeof(header), "MINIMAP  %s",
+                 dr3_bottom_track_id[0] ? dr3_bottom_track_id : "-");
+        snprintf(footer, sizeof(footer), "POS %d/%d  LAP %d/%d  tap: ranking",
+                 pos, (NUM_OF_CARS > 0) ? NUM_OF_CARS : 0,
+                 lap, (NUM_OF_LAPS > 0) ? NUM_OF_LAPS : 0);
+
+        printf("\x1b[2J\x1b[1;1H%-38.38s\x1b[30;1H%-38.38s", header, footer);
+        dr3_bottom_map_dirty = 0;
+    }
+
+    /* The bottom framebuffer is stored rotated and holds RGBA8 pixels, exactly like the top screen in
+       dr3_fb.c: screen x runs along the buffer's tall axis and screen y backwards.  Deriving the
+       strides from gfxGetFramebuffer() keeps this correct for whatever libctru reports. */
+    canvas.px       = fb + (w - 1);
+    canvas.stride_x = (int)w;
+    canvas.stride_y = -1;
+    canvas.w        = (int)h;
+    canvas.h        = (int)w;
+
+    n_cars = dr3_bottom_read_cars(cars, 4);
+    dr3_minimap_draw(&canvas, 0, DR3_BOTTOM_MAP_Y, DR3_BOTTOM_MAP_W, DR3_BOTTOM_MAP_H, cars, n_cars);
+    dr3_bottom_flush();
+}
+
+/* --------------------------------------------------------------- track hooks --- */
+
+void dr3_bottom_track_loaded(const void *mask, int mask_w, int mask_h, const char *track_id)
+{
+    char preview[1024];
+    int  counts[4];
+
+    if (!dr3_minimap_build((const uint8_t *)mask, mask_w, mask_h)) {
+        dr3_log("[dr3] minimap: no map for this track (%dx%d)", mask_w, mask_h);
+        return;
+    }
+
+    snprintf(dr3_bottom_track_id, sizeof(dr3_bottom_track_id), "%s", track_id ? track_id : "-");
+
+    dr3_minimap_class_counts(counts);
+    dr3_log("[dr3] minimap: %s %dx%d track -> %dx%d map (step %d): road %d, soft %d, other %d, none %d",
+            dr3_bottom_track_id, mask_w, mask_h, dr3_minimap_w(), dr3_minimap_h(), dr3_minimap_step(),
+            counts[DR3_MAP_ROAD], counts[DR3_MAP_OFFROAD], counts[DR3_MAP_OTHER], counts[DR3_MAP_NONE]);
+
+    /* the shape of the map as text, so a log from a console/emulator is enough to check it */
+    if (dr3_minimap_ascii(preview, sizeof(preview), 40, 18) > 0) dr3_log("minimap preview:\n%s", preview);
+
+    /* show the map right away - it is the interesting page while racing.  If the player hid the
+       screen on purpose, it stays hidden. */
+    if (!dr3_bottom_is_hidden()) {
+        dr3_bottom_view      = DR3_VIEW_MAP;
+        dr3_bottom_map_dirty = 1;
+    }
+}
+
+void dr3_bottom_track_unloaded(void)
+{
+    dr3_minimap_reset();
+
+    dr3_bottom_track_id[0] = 0;
+    dr3_bottom_view        = DR3_VIEW_TEXT;
+}
+#endif /* !DR3_PROFILE */
+
 void dr3_bottom_update(void)
 {
     static unsigned int last_ms;
@@ -220,10 +401,18 @@ void dr3_bottom_update(void)
     static int          last_hidden;
     char                line[DR3_BOTTOM_LINES][DR3_BOTTOM_LINE_LEN];
     char                block[DR3_BOTTOM_PRINT_ROWS * (DR3_BOTTOM_LINE_LEN + 2)];
-    int                 rows, i, len = 0;
+    int                 rows, i, len = 0, clear_first = 0;
+
+#if !defined(DR3_PROFILE)
+    static int          last_view = -1;                 /* no page drawn yet */
+    /* the minimap follows the cars, so that page is refreshed a bit faster than the text block */
+    const unsigned int  interval = ((dr3_bottom_view == DR3_VIEW_MAP) && !dr3_bottom_hidden) ? 250u : 500u;
+#else
+    const unsigned int  interval = 500u;                /* twice a second is plenty */
+#endif
 
     if (!dr3_bottom_console_ensure()) return;
-    if ((SDL_GetTicks() - last_ms) < 500) return;       /* twice a second is plenty */
+    if ((SDL_GetTicks() - last_ms) < interval) return;
     last_ms = SDL_GetTicks();
 
     if (dr3_bottom_hidden) {
@@ -236,11 +425,27 @@ void dr3_bottom_update(void)
         return;
     }
 
+#if !defined(DR3_PROFILE)
+    if ((dr3_bottom_view == DR3_VIEW_MAP) && dr3_minimap_ready()) {
+        if (last_view != DR3_VIEW_MAP) last_valid = 0;  /* the text page must be printed again later */
+        last_view   = DR3_VIEW_MAP;
+        last_hidden = 0;
+        dr3_bottom_draw_map_page();
+        return;
+    }
+
+    if (last_view != DR3_VIEW_TEXT) {                   /* coming back from the map page */
+        last_view   = DR3_VIEW_TEXT;
+        last_valid  = 0;
+        clear_first = 1;                                /* the map pixels are still on the screen */
+    }
+#endif
+
     rows = dr3_bottom_build_lines(line);
 
     /* Nothing to do unless something changed - the engine own printf() output no longer reaches this
        screen (it goes to the log), so the content really is stable. */
-    if (last_valid && !last_hidden && (rows == DR3_BOTTOM_PRINT_ROWS) &&
+    if (last_valid && !last_hidden && !clear_first && (rows == DR3_BOTTOM_PRINT_ROWS) &&
         (memcmp(line, last, sizeof(last)) == 0)) return;
 
     memcpy(last, line, sizeof(last));
@@ -255,6 +460,6 @@ void dr3_bottom_update(void)
         len += snprintf(block + len, sizeof(block) - (size_t)len, "%.*s\n", DR3_BOTTOM_LINE_LEN, text);
     }
 
-    printf("\x1b[H%s", block);
+    printf("%s\x1b[H%s", clear_first ? "\x1b[2J" : "", block);
     dr3_bottom_flush();
 }

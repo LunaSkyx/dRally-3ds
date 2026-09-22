@@ -1,6 +1,7 @@
 #include "drally.h"
 #include "drmemory.h"
 #include "drally_structs_free.h"
+#include "platform_3ds/dr3_bottom.h"
 
 	extern int TRX_WIDTH;
 	extern int TRX_HEIGHT;
@@ -73,6 +74,10 @@ void race_alloc(void){
 }
 
 void race_free(void){
+
+	/* the minimap holds a copy of the track mask - drop the view before the buffers go away, so it
+	   can never draw from released memory (no-op on the non-3DS builds) */
+	dr3_bottom_track_unloaded();
 
 	dRMemory_free(TRX_IMA);
 	dRMemory_free(TRX_MAS);

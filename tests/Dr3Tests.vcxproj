@@ -40,6 +40,7 @@
   <ItemGroup>
     <ClCompile Include="test_dr3.c" />
     <ClCompile Include="..\platform_3ds\dr3_blit.c" />
+    <ClCompile Include="..\platform_3ds\dr3_minimap.c" />
     <ClCompile Include="..\platform_3ds\dr3_input_map.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
