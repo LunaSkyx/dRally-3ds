@@ -19,6 +19,60 @@ int rand_watcom106(void);
 
 extern cardata_t ___18e298h[7];
 
+extern __POINTER__ ___19de70h[20];                 /* MENU.BPA face01..face20, 0x40x0x40 each */
+
+void DISPLAY_GET_PALETTE(unsigned char * dst);
+
+static int dr3_adversary_seat(void);
+
+/*
+ * Make the adversary's driver picture black and white.  The faces are palette-indexed pictures, so this
+ * rewrites the one that belongs to him once: every pixel index is replaced by the index of the closest
+ * *neutral grey* of the same brightness in the palette that is active at that moment - and those greys
+ * are the ones the front end itself draws its frames and dialogs with, so the picture stays black and
+ * white on every screen that shows it (the signup roster, the licence screen, the standings).
+ */
+static void dr3_adversary_face_mono(void){
+
+	static const void * done;                      /* the picture that was converted already */
+	unsigned char       pal[0x100*3], grey[0x100];
+	const int           seat = dr3_adversary_seat();
+	const int           face = (seat < 0) ? -1 : (int)((racer_t *)___1a01e0h)[seat].face;
+	__BYTE__ *          pic;
+	int                 i, n;
+
+	if((face < 0) || (face > 0x13)) return;
+
+	pic = (__BYTE__ *)___19de70h[face];
+	if((pic == NULL) || ((const void *)pic == done)) return;
+
+	DISPLAY_GET_PALETTE(pal);
+
+	for(i = 0; i < 0x100; ++i){
+
+		const int lum = (2*(int)pal[3*i] + 5*(int)pal[3*i+1] + (int)pal[3*i+2]) / 8;
+		int       best = 0, best_d = 0x7fffffff;
+
+		for(n = 0; n < 0x100; ++n){
+
+			const int dr = (int)pal[3*n]   - lum;
+			const int dg = (int)pal[3*n+1] - lum;
+			const int db = (int)pal[3*n+2] - lum;
+			const int d  = 5*dr*dr + 12*dg*dg + 3*db*db;      /* weight like the eye does */
+
+			if(d < best_d){ best_d = d; best = n; }
+		}
+
+		grey[i] = (unsigned char)best;
+	}
+
+	for(i = 0; i < 0x1000; ++i) pic[i] = grey[pic[i]];
+
+	done = pic;
+
+	dr3_log("[dr3] adversary: driver picture face %d converted to black and white", face);
+}
+
 /*
  * The adversary ("pedal to the metal", see doc/3ds.md): one of the AI seats belongs to him - his own
  * name, his own car (the SPECIAL), full equipment and a head start in points, so he leads the
@@ -71,6 +125,8 @@ static void dr3_adversary_seed(void){
 
 	dr3_log("[dr3] adversary: created in seat %d, %d points (should be rank %d)",
 	        DR3_ADVERSARY_RACER, (int)s_6c[DR3_ADVERSARY_RACER].points, DR3_ADVERSARY_START_RANK);
+
+	dr3_adversary_face_mono();
 }
 
 /*
@@ -143,6 +199,8 @@ void dr3_adversary_enter(void){
 	dr3_adversary_placed = 0;              /* a new event: he has no race yet */
 
 	dr3_adversary_seed();
+
+	dr3_adversary_face_mono();             /* in case his picture changed in the meantime */
 }
 
 /*
