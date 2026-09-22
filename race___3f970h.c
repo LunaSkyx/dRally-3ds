@@ -72,7 +72,7 @@ typedef union struct_54_s {
  * MY_DIFFICULTY: the row that belongs to the player's own car.  ___33010h.c hands his car that row and
  * the opponents the selected level, so the player keeps his own parameters whatever he picks.
  */
-enum e_difficulty { SPEED_MAKES_ME_DIZZY, I_LIVE_TO_RIDE, PETROL_IN_MY_VEINS, PEDAL_TO_THE_METAL, MY_DIFFICULTY };
+enum e_difficulty { SPEED_MAKES_ME_DIZZY, I_LIVE_TO_RIDE, PETROL_IN_MY_VEINS, ANNIVERSARY, MY_DIFFICULTY };
 enum e_car { VAGABOND, DERVISH, SENTINEL, SHRIEKER, WRAITH, DELIVERATOR, DELIVERATOR_ADVERSARY };
 
 	static const float ___3f1f0h_floats[5][6][5] = {	/* top speed: one row per difficulty + the player's own */
@@ -100,7 +100,7 @@ enum e_car { VAGABOND, DERVISH, SENTINEL, SHRIEKER, WRAITH, DELIVERATOR, DELIVER
 			[     WRAITH] = { 3.80f, 3.90f, 4.00f, 4.10f, 1.00f },
 			[DELIVERATOR] = { 4.20f, 4.30f, 4.40f, 4.50f, 4.60f }
 		},
-		[PEDAL_TO_THE_METAL] = {	/* the hardest level: a little faster than petrol in my veins */
+		[ANNIVERSARY] = {	/* the hardest level: a little faster than petrol in my veins */
 			[   VAGABOND] = { 2.95f, 3.00f, 1.00f, 1.00f, 1.00f },
 			[    DERVISH] = { 3.10f, 3.15f, 3.20f, 1.00f, 1.00f },
 			[   SENTINEL] = { 3.30f, 3.40f, 3.50f, 1.00f, 1.00f },
@@ -143,7 +143,7 @@ enum e_car { VAGABOND, DERVISH, SENTINEL, SHRIEKER, WRAITH, DELIVERATOR, DELIVER
 			[     WRAITH] = { 0.80f, 0.60f, 0.40f, 0.20f, 0.00f },
 			[DELIVERATOR] = { 0.80f, 0.60f, 0.40f, 0.20f, 0.00f }
 		},
-		[PEDAL_TO_THE_METAL] = {	/* same cornering as petrol in my veins, the speeds above do the work */
+		[ANNIVERSARY] = {	/* same cornering as petrol in my veins, the speeds above do the work */
 			[   VAGABOND] = { 0.50f, 0.30f, 0.10f, 1.00f, 1.00f },
 			[    DERVISH] = { 0.50f, 0.30f, 0.10f, 1.00f, 1.00f },
 			[   SENTINEL] = { 0.80f, 0.60f, 0.40f, 0.20f, 1.00f },
@@ -186,7 +186,7 @@ enum e_car { VAGABOND, DERVISH, SENTINEL, SHRIEKER, WRAITH, DELIVERATOR, DELIVER
 			[     WRAITH] = 1.25f,
 			[DELIVERATOR] = 1.20f
 		},
-		[PEDAL_TO_THE_METAL] = {
+		[ANNIVERSARY] = {
 			[   VAGABOND] = 1.50f,
 			[    DERVISH] = 1.40f,
 			[   SENTINEL] = 1.30f,
@@ -229,7 +229,7 @@ enum e_car { VAGABOND, DERVISH, SENTINEL, SHRIEKER, WRAITH, DELIVERATOR, DELIVER
 			[     WRAITH] = 300,
 			[DELIVERATOR] = 350
 		},
-		[PEDAL_TO_THE_METAL] = {
+		[ANNIVERSARY] = {
 			[   VAGABOND] = 165,
 			[    DERVISH] = 175,
 			[   SENTINEL] = 185,
@@ -269,7 +269,7 @@ enum e_car { VAGABOND, DERVISH, SENTINEL, SHRIEKER, WRAITH, DELIVERATOR, DELIVER
 			580,
 			600
 		},
-		[PEDAL_TO_THE_METAL] = {
+		[ANNIVERSARY] = {
 			560,
 			570,
 			580,
@@ -425,14 +425,14 @@ void race___3f970h(void){
 				if(___1de7d0h[0].dfclty == SPEED_MAKES_ME_DIZZY)	F32(___1de580h[0].raw+4) = 4.3f;
 				if(___1de7d0h[0].dfclty == I_LIVE_TO_RIDE)			F32(___1de580h[0].raw+4) = 4.4f;
 				if(___1de7d0h[0].dfclty == PETROL_IN_MY_VEINS)		F32(___1de580h[0].raw+4) = 4.5f;
-				if(___1de7d0h[0].dfclty == PEDAL_TO_THE_METAL)		F32(___1de580h[0].raw+4) = 4.6f;
+				if(___1de7d0h[0].dfclty == ANNIVERSARY)		F32(___1de580h[0].raw+4) = 4.6f;
 			}
 			else {
 
 				if(___1de7d0h[0].dfclty == SPEED_MAKES_ME_DIZZY)	F32(___1de580h[0].raw+4) = 4.5f;
 				if(___1de7d0h[0].dfclty == I_LIVE_TO_RIDE)			F32(___1de580h[0].raw+4) = 4.6f;
 				if(___1de7d0h[0].dfclty == PETROL_IN_MY_VEINS)		F32(___1de580h[0].raw+4) = 4.7f;
-				if(___1de7d0h[0].dfclty == PEDAL_TO_THE_METAL)		F32(___1de580h[0].raw+4) = 4.8f;
+				if(___1de7d0h[0].dfclty == ANNIVERSARY)		F32(___1de580h[0].raw+4) = 4.8f;
 			}
 
 			F32(___1de580h[0].raw+0x14) = (float)(3.75/((double)___3f5b0h_floats[___1de7d0h[1].dfclty][1]-0.05*(double)D(___1de7d0h[1].raw+0x14)));
@@ -459,6 +459,22 @@ void race___3f970h(void){
 #if defined(DR_MULTIPLAYER)
 		}
 #endif // DR_MULTIPLAYER
+	}
+
+	/*
+	 * "30th Anniversary" (see doc/3ds.md): the boss is a little stronger than the tables say.  This has
+	 * to come after the block above - that one gives the race entry in slot 0 its own top speed - and it
+	 * leaves the player alone, in case he ever drives the SPECIAL himself.
+	 */
+	n = -1;
+	while(++n < (int)D(NUM_OF_CARS)){
+
+		if(((int)___1de580h[n].car == DELIVERATOR_ADVERSARY) && (n != D(MY_CAR_IDX))){
+
+			F32(___1de580h[n].raw+4) *= DR3_ADVERSARY_SPEED;
+			F32(___1de580h[n].raw+8) = F32(___1de580h[n].raw+4);
+			F32(___1de580h[n].raw+0x14) *= DR3_ADVERSARY_STEER;
+		}
 	}
 
 	___1de580h[0].r = ___1de7d0h[0].r;

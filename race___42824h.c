@@ -199,7 +199,13 @@ void race___42824h(void){
 		i = -1;
 		while(++i < sizeof(car_spins_t)){
 
-			if((CarSpinsStripe[i] >= 0xf)&&(CarSpinsStripe[i] <= 0x18)) CarSpinsStripe[i] += 0xa*n;
+			/*
+			 * "30th Anniversary": the boss keeps the picture's own colours - his car is the black one and
+			 * has to stay black, while every other car gets its own colour ramp from the slot number
+			 * (see doc/3ds.md)
+			 */
+			if(((int)D(___1de7d0h+0x54*n+0x30) != DR3_ADVERSARY_CAR) &&
+			   (CarSpinsStripe[i] >= 0xf)&&(CarSpinsStripe[i] <= 0x18)) CarSpinsStripe[i] += 0xa*n;
 		}
 	}
 

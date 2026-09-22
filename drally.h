@@ -39,19 +39,22 @@ typedef void (*void_cb)(void);
 
 /*
  * ------------------------------------------------------------------------------------------------
- * The fourth difficulty this port adds ("pedal to the metal", see doc/3ds.md).  On that level the
+ * The fourth difficulty this port adds ("30th Anniversary", see doc/3ds.md).  On that level the
  * adversary - the SPECIAL car - is a full championship participant: he has a seat in the roster,
  * drives his own car, rides along in every race, collects points like all the others (so he ends up
  * leading the championship) and the final challenge is offered once the player is second.
  * Everything hangs off the difficulty value, so it travels with dr.cfg and with the save games.
  * ------------------------------------------------------------------------------------------------
  */
-#define DR3_DIFFICULTY_ADVERSARY    3      /* = PEDAL_TO_THE_METAL in race___3f970h.c */
+#define DR3_DIFFICULTY_ADVERSARY    3      /* = ANNIVERSARY in race___3f970h.c */
 #define DR3_ADVERSARY_CAR           6      /* DELIVERATOR_ADVERSARY - the car the adversary drives */
 #define DR3_ADVERSARY_RACER         18     /* seat he is created in (he moves up the table later) */
 #define DR3_ADVERSARY_START_RANK    3      /* he starts third in points and works his way up */
 #define DR3_ADVERSARY_CAR_PIC       5      /* the picture the standings show for him: the Deliverator,
                                               the SPECIAL being its black twin (carres.bpk holds six) */
+#define DR3_ADVERSARY_SPEED         1.08f  /* the boss is a little quicker than the table says */
+#define DR3_ADVERSARY_STEER         1.05f  /* ... and turns in a little sharper */
+#define DR3_ADVERSARY_DARK          60     /* his pictures become this dark (%): black as night */
 
 extern __DWORD__ ___196a94h_difficulty;
 extern int       dr3_adversary_wanted;

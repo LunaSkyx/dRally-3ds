@@ -14,7 +14,7 @@ enum e_difficulty {
     SPEED_MAKES_ME_DIZZY,
     I_LIVE_TO_RIDE,
     PETROL_IN_MY_VEINS,
-    PEDAL_TO_THE_METAL         /* the fourth level this port adds, see doc/3ds.md */
+    ANNIVERSARY         /* the fourth level this port adds, see doc/3ds.md */
 };
 
 static void CONFIG_DEFAULT(void);

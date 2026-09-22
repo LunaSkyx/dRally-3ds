@@ -41,7 +41,7 @@ enum e_difficulty {
     SPEED_MAKES_ME_DIZZY,
     I_LIVE_TO_RIDE,
     PETROL_IN_MY_VEINS,
-    PEDAL_TO_THE_METAL         /* the fourth level this port adds - keep in step with race___3f970h.c */
+    ANNIVERSARY         /* the fourth level this port adds - keep in step with race___3f970h.c */
 };
 
 #define NUM_OF_DIFFICULTIES 4  /* the rows of the dialog below, and the last selectable index + 1 */
@@ -321,7 +321,7 @@ __DWORD__ ___3ab5ch_cdecl(__DWORD__ A1){
 				___12e78h_v3((edi != 0)?___1a10e0h___185ba9h:___1a10cch___185ba9h, "speed makes me dizzy", ebp+0x2e, D(esp+0x44)+0x4a);
 				___12e78h_v3((edi != 1)?___1a10e0h___185ba9h:___1a10cch___185ba9h, "i live to ride",       ebp+0x2e, D(esp+0x44)+0x66);
 				___12e78h_v3((edi != 2)?___1a10e0h___185ba9h:___1a10cch___185ba9h, "petrol in my veins",   ebp+0x2e, D(esp+0x44)+0x82);
-				___12e78h_v3((edi != 3)?___1a10e0h___185ba9h:___1a10cch___185ba9h, "pedal to the metal",   ebp+0x2e, D(esp+0x44)+0x9e);
+				___12e78h_v3((edi != 3)?___1a10e0h___185ba9h:___1a10cch___185ba9h, "30th Anniversary",   ebp+0x2e, D(esp+0x44)+0x9e);
 
 				___12cb8h__VESA101_PRESENTSCREEN();
 				D(esp+0x28) = D(esp+0x44)+0x4a;
@@ -360,7 +360,7 @@ __DWORD__ ___3ab5ch_cdecl(__DWORD__ A1){
 						___12e78h_v3((edi != 0)?___1a10e0h___185ba9h:___1a10cch___185ba9h, "speed makes me dizzy", ebp+0x2e, D(esp+0x28));
 						___12e78h_v3((edi != 1)?___1a10e0h___185ba9h:___1a10cch___185ba9h, "i live to ride",       ebp+0x2e, D(esp+0x38));
 						___12e78h_v3((edi != 2)?___1a10e0h___185ba9h:___1a10cch___185ba9h, "petrol in my veins",   ebp+0x2e, D(esp+0x30));
-						___12e78h_v3((edi != 3)?___1a10e0h___185ba9h:___1a10cch___185ba9h, "pedal to the metal",   ebp+0x2e, D(esp+0x30)+0x1c);
+						___12e78h_v3((edi != 3)?___1a10e0h___185ba9h:___1a10cch___185ba9h, "30th Anniversary",   ebp+0x2e, D(esp+0x30)+0x1c);
 
 						___1398ch__VESA101_PRESENTRECTANGLE(D(esp+0x34), ___1a112ch__VESA101_ACTIVESCREEN_PTR+D(esp+0x24)+ebp+0x16, 0x190, 0x70);
 						dRally_Sound_pushEffect(1, SFX_CLICK_2, 0, ___24cc54h_sfx_volume, 0x28000, 0x8000);
@@ -373,7 +373,7 @@ __DWORD__ ___3ab5ch_cdecl(__DWORD__ A1){
 						/* remember it for the whole session: the config can be re-read or defaulted, and
 						   then the engine value alone would silently switch the adversary off - and he
 						   would stop joining races (see doc/3ds.md) */
-						dr3_adversary_wanted = (edi == PEDAL_TO_THE_METAL);
+						dr3_adversary_wanted = (edi == ANNIVERSARY);
 
 						switch(___196a94h_difficulty&3){
 						case SPEED_MAKES_ME_DIZZY:
@@ -385,7 +385,7 @@ __DWORD__ ___3ab5ch_cdecl(__DWORD__ A1){
 						case PETROL_IN_MY_VEINS:
 							dRally_Sound_pushEffect(5, SFX_PETROL_IN_MY_VEINS, 0, ___24cc54h_sfx_volume, 0x24000, 0x8000);
 							break;
-						case PEDAL_TO_THE_METAL:
+						case ANNIVERSARY:
 							/* the game has no jingle of its own for the fourth level - "let's rock" fits */
 							dRally_Sound_pushEffect(5, SFX_LETS_ROCK, 0, ___24cc54h_sfx_volume, 0x24000, 0x8000);
 							break;

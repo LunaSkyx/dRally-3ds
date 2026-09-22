@@ -303,7 +303,7 @@ __BYTE__ ___243874h[4];
 __BYTE__ ___243878h[4];
 
 /*
- * "pedal to the metal" (see doc/3ds.md): set when the player picks that difficulty in the licence
+ * "30th Anniversary" (see doc/3ds.md): set when the player picks that difficulty in the licence
  * screen.  The engine's own ___196a94h_difficulty is enough to know the level, but only while the
  * config is not re-read or defaulted - this flag keeps the feature alive for the whole session.
  */

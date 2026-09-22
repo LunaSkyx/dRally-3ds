@@ -41,7 +41,7 @@ void ___31588h(void){
 	memset(___1a0ef8h, 0, 0xc);
 
 	/*
-	 * "pedal to the metal": the adversary is entered in one of the three races right away, so that he is
+	 * "30th Anniversary": the adversary is entered in one of the three races right away, so that he is
 	 * in the lists the player sees (the lists are only drawn when a racer is picked) - see doc/3ds.md
 	 */
 	dr3_adversary_enter();

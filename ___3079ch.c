@@ -20,17 +20,83 @@ int rand_watcom106(void);
 extern cardata_t ___18e298h[7];
 
 extern __POINTER__ ___19de70h[20];                 /* MENU.BPA face01..face20, 0x40x0x40 each */
+extern __POINTER__ ___1a0fa4h;                     /* MENU.BPA carres.bpk: the standings' car pictures */
 
 void DISPLAY_GET_PALETTE(unsigned char * dst);
+__POINTER__ ___3f71ch__allocateMemory(__DWORD__ size);
 
 static int dr3_adversary_seat(void);
 
 /*
+ * The index of the closest *neutral grey* of the given brightness in a palette.  Used to turn pictures
+ * black and white (or black, with a brightness of 0).
+ */
+static unsigned char dr3_adversary_grey_index(const unsigned char * pal, int lum){
+
+	int best = 0, best_d = 0x7fffffff, n;
+
+	if(lum < 0) lum = 0;
+	if(lum > 0x3f) lum = 0x3f;
+
+	for(n = 0; n < 0x100; ++n){
+
+		const int dr = (int)pal[3*n]   - lum;
+		const int dg = (int)pal[3*n+1] - lum;
+		const int db = (int)pal[3*n+2] - lum;
+		const int d  = 5*dr*dr + 12*dg*dg + 3*db*db;      /* weight the channels like the eye does */
+
+		if(d < best_d){ best_d = d; best = n; }
+	}
+
+	return (unsigned char)best;
+}
+
+/*
+ * His own copy of the car picture the standings show, darkened once.  The picture itself is the
+ * Deliverator's (car 5) and must not be touched - the player may be driving that very car - so a private
+ * copy is made and darkened with the palette that is active at that moment ("30th Anniversary").
+ */
+__BYTE__ * dr3_adversary_car_pic(void){
+
+	static __BYTE__ * pic;
+
+	if(pic == NULL){
+
+		unsigned char pal[0x100*3], grey[0x100];
+		int           i;
+
+		if(___1a0fa4h == NULL) return NULL;
+
+		pic = (__BYTE__ *)___3f71ch__allocateMemory(0x5140);
+		if(pic == NULL) return NULL;
+
+		memcpy(pic, (const __BYTE__ *)___1a0fa4h + 0x5140*(int)DR3_ADVERSARY_CAR_PIC, 0x5140);
+
+		DISPLAY_GET_PALETTE(pal);
+
+		for(i = 0; i < 0x100; ++i){
+
+			const int lum = ((2*(int)pal[3*i] + 5*(int)pal[3*i+1] + (int)pal[3*i+2]) / 8)
+			               * DR3_ADVERSARY_DARK / 100;
+
+			grey[i] = dr3_adversary_grey_index(pal, lum);
+		}
+
+		for(i = 0; i < 0x5140; ++i) pic[i] = grey[pic[i]];
+
+		dr3_log("[dr3] adversary: car picture darkened to %d%%", DR3_ADVERSARY_DARK);
+	}
+
+	return pic;
+}
+
+/*
  * Make the adversary's driver picture black and white.  The faces are palette-indexed pictures, so this
  * rewrites the one that belongs to him once: every pixel index is replaced by the index of the closest
- * *neutral grey* of the same brightness in the palette that is active at that moment - and those greys
- * are the ones the front end itself draws its frames and dialogs with, so the picture stays black and
- * white on every screen that shows it (the signup roster, the licence screen, the standings).
+ * *neutral grey* of the same brightness (scaled down by DR3_ADVERSARY_DARK, so he ends up black) in the
+ * palette that is active at that moment - and those greys are the ones the front end itself draws its
+ * frames and dialogs with, so the picture stays black on every screen that shows it (the signup roster,
+ * the licence screen, the standings).
  */
 static void dr3_adversary_face_mono(void){
 
@@ -39,7 +105,7 @@ static void dr3_adversary_face_mono(void){
 	const int           seat = dr3_adversary_seat();
 	const int           face = (seat < 0) ? -1 : (int)((racer_t *)___1a01e0h)[seat].face;
 	__BYTE__ *          pic;
-	int                 i, n;
+	int                 i;
 
 	if((face < 0) || (face > 0x13)) return;
 
@@ -50,31 +116,21 @@ static void dr3_adversary_face_mono(void){
 
 	for(i = 0; i < 0x100; ++i){
 
-		const int lum = (2*(int)pal[3*i] + 5*(int)pal[3*i+1] + (int)pal[3*i+2]) / 8;
-		int       best = 0, best_d = 0x7fffffff;
+		const int lum = ((2*(int)pal[3*i] + 5*(int)pal[3*i+1] + (int)pal[3*i+2]) / 8)
+		               * DR3_ADVERSARY_DARK / 100;
 
-		for(n = 0; n < 0x100; ++n){
-
-			const int dr = (int)pal[3*n]   - lum;
-			const int dg = (int)pal[3*n+1] - lum;
-			const int db = (int)pal[3*n+2] - lum;
-			const int d  = 5*dr*dr + 12*dg*dg + 3*db*db;      /* weight like the eye does */
-
-			if(d < best_d){ best_d = d; best = n; }
-		}
-
-		grey[i] = (unsigned char)best;
+		grey[i] = dr3_adversary_grey_index(pal, lum);
 	}
 
 	for(i = 0; i < 0x1000; ++i) pic[i] = grey[pic[i]];
 
 	done = pic;
 
-	dr3_log("[dr3] adversary: driver picture face %d converted to black and white", face);
+	dr3_log("[dr3] adversary: driver picture face %d darkened to %d%%", face, DR3_ADVERSARY_DARK);
 }
 
 /*
- * The adversary ("pedal to the metal", see doc/3ds.md): one of the AI seats belongs to him - his own
+ * The adversary ("30th Anniversary", see doc/3ds.md): one of the AI seats belongs to him - his own
  * name, his own car (the SPECIAL), full equipment and a head start in points, so he leads the
  * championship and is the one to beat.
  *

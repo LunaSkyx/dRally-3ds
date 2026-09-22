@@ -1,4 +1,4 @@
-﻿# dRally on the Nintendo 3DS
+# dRally on the Nintendo 3DS
 
 A native port of the dRally engine (Death Rally, 1996) for the Nintendo 3DS, built with devkitARM,
 libctru and SDL2 (using SDL2's own n3ds backend).
@@ -9,7 +9,7 @@ libctru and SDL2 (using SDL2's own n3ds backend).
 ## What works
 
 * the full game: menus, name entry (3DS software keyboard), shop, races, damage/wrecking
-* the game's difficulty screen has a **fourth** level in this branch ("pedal to the metal", one step
+* the game's difficulty screen has a **fourth** level in this branch ("30th Anniversary", one step
   above "petrol in my veins").  On it the adversary - the black SPECIAL car - races in every event, has
   his own seat and points in the championship, and can be challenged for the title once you are second.
   See `doc/3ds.md` for what it changes and how to tune or rename it

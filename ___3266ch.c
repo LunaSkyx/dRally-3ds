@@ -197,7 +197,7 @@ void ___3266ch(void){
 						}
 
 						/*
-						 * "pedal to the metal": he must be registered in one of the three races, otherwise
+						 * "30th Anniversary": he must be registered in one of the three races, otherwise
 						 * he cannot collect any points.  The picker usually did that already; this only
 						 * catches the case that it did not - and it keeps him out of the race the player
 						 * signed up for, unless there is no other choice (see doc/3ds.md)

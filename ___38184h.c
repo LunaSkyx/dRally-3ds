@@ -23,6 +23,9 @@ char * itoa_watcom106(int value, char * buffer, int radix);
 __DWORD__ ___251e8h_cdecl(const char *);
 void ___12e78h_cdecl(__BYTE__ * A1, font_props_t * A2, const char * A3, __DWORD__ dst_off);
 
+/* his own, darkened copy of the car picture ("30th Anniversary", see doc/3ds.md) */
+__BYTE__ * dr3_adversary_car_pic(void);
+
 // RACE RESULTS, FACES, CARS, COLORS
 void ___38184h_cdecl(__DWORD__ A1, __POINTER__ A2){
 
@@ -30,6 +33,7 @@ void ___38184h_cdecl(__DWORD__ A1, __POINTER__ A2){
 	__BYTE__ 	__esp[0xc+0x48];
 	__BYTE__ * 	esp = __esp+0xc;
 	int 	bool_tmp;
+	int 	adversary;
 	__POINTER__ 	ebxp;
 	__POINTER__ 	esip;
 	__POINTER__ 	edxp;
@@ -161,13 +165,16 @@ void ___38184h_cdecl(__DWORD__ A1, __POINTER__ A2){
 			 * six cars, nothing more.  The adversary drives car 6, so without this his picture in the
 			 * standings is read from past the end of that table (see doc/3ds.md).
 			 */
-			esi = 0x5140*(((int)s_6c[eax/0x6c].car == DR3_ADVERSARY_CAR) ? (int)DR3_ADVERSARY_CAR_PIC
-			                                                           : (int)s_6c[eax/0x6c].car);
+			adversary = ((int)s_6c[eax/0x6c].car == DR3_ADVERSARY_CAR);
+			esi = 0x5140*(adversary ? (int)DR3_ADVERSARY_CAR_PIC : (int)s_6c[eax/0x6c].car);
 			ebp++;
 			ecx = 0x34;
 			eax = D(esp+0x18);
 			edx = 0x64;
-			esip = ___1a0fa4h+esi+eax;
+
+			/* "30th Anniversary": the boss gets his own, darkened copy of that picture */
+			esip = (adversary && (dr3_adversary_car_pic() != NULL)) ? dr3_adversary_car_pic() + eax
+			                                                        : ___1a0fa4h+esi+eax;
 			edi = D(esp+0x30);
 			L(edx) >>= 2;
 
