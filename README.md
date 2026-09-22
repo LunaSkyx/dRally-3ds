@@ -7,14 +7,30 @@ The main goal of this project is to create a port of Death Rally (1996) running 
 Native port with devkitARM, libctru and SDL2's own n3ds backend.  Renders straight into the 400x240
 framebuffer (no SDL renderer), DSP audio at the DAC's native rate, pad remappable through
 `dr3_controls.txt`.  The bottom screen shows the standings and, during a race, the track map with every
-car and the lap times.
+car and the lap times.  Technical notes: [doc/3ds.md](doc/3ds.md).
 
-Also adds a fourth difficulty ("30th Anniversary") with the black SPECIAL as a championship rival, a
-final two car challenge, and that car for sale in the shop.
+The branch also adds a fourth difficulty ("30th Anniversary"): the black SPECIAL races as a normal
+championship entry, the title is settled in a two car challenge, and that car can be bought in the shop.
 
-* installation, controls: [INSTALL_3DS.md](INSTALL_3DS.md)
-* technical notes and the profiler build: [doc/3ds.md](doc/3ds.md)
-* no game data, not affiliated with Remedy Entertainment
+Install: copy the release folder to `sdmc:/3ds/drally/` so that `dRally_3ds.3dsx` sits next to the game
+data (all `*.BPA`, `CDROM.INI`, `CINEM/*.HAF`), then start it from the Homebrew Launcher.  Sound needs
+`sdmc:/3ds/dspfirm.cdc` (Luma3DS creates it on real hardware).  The first start asks for a driver name -
+SELECT opens the software keyboard, A accepts it.
+
+| | |
+|---|---|
+| D-pad, circle pad | steer, up/down also gas and brake |
+| R, L | gas, brake |
+| A, B | front end: confirm, select - race: horn, boost |
+| Y, X | race: shoot, drop a mine |
+| X / ZL, Y / ZR | front end: quick save, quick load (`DR.SG7`) |
+| START | pause |
+| SELECT | 3DS software keyboard |
+| L + R + START | quit |
+
+`dr3_controls.txt` rebinds any of that (`GAS = R, UP, STICK_UP, B`); typos go to `sdmc:/drally_3ds.log`.
+
+This branch contains no game data and is not affiliated with Remedy Entertainment.
 
 #### Linux requirements
 * GCC/Clang C compiler
