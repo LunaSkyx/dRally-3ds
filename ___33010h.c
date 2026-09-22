@@ -1199,7 +1199,13 @@ void ___33010h_cdecl(int NumCars){
 			if(((int)edx < (int)s_6c[n].points)&&(n != D(___1a1ef8h))) edx = s_6c[n].points;
 		}
 
-		if((int)edx < (int)s_6c[D(___1a1ef8h)].points){
+		/*
+		 * "30th Anniversary" (see doc/3ds.md): the duel of the final challenge is the end of the
+		 * championship, so it has to prepare the next race (and the end game) whether or not the player
+		 * leads the table at that moment.
+		 */
+		if(((int)edx < (int)s_6c[D(___1a1ef8h)].points) ||
+		   (dr3_adversary_active() && (NumCars == 2) && (D(___196ae8h) == 1))){
 
 			___31588h();
 
@@ -1223,7 +1229,13 @@ void ___33010h_cdecl(int NumCars){
 
 					if(++n == 4){
 						
-						if(D(___196ae8h) == 1){
+						/*
+						 * ___196ae8h is this race's finishing position.  "30th Anniversary" (see doc/3ds.md):
+						 * on that level the championship is not won by merely winning a race while leading -
+						 * the anniversary has to be beaten in the final challenge first, and that duel is the
+						 * only two-car race there is.
+						 */
+						if((D(___196ae8h) == 1) && (!dr3_adversary_active() || (NumCars == 2))){
 
 							// after beating adversary
 							___22808h();

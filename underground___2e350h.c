@@ -218,7 +218,7 @@ void underground___2e350h(void){
 						if((n != D(___1a1ef8h))&&((int)s_6c[n].points > (int)s_6c[D(___1a1ef8h)].points)) ahead++;
 					}
 
-					if(ahead == 1) ___31008h();	// challenge adversary
+					if(ahead <= 1) ___31008h();	// challenge adversary
 					else           ___3266ch();	// sign up
 				}
 				else if((int)ecx < (int)s_6c[D(___1a1ef8h)].points){

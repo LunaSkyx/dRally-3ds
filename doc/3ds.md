@@ -297,7 +297,8 @@ challenge is offered to the runner-up instead of to the leader.
 | `race___3f970h.c` | car 6 has no row of its own in the parameter tables, so he borrows the Deliverator's (`const int car = ...` in the setup loop) and got his own two-gun entry in the car-body chain.  Grid slot 0 still adds the SPECIAL's own top speed (4.5-4.7) |
 | `___3079ch.c` | the randomised race field is a *candidate list* per slot: his car is outside every class range it tests, so he is offered as one candidate for the first slot.  The original "picked" flag then keeps him to one race of the event - the same rule that applies to every other racer |
 | `___33010h.c` | the old rule ("the leader's race entry turns into the adversary") is switched off on this difficulty - he is in the race anyway |
-| `shop___28e40h.c`, `underground___2e350h.c` | the final challenge is offered once the **player is second** instead of once he leads - the adversary is assumed to be first |
+| `___33010h.c` (the end game) | the video + hall of fame (`___22808h`) used to run when the player finished a race first *and* led the championship - the finished position is what `___196ae8h` holds.  On this level that is not enough any more: the anniversary has to be beaten in the final challenge first, and that duel is the only two-car race there is.  So on lower difficulties and in the duel the old rule still holds |
+| `shop___28e40h.c`, `underground___2e350h.c` | the final challenge is offered **from the top of the table on** - first place (you are the champion, now face him) or second place, right behind him.  Below that it is a normal signup, as the anniversary is meant to lead the championship |
 
 His points come from the normal race results (he is an ordinary roster entry, so nothing else had to
 change), and because the roster gets sorted by points he is identified by his **car**, never by his seat
