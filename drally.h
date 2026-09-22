@@ -52,6 +52,13 @@ typedef void (*void_cb)(void);
 #define DR3_ADVERSARY_START_RANK    3      /* he starts third in points and works his way up */
 #define DR3_ADVERSARY_CAR_PIC       5      /* the picture the standings show for him: the Deliverator,
                                               the SPECIAL being its black twin (carres.bpk holds six) */
+#define DR3_LAST_CAR                6      /* the Anniversary is the last car of the shop list */
+
+/*
+ * The lap-record table has six rows and lives in dr.cfg, so its size must not change: an Anniversary
+ * owner shares the Deliverator's row ("30th Anniversary", see doc/3ds.md).
+ */
+#define DR3_RECORD_CAR(car)         (((int)(car) < DR3_LAST_CAR) ? (int)(car) : (DR3_LAST_CAR-1))
 #define DR3_ADVERSARY_SPEED         1.08f  /* the boss is a little quicker than the table says */
 #define DR3_ADVERSARY_STEER         1.05f  /* ... and turns in a little sharper */
 #define DR3_ADVERSARY_DARK          60     /* his pictures become this dark (%): black as night */

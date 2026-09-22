@@ -15,7 +15,7 @@
 #define CARENCS ___185cbch
 	extern __DWORD__ ___185cbch[][0x40];
 	extern __BYTE__ ___1a1ed0h[];
-	extern __POINTER__ ___1a01b8h[6];
+	extern __POINTER__ ___1a01b8h[7];
 	extern __POINTER__ ___1a112ch__VESA101_ACTIVESCREEN_PTR;
 	extern __BYTE__ ___1a1e68h[];
 	extern __POINTER__ ___1a10f4h;
@@ -299,9 +299,9 @@ void shop___28e40h(void){
 					if(B(esp+0x5c) == DR_SCAN_ENTER) break;
 				}
 
-				if((int)s_6c[D(___1a1ef8h)].car >= 5){
+				if((int)s_6c[D(___1a1ef8h)].car >= DR3_LAST_CAR){
 
-					D(___1a1ee4h) = 5;
+					D(___1a1ee4h) = DR3_LAST_CAR;
 				}
 				else {
 

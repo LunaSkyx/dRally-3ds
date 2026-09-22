@@ -25,7 +25,7 @@ __DWORD__ ___1a017ch_PriceSabotage;
 __POINTER__ ___1a0180h;	
 __POINTER__ ___1a0198h[4];
 __POINTER__ ___1a01a8h[4];
-__POINTER__ ___1a01b8h[6];
+__POINTER__ ___1a01b8h[7];
 __POINTER__ ___1a01d0h[4];
 
 

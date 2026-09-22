@@ -57,7 +57,7 @@ void shop___285f8h(void){
 
 	switch(D(___1a1ec4h)){
 	case 0:
-		D(___1a1ee4h) = (D(___1a1ee4h)+5)%6;
+		D(___1a1ee4h) = (D(___1a1ee4h)+DR3_LAST_CAR)%(DR3_LAST_CAR+1);
 		___25a74h();
 
 		j = -1;
@@ -137,7 +137,7 @@ void shop___28880h(void){
 
 	switch(D(___1a1ec4h)){
 	case 0:
-		D(___1a1ee4h) = (D(___1a1ee4h)+1)%6;
+		D(___1a1ee4h) = (D(___1a1ee4h)+1)%(DR3_LAST_CAR+1);
 
 		___25a74h();
 

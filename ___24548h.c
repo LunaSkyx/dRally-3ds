@@ -26,7 +26,7 @@
 	extern __POINTER__ ___1a1eb0h;
 	extern __POINTER__ ___1a1e78h;
 	extern __POINTER__ ___1a1eb8h;
-	extern __POINTER__ ___1a01b8h[6];
+	extern __POINTER__ ___1a01b8h[7];
 	extern __POINTER__ ___1a0180h;
 	extern __POINTER__ ___1a01a8h[4];
 	extern __POINTER__ ___1a0198h[4];
@@ -48,7 +48,7 @@
 
 __POINTER__ ___3f71ch__allocateMemory(__DWORD__);
 
-static __DWORD__ max_5(__DWORD__ val){ return (val < 5) ? val : 5; }
+static __DWORD__ max_car(__DWORD__ val){ return (val <= (__DWORD__)DR3_LAST_CAR) ? val : (__DWORD__)DR3_LAST_CAR; }
 
 void ___24548h(void){
 
@@ -65,7 +65,7 @@ void ___24548h(void){
 	D(___1a1ec8h) = 0;
 	D(___1a1ed0h) = 0;
 	D(___1a1ec4h) = 5;
-	D(___1a1ee4h) = max_5(s_6c[D(___1a1ef8h)].car+1);
+	D(___1a1ee4h) = max_car(s_6c[D(___1a1ef8h)].car+1);
 	___1a1124h__VESA101h_ScreenBufferA = ___1a10e4h__VESA101h_DefaultScreenBufferA = ___3f71ch__allocateMemory(0x4b000);
 
 	___1a1e7ch = ___3f71ch__allocateMemory(0x1800);
@@ -76,6 +76,11 @@ void ___24548h(void){
 	___1a01b8h[3] = dRally_Assets_loadRaw("MENU.BPA", "camaro.bpk", 0x18f51);
 	___1a01b8h[4] = dRally_Assets_loadRaw("MENU.BPA", "porsche.bpk", 0x1a060);
 	___1a01b8h[5] = dRally_Assets_loadRaw("MENU.BPA", "lotus.bpk", 0x1bea2);
+
+	/* the Anniversary ("30th Anniversary", see doc/3ds.md): MENU.BPA has no picture of the SPECIAL, so
+	   it uses the Deliverator's - which is the same car under its black paint.  Not freed again in
+	   ___12200h.c, it is the same pointer as [5]. */
+	___1a01b8h[DR3_LAST_CAR] = ___1a01b8h[5];
 	___1a01a8h[0] = dRally_Assets_loadRaw("MENU.BPA", "engi1.bpk", 0xa235);
 	___1a01a8h[1] = dRally_Assets_loadRaw("MENU.BPA", "engi2.bpk", 0xae36);
 	___1a01a8h[2] = dRally_Assets_loadRaw("MENU.BPA", "engi3.bpk", 0xb413);

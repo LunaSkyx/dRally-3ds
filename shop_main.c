@@ -56,7 +56,7 @@ typedef struct x655_s {
 	extern __DWORD__ ___185cbch[][0x40];
 	extern __BYTE__ ___185a38h_delay[];
 	extern __BYTE__ ___1a1ed0h[];
-	extern __POINTER__ ___1a01b8h[6];
+	extern __POINTER__ ___1a01b8h[7];
 	extern __BYTE__ ___1a1ec8h[];
 	extern __DWORD__ ___1862bch[][0x18];
 	extern __POINTER__ ___1a01a8h[4];

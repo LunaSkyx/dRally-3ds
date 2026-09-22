@@ -64,7 +64,7 @@
 	extern __POINTER__ ___1a1e78h;
 	extern __POINTER__ ___1a1eb8h;
 	extern __POINTER__ ___1a0180h;
-	extern __POINTER__ ___1a01b8h[6];
+	extern __POINTER__ ___1a01b8h[7];
 	extern __POINTER__ ___1a01a8h[4];
 	extern __POINTER__ ___1a0198h[4];
 	extern __POINTER__ ___1a01d0h[4];

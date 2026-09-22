@@ -3,7 +3,7 @@
 	extern __BYTE__ ___1a1ee4h[];
 #define CARENCS ___185cbch
 	extern __DWORD__ ___185cbch[][0x40];
-	extern __POINTER__ ___1a01b8h[6];
+	extern __POINTER__ ___1a01b8h[7];
 	extern __BYTE__ ___1a1ed0h[];
 
 void ___2ab50h(void);

@@ -507,35 +507,35 @@ const cardata_t ___18e298h[7] = {
         .price_repair = 1625
     },
     [6] = {   /* the adversary - the game's own SPECIAL car, not for sale in a shop */
-        .name = "Adversary",
-        .price = 250000,
+        .name = "Anniversary",
+        .price = 100000,
         .txt_info = {
-            [0] = "[Adversary - Speed 200 mph",
+            [0] = "[Anniversary - Speed 200 mph",
             [1] = "",
-            [2] = "The demon king of the race, the",
-            [3] = "one they tell stories about. He",
-            [4] = "takes what he wants.",
+            [2] = "The black one, tamed - yours for",
+            [3] = "a hundred grand, and it fits",
+            [4] = "every single upgrade there is.",
             [5] = ""
         },
         .txt_winfo = {
-            [0] = "[Adversary - Speed 200 mph",
+            [0] = "[Anniversary - Speed 200 mph",
             [1] = "",
-            [2] = "Two guns, spikes and all the",
-            [3] = "mines in the world. Nothing you",
-            [4] = "can buy comes close to him.",
+            [2] = "Two guns, spikes and mines - the",
+            [3] = "whole show, and it is yours at",
+            [4] = "last.  Only he stays quicker.",
             [5] = ""
         },
         .txt_bought = {
-            [0] = "[Adversary bought",
+            [0] = "[Anniversary bought",
             [1] = "",
-            [2] = "Nobody buys the demon king. He",
-            [3] = "took your money anyway - and",
-            [4] = "left you with the keys.",
+            [2] = "The demon king sold you his car.",
+            [3] = "He kept the temper, though -",
+            [4] = "so be careful out there.",
             [5] = ""
         },
         .txt_engine_upgrades = {
             [0] = {
-                [0] = "[Demon motor - Speed: [180 mph",
+                [0] = "[Anniversary motor - Speed: [180 mph",
                 [1] = "",
                 [2] = "It does not idle, it howls. The",
                 [3] = "neighbours filed a complaint, he",
@@ -543,7 +543,7 @@ const cardata_t ___18e298h[7] = {
                 [5] = ""
             },
             [1] = {
-                [0] = "[Demon V6 - Speed: [190 mph",
+                [0] = "[Anniversary V6 - Speed: [190 mph",
                 [1] = "",
                 [2] = "Burns fuel, tires and the",
                 [3] = "occasional opponent. Mostly the",
@@ -551,7 +551,7 @@ const cardata_t ___18e298h[7] = {
                 [5] = ""
             },
             [2] = {
-                [0] = "[Demon V8 - Speed: [195 mph",
+                [0] = "[Anniversary V8 - Speed: [195 mph",
                 [1] = "",
                 [2] = "The engine sounds like a promise",
                 [3] = "you should not have asked him to",
@@ -559,7 +559,7 @@ const cardata_t ___18e298h[7] = {
                 [5] = ""
             },
             [3] = {
-                [0] = "[Demon V8 Turbo - Speed: [200 mph",
+                [0] = "[Anniversary V8 Turbo - Speed: [200 mph",
                 [1] = "",
                 [2] = "There is no faster machine in",
                 [3] = "this world, and he made sure of",
@@ -571,24 +571,24 @@ const cardata_t ___18e298h[7] = {
         .n_tire_upgrades = 4,
         .n_armor_upgrades = 4,
         .price_engine_upgrades = {
-            [0] = 25000,
-            [1] = 35000,
-            [2] = 45000,
-            [3] = 60000
+            [0] = 15000,
+            [1] = 22000,
+            [2] = 32000,
+            [3] = 48000
         },
         .price_tire_upgrades = {
-            [0] = 20000,
-            [1] = 30000,
-            [2] = 40000,
-            [3] = 55000
+            [0] = 12000,
+            [1] = 18000,
+            [2] = 26000,
+            [3] = 40000
         },
         .price_armor_upgrades = {
-            [0] = 22000,
-            [1] = 32000,
-            [2] = 42000,
-            [3] = 58000
+            [0] = 13000,
+            [1] = 19000,
+            [2] = 28000,
+            [3] = 42000
         },
-        .price_repair = 5000
+        .price_repair = 3000
     }
 };
 
@@ -644,6 +644,16 @@ const __DWORD__ ___185cbch[][0x40] = {
         0x71b, 0x72a, 0x720, 0x71b, 0x709, 0x6f3, 0x6dc, 0x6c7
     },
     [5] = { //DELIVERATOR
+        0x76b, 0x757, 0x76b, 0x76c, 0x77e, 0x777, 0x76b, 0x77a,
+        0x74f, 0x756, 0x760, 0x72d, 0x73a, 0x722, 0x710, 0x708,
+        0x703, 0x6fa, 0x6fa, 0x6ef, 0x6f8, 0x6d9, 0x6ce, 0x6c8,
+        0x6a5, 0x6b1, 0x68a, 0x67e, 0x64e, 0x63d, 0x61e, 0x634,
+        0x648, 0x627, 0x652, 0x63c, 0x64d, 0x64a, 0x65c, 0x679,
+        0x69b, 0x6a5, 0x6c1, 0x6bd, 0x6aa, 0x6c7, 0x6e8, 0x701,
+        0x702, 0x715, 0x710, 0x743, 0x74e, 0x77c, 0x770, 0x781,
+        0x798, 0x7ba, 0x7ba, 0x7a4, 0x792, 0x75b, 0x761, 0x75d
+    },
+    [6] = { //ANNIVERSARY - the SPECIAL, sold in the shop since "30th Anniversary" (see doc/3ds.md)
         0x76b, 0x757, 0x76b, 0x76c, 0x77e, 0x777, 0x76b, 0x77a,
         0x74f, 0x756, 0x760, 0x72d, 0x73a, 0x722, 0x710, 0x708,
         0x703, 0x6fa, 0x6fa, 0x6ef, 0x6f8, 0x6d9, 0x6ce, 0x6c8,

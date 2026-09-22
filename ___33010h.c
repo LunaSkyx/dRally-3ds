@@ -691,9 +691,9 @@ void ___33010h_cdecl(int NumCars){
 #endif // DR_MULTIPLAYER
 	}
 
-	LAP_RECORD_MIN = ___19f750h[s_6c[D(___1a1ef8h)].car][B(___1a1f64h+D(___1a1028h))].min;
-	LAP_RECORD_SEC = ___19f750h[s_6c[D(___1a1ef8h)].car][B(___1a1f64h+D(___1a1028h))].sec;
-	LAP_RECORD_100 = ___19f750h[s_6c[D(___1a1ef8h)].car][B(___1a1f64h+D(___1a1028h))].sec100;
+	LAP_RECORD_MIN = ___19f750h[DR3_RECORD_CAR(s_6c[D(___1a1ef8h)].car)][B(___1a1f64h+D(___1a1028h))].min;
+	LAP_RECORD_SEC = ___19f750h[DR3_RECORD_CAR(s_6c[D(___1a1ef8h)].car)][B(___1a1f64h+D(___1a1028h))].sec;
+	LAP_RECORD_100 = ___19f750h[DR3_RECORD_CAR(s_6c[D(___1a1ef8h)].car)][B(___1a1f64h+D(___1a1028h))].sec100;
 	D(___1de7d0h+0x50) = 0;
 
 #if defined(DR_MULTIPLAYER)	

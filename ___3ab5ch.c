@@ -19,7 +19,7 @@
 	extern cardata_t ___18e298h[7];
 #define CARENCS ___185cbch
 	extern __DWORD__ ___185cbch[][0x40];
-	extern __POINTER__ ___1a01b8h[6];
+	extern __POINTER__ ___1a01b8h[7];
 	extern __POINTER__ ___1a1e88h;
 	extern __POINTER__ ___1a1eb4h;
 	extern __BYTE__ ___1a01e0h[];

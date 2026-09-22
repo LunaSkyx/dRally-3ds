@@ -304,6 +304,22 @@ change), and because the roster gets sorted by points he is identified by his **
 number.  The roster is built when a game starts, so an **existing** save keeps the roster it has - the
 adversary appears in games created on this difficulty.
 
+### The Anniversary you can buy
+
+The boss's car - the SPECIAL - is in the shop's car list for **$100,000**, upgrades included.  What makes
+the boss special is not the car but the level he is met on: he is black and a little stronger there,
+while the one you buy behaves like the best car of the game.
+
+| Where | What |
+|---|---|
+| `car_data.c` | the seventh `cardata_t` is the car on sale: name, price 100000, its own upgrade prices and a seventh `CARENCS` record |
+| `___24548h.c` | `___1a01b8h[6]` gets the Deliverator's picture (MENU.BPA has no SPECIAL picture) - the very pointer of `[5]`, so `___12200h.c` must not free it twice.  The shop's default selection clamps to `DR3_LAST_CAR` |
+| `shop___2836ch.c` | the car carousel walks seven cars instead of six |
+| `shop___28e40h.c` | the "next car" offer stops at the Anniversary |
+| `race___3f970h.c` | it uses the Deliverator's parameter row and its own two-gun entry, and it does **not** get the boss's speed bonus - that is exactly what makes it "just a little slower" |
+| `race___42824h.c`, `___38184h.c` | only the *boss* keeps the black colours and the darkened picture; your own Anniversary gets its slot colour like every other car |
+| `drally.h` (`DR3_RECORD_CAR`) | the lap-record table has six rows and lives in `dr.cfg`, so its size must not change: an Anniversary owner shares the Deliverator's row |
+
 ### Why the multiplayer code stays in
 
 Removing the multiplayer objects was tried and **fails to link**: menus, race code and the chat box

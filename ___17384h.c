@@ -6,7 +6,7 @@
 	extern __BYTE__ ___196ae4h[];
 #define CARENCS ___185cbch
 	extern __DWORD__ ___185cbch[][0x40];
-	extern __POINTER__ ___1a01b8h[6];
+	extern __POINTER__ ___1a01b8h[7];
 	extern __BYTE__ ___1a1ed0h[];
 
 void ___259e0h_cdecl(int dx, int dy, int aFrameIdx, __POINTER__ aEncoded, int * aOffsets);
