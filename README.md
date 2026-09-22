@@ -4,31 +4,17 @@ The main goal of this project is to create a port of Death Rally (1996) running 
 
 #### Nintendo 3DS port (branch `3ds`)
 
-This branch adds a native Nintendo 3DS port of the engine - no SDL shim, it uses SDL2's own n3ds
-backend, writes the 8 bit screen straight into the double buffered framebuffer, feeds the DSP at its
-native 32728 Hz and translates the pad into the engine's keyboard scancodes (fully remappable through
-`dr3_controls.txt`).
+Native port with devkitARM, libctru and SDL2's own n3ds backend.  Renders straight into the 400x240
+framebuffer (no SDL renderer), DSP audio at the DAC's native rate, pad remappable through
+`dr3_controls.txt`.  The bottom screen shows the standings and, during a race, the track map with every
+car and the lap times.
 
-What this branch adds on top of the plain engine:
+Also adds a fourth difficulty ("30th Anniversary") with the black SPECIAL as a championship rival, a
+final two car challenge, and that car for sale in the shop.
 
-* a **fourth difficulty, "30th Anniversary"**: the black SPECIAL races in every event as a full
-  championship participant with his own seat and points, and the title is settled in a final two car
-  challenge - the end game only runs when that challenge was won
-* the Anniversary car is **for sale** in the shop (upgrades included) and keeps its own lap records
-* the otherwise unused **bottom screen**: the controls, the current driver standings and - during a
-  race - a minimap of the track with every car on it, the running lap clock and the last/best/record
-  lap (with a "new record" notice); outside a race its last two rows name the quick save / quick load
-  buttons
-* **quick save / quick load** from the front end (`X` or `ZL` saves, `Y` or `ZR` loads - rebindable)
-* `SELECT` opens the 3DS software keyboard; typed names arrive reliably (the port delivers one
-  character at a time and holds every key until the engine has read it) and umlauts are transliterated
-
-* **installation, controls and configuration: [INSTALL_3DS.md](INSTALL_3DS.md)**
-* technical notes, measurements and the profiler build: [doc/3ds.md](doc/3ds.md)
-* build scripts: [scripts/3ds](scripts/3ds)
-
-This branch contains **no game data** and is **not affiliated with Remedy Entertainment**.  Like the
-Linux port it needs the files of an original Death Rally copy (see below for the layout).
+* installation, controls: [INSTALL_3DS.md](INSTALL_3DS.md)
+* technical notes and the profiler build: [doc/3ds.md](doc/3ds.md)
+* no game data, not affiliated with Remedy Entertainment
 
 #### Linux requirements
 * GCC/Clang C compiler
