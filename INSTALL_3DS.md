@@ -8,7 +8,11 @@ libctru and SDL2 (using SDL2's own n3ds backend).
 
 ## What works
 
-* the full game: menus, name entry (3DS software keyboard), shop, races, damage/wrecking
+* the full game: menus, name entry (3DS software keyboard - the typed letters are delivered one by one
+  and each key is held until the game has really read it, so the first and the last letter of a name
+  arrive reliably), shop, races, damage/wrecking
+* quick save / quick load from the front end (`X` or `ZL` saves, `Y` or `ZR` loads - rebindable, see
+  the controls below)
 * the game's difficulty screen has a **fourth** level in this branch ("30th Anniversary", one step
   above "petrol in my veins").  On it the adversary - the black SPECIAL car - races in every event, has
   his own seat and points in the championship, and can be challenged for the title once you are second.
@@ -65,6 +69,8 @@ Front end (640x480):
 | B | select / next |
 | START | pause / back |
 | D-pad | menu navigation |
+| X / ZL (New 3DS) | quick save (`DR.SG7`) |
+| Y / ZR (New 3DS) | quick load (the save in `DR.SG7`) |
 
 Race (320x240):
 
@@ -95,7 +101,7 @@ The mapping is described with *functions*, and every function can be bound to an
 | `GAS`, `BRAKE`, `BOOST`, `SHOOT`, `MINE`, `HORN` | a race |
 | `LEFT`, `RIGHT` | race and front end |
 | `PAUSE` | everywhere |
-| `CONFIRM`, `MENU_UP`, `MENU_DOWN`, `MENU_NEXT` | front end |
+| `CONFIRM`, `MENU_UP`, `MENU_DOWN`, `MENU_NEXT`, `QUICKSAVE`, `QUICKLOAD` | front end |
 
 Buttons: `A B X Y L R ZL ZR START UP DOWN LEFT RIGHT STICK_LEFT STICK_RIGHT STICK_UP STICK_DOWN NONE`
 

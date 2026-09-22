@@ -206,6 +206,38 @@ static void test_input_map(void)
     st.held = DR3_PAD_START;
     expect_scan(&st, 1, "START button");
 
+    /* quick save / quick load: the front end's F2/F3 (___2a6a8h.c, used by the shop and the
+       underground).  ZL/ZR for a New 3DS, X/Y so a plain 3DS has a default as well */
+    memset(&st, 0, sizeof(st));
+    st.held = DR3_PAD_ZL;
+    dr3_input_scancodes(&st, set);
+    CHECK(set[SDL_SCANCODE_F2], "ZL must quick save in the front end");
+    CHECK(!set[SDL_SCANCODE_LSHIFT], "ZL must not boost outside a race");
+
+    memset(&st, 0, sizeof(st));
+    st.held = DR3_PAD_X;
+    dr3_input_scancodes(&st, set);
+    CHECK(set[SDL_SCANCODE_F2], "X must quick save on a 3DS without ZL/ZR");
+
+    memset(&st, 0, sizeof(st));
+    st.held = DR3_PAD_ZR;
+    dr3_input_scancodes(&st, set);
+    CHECK(set[SDL_SCANCODE_F3], "ZR must quick load in the front end");
+
+    memset(&st, 0, sizeof(st));
+    st.held = DR3_PAD_Y;
+    dr3_input_scancodes(&st, set);
+    CHECK(set[SDL_SCANCODE_F3], "Y must quick load on a 3DS without ZL/ZR");
+
+    /* while racing the same buttons are boost and shoot, not save and load */
+    dr3_input_set_context(1);
+    memset(&st, 0, sizeof(st));
+    st.held = DR3_PAD_ZL;
+    dr3_input_scancodes(&st, set);
+    CHECK(set[SDL_SCANCODE_LSHIFT], "ZL must boost in a race");
+    CHECK(!set[SDL_SCANCODE_F2], "ZL must not quick save in a race");
+    dr3_input_set_context(0);
+
     memset(&st, 0, sizeof(st));
     st.cpad_y = 1;
     dr3_input_set_context(1);              /* stick up = gas while racing */
@@ -280,7 +312,29 @@ static void test_text_and_filter(void)
     CHECK(dr3_char_to_scancode('0') == SDL_SCANCODE_0, "'0' -> SCANCODE_0");
     CHECK(dr3_char_to_scancode(' ') == SDL_SCANCODE_SPACE, "' ' -> SCANCODE_SPACE");
     CHECK(dr3_char_to_scancode('-') == SDL_SCANCODE_MINUS, "'-' -> SCANCODE_MINUS");
-    CHECK(dr3_char_to_scancode('?') == -1, "'?' has no scancode and must be rejected");
+
+    /* the shifted characters are reachable as shift + the key below them (the engine takes the
+       character from its upper[] table then) - they used to be dropped, which is why a typed '!' or
+       '?' never arrived */
+    CHECK(dr3_char_to_scancode('!') == SDL_SCANCODE_1, "'!' -> SCANCODE_1");
+    CHECK(dr3_char_needs_shift('!') == 1, "'!' must be sent with shift");
+    CHECK(dr3_char_to_scancode('?') == SDL_SCANCODE_SLASH, "'?' -> SCANCODE_SLASH");
+    CHECK(dr3_char_needs_shift('?') == 1, "'?' must be sent with shift");
+    CHECK(dr3_char_to_scancode('_') == SDL_SCANCODE_MINUS, "'_' -> SCANCODE_MINUS");
+    CHECK(dr3_char_needs_shift('_') == 1, "'_' must be sent with shift");
+    CHECK(dr3_char_to_scancode(':') == SDL_SCANCODE_SEMICOLON, "':' -> SCANCODE_SEMICOLON");
+    CHECK(dr3_char_to_scancode('+') == SDL_SCANCODE_KP_PLUS, "'+' -> the keypad key, unshifted");
+    CHECK(dr3_char_needs_shift('-') == 0, "'-' must go without shift");
+    CHECK(dr3_char_needs_shift('1') == 0, "'1' must go without shift");
+    CHECK(dr3_char_needs_shift(39) == 0, "the apostrophe must go without shift");
+
+    /* umlauts have no scan code at all (the engine's table ends at 0x7f): transliterate, do not drop */
+    CHECK(dr3_char_to_scancode((char)0xfc) == SDL_SCANCODE_U, "u-umlaut -> SCANCODE_U");
+    CHECK(dr3_char_to_scancode((char)0xdf) == SDL_SCANCODE_S, "sharp s -> SCANCODE_S");
+    CHECK(dr3_char_needs_shift((char)0xfc) == 0, "a transliterated umlaut needs no shift");
+
+    /* something no scancode can produce is rejected - the input layer logs it */
+    CHECK(dr3_char_to_scancode((char)0x80) == -1, "0x80 has no scancode and must be rejected");
 
     /* box filter: a 4x2 image of two colours downscaled to 2x1 must average, not pick a pixel */
     dr3_palette_reset(&pal);

@@ -140,14 +140,32 @@ static void dr3_sync_keys(const dr3_pad_state_t *st)
     memcpy(dr3_prev, now, sizeof(dr3_prev));
 }
 
-/* Characters typed on the 3DS software keyboard arrive as SDL_TEXTINPUT - turn them into the key
-   events the engine understands.
-   The engine's text handler (___59720h) reads popLastKey() *and* popLastChar(), so the key must stay
-   "down" for at least one engine frame - otherwise dRally_Keyboard_break() clears LAST_KEY before the
-   game can read it.  Releases are therefore scheduled a few frames later. */
-#define DR3_TEXT_RELEASE_MS 120   /* how long a synthetic key stays down */
-#define DR3_TEXT_CHAR_MS    30    /* gap between two typed characters */
-#define DR3_INPUT_POLL_MS   3     /* how often the pad/SDL events are actually polled */
+/*
+ * Characters typed on the 3DS software keyboard arrive as SDL_TEXTINPUT - turn them into the key
+ * events the engine understands.  Three things are needed to make that reliable; all three were the
+ * reason a first or last letter used to vanish:
+ *
+ *  1. The engine's text handler (___59720h) pops popLastKey() *and* popLastChar() and appends that
+ *     pair to its text buffer.  dRally_Keyboard_make() sets both latches and dRally_Keyboard_break()
+ *     (our key up) clears LAST_KEY again - so a key that is released too early is lost.  Instead of
+ *     guessing a delay, a character is held down until both latches are empty again (keyboard.c), with
+ *     a timeout as the safety net.
+ *  2. Every key press calls dRally_Keyboard_make() - including the *pad* keys, which the engine also
+ *     receives as scancodes.  A pad event arriving between our character and the game's read
+ *     overwrites LAST_CHAR with a character of its own (0 for a direction key): that is what ate the
+ *     first and the last letter of a typed name.  The pad therefore stays silent while a character is
+ *     on its way, and for a short grace period after the last one, so the name is read with nothing
+ *     interfering.
+ *  3. Characters living on a shifted key ('!', '?', '_', ...) are sent as shift + key - the engine
+ *     takes the character from its upper[] table while shift is down.  Umlauts are transliterated in
+ *     dr3_input_map.c, and a character neither table can produce is dropped *and logged*, so a log
+ *     says exactly why something is missing.
+ */
+#define DR3_INPUT_POLL_MS    3     /* how often the pad/SDL events are actually polled */
+#define DR3_KEY_HOLD_MS      120   /* how long a bottom screen button stays down */
+#define DR3_TEXT_HOLD_MIN_MS 20    /* keep a typed key down for at least one engine frame */
+#define DR3_TEXT_HOLD_MAX_MS 200   /* ... but not longer than this, whatever the engine does */
+#define DR3_TEXT_GRACE_MS    150   /* the pad stays quiet this long after the last character */
 
 static struct { int scancode; unsigned int release_at; } dr3_pending[DR3_QUEUE_LEN];
 static int      dr3_pending_count;
@@ -155,15 +173,36 @@ static int      dr3_pending_count;
 static char         dr3_text[64];
 static int          dr3_text_len;
 static int          dr3_text_pos;
-static unsigned int dr3_text_next_ms;
 static int          dr3_text_sentinel_done;
+static int          dr3_text_key = -1;      /* scancode of the character being delivered, -1 = none */
+static int          dr3_text_shift;         /* 1 while LSHIFT is held down for that character */
+static unsigned int dr3_text_key_ms;        /* when it was pressed */
+static unsigned int dr3_text_quiet_ms;      /* the pad keeps quiet until this tick */
+
+/* The engine's keyboard latches (keyboard.c): make() sets them, the game empties them when it reads
+   them.  Both empty therefore means "the character has arrived". */
+extern unsigned char LAST_KEY;
+extern unsigned char LAST_CHAR;
 
 static void dr3_push_release(int scan, unsigned int now)
 {
     if (dr3_pending_count >= DR3_QUEUE_LEN) return;
     dr3_pending[dr3_pending_count].scancode   = scan;
-    dr3_pending[dr3_pending_count].release_at = now + DR3_TEXT_RELEASE_MS;
+    dr3_pending[dr3_pending_count].release_at = now + DR3_KEY_HOLD_MS;
     ++dr3_pending_count;
+}
+
+static int dr3_text_consumed(void)
+{
+    return (LAST_KEY == 0) && (LAST_CHAR == 0);
+}
+
+/* 1 while a typed character is on its way or still waiting to be delivered - the pad is silent then */
+static int dr3_text_busy(void)
+{
+    if ((dr3_text_pos < dr3_text_len) || (dr3_text_key >= 0) || dr3_text_shift) return 1;
+
+    return (int)(dr3_text_quiet_ms - SDL_GetTicks()) > 0;
 }
 
 static void dr3_queue_text(const char *text)
@@ -176,40 +215,68 @@ static void dr3_queue_text(const char *text)
     dr3_text_len   = (int)n;
     dr3_text_pos   = 0;
     dr3_text_sentinel_done = 0;
-    dr3_text_next_ms = SDL_GetTicks();   /* deliver the first character right away */
+    dr3_text_key   = -1;
+    dr3_text_shift = 0;
+    dr3_text_quiet_ms = SDL_GetTicks();     /* the pad is quiet from now on */
 }
 
 /*
- * The engine keeps only the *last* key of a frame (dRally_Keyboard_make overwrites LAST_KEY), so a
- * whole typed word must be delivered one character per frame - otherwise only one letter arrives.
+ * Delivers one character per call: (shift and) key down, wait until the engine has read it, key up.
+ * The first thing sent is a dead key (SDL scancode 0 = DOS 0, "no key"): the dialogue always consumes
+ * one key before it looks at a character, which used to eat the first typed letter - and with the pad
+ * silenced it really is that dead key that gets consumed, not the first letter.
  */
 static void dr3_service_text(void)
 {
-    int          scan;
-    unsigned int now;
+    unsigned int now = SDL_GetTicks();
 
-    if (dr3_text_pos >= dr3_text_len) return;
+    if (dr3_text_key >= 0) {
+        const int held = (int)(now - dr3_text_key_ms);
 
-    now = SDL_GetTicks();
-    if ((int)(now - dr3_text_next_ms) < 0) return;
+        if ((held < DR3_TEXT_HOLD_MIN_MS) || ((!dr3_text_consumed()) && (held < DR3_TEXT_HOLD_MAX_MS)))
+            return;                             /* not read yet - one character at a time */
 
-    /* The dialogue always consumes one key before it looks at the character, which used to eat the
-       first typed letter.  Send a dead key first (SDL scancode 0 maps to DOS 0 = "no key"). */
-    if (!dr3_text_sentinel_done) {
-        dr3_text_sentinel_done = 1;
-        dr3_queue_push(SDL_SCANCODE_UNKNOWN, 1);
-        dr3_push_release(SDL_SCANCODE_UNKNOWN, now);
-        dr3_text_next_ms = now + DR3_TEXT_CHAR_MS;
+        dr3_queue_push(dr3_text_key, 0);        /* key up ... */
+        dr3_text_key = -1;
+
+        if (dr3_text_shift) {                   /* ... and let go of shift again */
+            dr3_queue_push(SDL_SCANCODE_LSHIFT, 0);
+            dr3_text_shift = 0;
+        }
+
+        dr3_text_quiet_ms = now + DR3_TEXT_GRACE_MS;
         return;
     }
 
-    scan = dr3_char_to_scancode(dr3_text[dr3_text_pos++]);
-    dr3_text_next_ms = now + DR3_TEXT_CHAR_MS;
+    if (dr3_text_pos >= dr3_text_len) return;
 
-    if (scan < 0) return;
+    if (!dr3_text_sentinel_done) {
+        dr3_text_sentinel_done = 1;
+        dr3_text_key    = SDL_SCANCODE_UNKNOWN;
+        dr3_text_key_ms = now;
+        dr3_queue_push(dr3_text_key, 1);
+        return;
+    }
 
-    dr3_queue_push(scan, 1);        /* key down now ... */
-    dr3_push_release(scan, now);    /* ... released a little later */
+    {
+        const char c    = dr3_text[dr3_text_pos++];
+        const int  scan = dr3_char_to_scancode(c);
+
+        if (scan < 0) {
+            dr3_log("[dr3] software keyboard: 0x%02X cannot be typed with the game's character table - "
+                    "skipped", (unsigned char)c);
+            return;
+        }
+
+        if (dr3_char_needs_shift(c)) {
+            dr3_text_shift = 1;
+            dr3_queue_push(SDL_SCANCODE_LSHIFT, 1);     /* shift down, then the key below it */
+        }
+
+        dr3_text_key    = scan;
+        dr3_text_key_ms = now;
+        dr3_queue_push(scan, 1);
+    }
 }
 
 static void dr3_service_pending(void)
@@ -292,7 +359,14 @@ int dr3_poll_event(SDL_Event *e)
             e->type = SDL_QUIT;
             return 1;
         }
-        dr3_sync_keys(&st);
+
+        /*
+         * While a typed character is on its way the pad stays silent: every pad key press also calls
+         * dRally_Keyboard_make() and would overwrite the character latch the dialogue is waiting for
+         * (see dr3_service_text).  dr3_prev stays stale on purpose - the next call reports whatever is
+         * really held, so no press is lost.
+         */
+        if (!dr3_text_busy()) dr3_sync_keys(&st);
     }
 
     if (dr3_q_head != dr3_q_tail) {

@@ -37,7 +37,7 @@ typedef struct {
     uint32_t    buttons[DR3_FUNC_BUTTONS];     /* the buttons that trigger it       */
 } dr3_func_def_t;
 
-#define DR3_FUNC_COUNT 13
+#define DR3_FUNC_COUNT 15
 
 static const dr3_func_def_t dr3_funcs[DR3_FUNC_COUNT] = {
     { "GAS",       DR3_CTX_RACE,  { SDL_SCANCODE_A, -1, -1 },
@@ -65,7 +65,19 @@ static const dr3_func_def_t dr3_funcs[DR3_FUNC_COUNT] = {
     { "CONFIRM",   DR3_CTX_MENU,  { SDL_SCANCODE_RETURN, -1, -1 },
       { DR3_PAD_A, 0, 0, 0 } },
     { "MENU_NEXT", DR3_CTX_MENU,  { SDL_SCANCODE_SPACE, -1, -1 },
-      { DR3_PAD_B, 0, 0, 0 } }
+      { DR3_PAD_B, 0, 0, 0 } },
+
+    /*
+     * The front end's quick save / quick load (___2a6a8h.c; the shop and the underground loop call it
+     * every frame).  On the PC those are F2 and F3 - keys the 3DS does not have, so the whole feature
+     * was unreachable.  Both are front end functions, exactly like on the PC (a race cannot be
+     * quicksaved).  X and Y only mean "mine" and "shoot" while a race is running, so a plain 3DS has a
+     * working default as well; ZL/ZR exist on the New 3DS only.
+     */
+    { "QUICKSAVE", DR3_CTX_MENU,  { SDL_SCANCODE_F2, -1, -1 },
+      { DR3_PAD_ZL, DR3_PAD_X, 0, 0 } },
+    { "QUICKLOAD", DR3_CTX_MENU,  { SDL_SCANCODE_F3, -1, -1 },
+      { DR3_PAD_ZR, DR3_PAD_Y, 0, 0 } }
 };
 
 /* buttons can be reassigned by dr3_controls.txt */
@@ -305,35 +317,84 @@ int dr3_input_quit_combo(const dr3_pad_state_t *st)
 }
 
 /*
+ * The characters that sit on a *shifted* key: '!' is shift + '1'.  The authority for that is the
+ * engine's own character table (keyboard.c upper[]) - dRally_Keyboard_make() picks the character from
+ * that table when the shift key is down, so pressing LSHIFT around the key below is what makes these
+ * arrive at all.  Without it they used to be dropped.
+ */
+static const struct { char chr; int scan; } dr3_shifted_chars[] = {
+    { '!', SDL_SCANCODE_1 },            { '@', SDL_SCANCODE_2 },
+    { '#', SDL_SCANCODE_3 },            { '$', SDL_SCANCODE_4 },
+    { '%', SDL_SCANCODE_5 },            { '^', SDL_SCANCODE_6 },
+    { '&', SDL_SCANCODE_7 },            { '*', SDL_SCANCODE_8 },
+    { '(', SDL_SCANCODE_9 },            { ')', SDL_SCANCODE_0 },
+    { '_', SDL_SCANCODE_MINUS },        { ':', SDL_SCANCODE_SEMICOLON },
+    { '"', SDL_SCANCODE_APOSTROPHE },   { '<', SDL_SCANCODE_COMMA },
+    { '>', SDL_SCANCODE_PERIOD },       { '?', SDL_SCANCODE_SLASH },
+    { '{', SDL_SCANCODE_LEFTBRACKET },  { '}', SDL_SCANCODE_RIGHTBRACKET },
+    { '|', SDL_SCANCODE_BACKSLASH },    { '~', SDL_SCANCODE_GRAVE }
+};
+
+/* the punctuation the engine's unshifted table (lower[]) knows */
+static const struct { char chr; int scan; } dr3_plain_chars[] = {
+    { ' ',  SDL_SCANCODE_SPACE },        { '-',  SDL_SCANCODE_MINUS },
+    { '.',  SDL_SCANCODE_PERIOD },       { ',',  SDL_SCANCODE_COMMA },
+    { '/',  SDL_SCANCODE_SLASH },        { '\\', SDL_SCANCODE_BACKSLASH },
+    { 39,   SDL_SCANCODE_APOSTROPHE },   { ';',  SDL_SCANCODE_SEMICOLON },
+    { '=',  SDL_SCANCODE_EQUALS },       { '[',  SDL_SCANCODE_LEFTBRACKET },
+    { ']',  SDL_SCANCODE_RIGHTBRACKET }, { '`',  SDL_SCANCODE_GRAVE },
+    { '+',  SDL_SCANCODE_KP_PLUS },      { 10,   SDL_SCANCODE_RETURN },
+    { 13,   SDL_SCANCODE_RETURN }
+};
+
+/*
  * Maps a character typed on the 3DS software keyboard to the SDL scancode the engine understands
- * (keyboard.c turns scancodes into DOS scan codes and derives the typed character from them).
+ * (keyboard.c turns scancodes into DOS scan codes and derives the typed character from them again).
+ * dr3_char_needs_shift() tells the caller whether LSHIFT has to be pressed around that key.
  */
 int dr3_char_to_scancode(char c)
 {
+    size_t i;
+
+    /*
+     * Umlauts and the sharp s: the engine's table ends at 0x7f - it is indexed by scan code, and no
+     * scan code produces them.  Transliterate instead of dropping ("Müller" becomes "MULLER", not
+     * "MLLER"), which is what the German 3DS software keyboard offers besides the plain letters.
+     */
+    switch ((unsigned char)c) {
+        case 0xc4: case 0xe4: return SDL_SCANCODE_A;   /* Ä ä */
+        case 0xd6: case 0xf6: return SDL_SCANCODE_O;   /* Ö ö */
+        case 0xdc: case 0xfc: return SDL_SCANCODE_U;   /* Ü ü */
+        case 0xdf:            return SDL_SCANCODE_S;   /* ß   */
+        default: break;
+    }
+
     if ((c >= 'a') && (c <= 'z')) c = (char)(c - 'a' + 'A');
 
     if ((c >= 'A') && (c <= 'Z')) return SDL_SCANCODE_A + (c - 'A');   /* A..Z are consecutive */
     if ((c >= '1') && (c <= '9')) return SDL_SCANCODE_1 + (c - '1');
     if (c == '0')                 return SDL_SCANCODE_0;
 
-    switch (c) {
-        case ' ':  return SDL_SCANCODE_SPACE;
-        case '-':  return SDL_SCANCODE_MINUS;
-        case '_':  return SDL_SCANCODE_MINUS;
-        case '.':  return SDL_SCANCODE_PERIOD;
-        case ',':  return SDL_SCANCODE_COMMA;
-        case '/':  return SDL_SCANCODE_SLASH;
-        case 92:   return SDL_SCANCODE_BACKSLASH;
-        case 39:   return SDL_SCANCODE_APOSTROPHE;
-        case ';':  return SDL_SCANCODE_SEMICOLON;
-        case '=':  return SDL_SCANCODE_EQUALS;
-        case '[':  return SDL_SCANCODE_LEFTBRACKET;
-        case ']':  return SDL_SCANCODE_RIGHTBRACKET;
-        case 96:   return SDL_SCANCODE_GRAVE;
-        case '+':  return SDL_SCANCODE_KP_PLUS;
-        case 10:   return SDL_SCANCODE_RETURN;
-        default:   return -1;
+    for (i = 0; i < sizeof(dr3_shifted_chars) / sizeof(dr3_shifted_chars[0]); ++i) {
+        if (dr3_shifted_chars[i].chr == c) return dr3_shifted_chars[i].scan;
     }
+
+    for (i = 0; i < sizeof(dr3_plain_chars) / sizeof(dr3_plain_chars[0]); ++i) {
+        if (dr3_plain_chars[i].chr == c) return dr3_plain_chars[i].scan;
+    }
+
+    return -1;
+}
+
+int dr3_char_needs_shift(char c)
+{
+    size_t i;
+
+    for (i = 0; i < sizeof(dr3_shifted_chars) / sizeof(dr3_shifted_chars[0]); ++i) {
+        if (dr3_shifted_chars[i].chr == c) return 1;
+    }
+
+    return 0;
 }
 
 static const struct { int scan; const char *name; } dr3_names[] = {

@@ -251,7 +251,7 @@ Consequences that shape this port:
 | `platform_3ds/dr3_minimap.c` / `.h` | track mask -> classified minimap bitmap, canvas drawing, ASCII log preview; no platform header, fully unit-tested |
 | `platform_3ds/dr3_laptime.c` / `.h` | lap times as text for the bottom screen (`m:ss.cc` from the engine's minute/seconds/hundredths triples and from a raw tick counter, using the engine's own arithmetic); no platform header, unit-tested |
 | `platform_3ds/sdl2_net_stub/` | inert SDL_net so the multiplayer code compiles and links |
-| `tests/test_dr3.c`, `tests/Dr3Tests.vcxproj`, `tests/build_tests.ps1` | host unit tests (438 checks), runnable **without** a 3DS toolchain |
+| `tests/test_dr3.c`, `tests/Dr3Tests.vcxproj`, `tests/build_tests.ps1` | host unit tests (459 checks), runnable **without** a 3DS toolchain |
 | `events.c` | engine patch 1: `while(dr3_poll_event(&e))` under `#if defined(__3DS__)` |
 | `drally_linux_c.c` | engine patch 2 (display): window created as the fixed 400x240 top screen, **no SDL renderer**, `__PRESENTSCREEN__` converts the 8-bit screen with the palette LUT straight into the window surface and calls `SDL_UpdateWindowSurface`; `SDL_SetWindowSize` calls are skipped |
 
@@ -355,9 +355,9 @@ Windows configuration; multiplayer simply cannot connect (it could not on PC eit
 | L | brake / reverse (`Z`) |
 | A | front end: confirm (`RETURN` - exactly one key so dialogues see it)   /   race: horn (`SPACE`) |
 | B | front end: select (`SPACE`)   /   race: **boost** (`LSHIFT`) |
-| Y | race: **shoot** (`LCTRL`) |
-| X | race: **drop mine** (`LALT`) |
-| ZL / ZR (New 3DS) | boost (`LSHIFT`) / shoot (`LCTRL`) |
+| Y | race: **shoot** (`LCTRL`)   /   front end: **quick load** (`F3`, works on every 3DS) |
+| X | race: **drop mine** (`LALT`)   /   front end: **quick save** (`F2`, works on every 3DS) |
+| ZL / ZR (New 3DS) | race: boost (`LSHIFT`) / shoot (`LCTRL`)   /   front end: quick save (`F2`) / quick load (`F3`) |
 | START | pause / back (`ESCAPE`) |
 | **SELECT** | opens the **3DS software keyboard** (type player names, save slots) |
 | **L + R + START** | quit |
@@ -366,9 +366,25 @@ The mapping follows the display mode: VESA101 (640x480) is the front end - where
 selects - and VGA13 (320x240) is a race, where the same buttons become horn, boost, shoot and mine.
 The engine tells the input layer which of the two is active (`dr3_input_set_context`).
 
+**Quick save / quick load** is the front end's own feature (`___2a6a8h.c`, F2/F3 on the PC; the shop and
+the underground call it every frame).  The 3DS has no F2/F3, so the whole feature was unreachable until
+`QUICKSAVE`/`QUICKLOAD` were added to the function table.  They write and read `DR.SG7`, which the load
+menu shows as slot 7.  It stays a front end feature on purpose - a race in progress is not part of a
+save game.
+
+**Typed text** (SELECT) is fed into the engine one character at a time, and each key is held down until
+the engine really has read it (both of its keyboard latches in `keyboard.c` are empty again) instead of
+being released after a fixed delay.  While a character is on its way the pad stays silent: pad keys go
+through the very same `dRally_Keyboard_make()` and used to overwrite the character latch the dialogue
+was waiting for - that is what ate the first and the last letter of a typed name.  Characters that sit
+on a shifted key (`!`, `?`, `_`, `:`, ...) are sent as shift + the key below them (the engine then takes
+them from its `upper[]` table), umlauts are transliterated (`Müller` becomes `MULLER` instead of
+`MLLER`) and a character the engine's character table cannot express at all is skipped *and logged*, so
+the log says why something is missing.
+
 The defaults are dRally's own (`config_c.c`): accelerate `A`, brake `Z`, arrows steer, turbo
 `LSHIFT`, horn `SPACE`, mine `LALT`, machine gun `LCTRL`. Covered by
-`tests/test_dr3.c::test_input_map`.
+`tests/test_dr3.c::test_input_map` and `test_text_and_filter`.
 
 ## Building
 
@@ -445,7 +461,7 @@ so the renderer is not created at all on the 3DS.
 
 | Check | Command | Result |
 |---|---|---|
-| Portable logic | `tests\build_tests.ps1` (MSVC) | **438 checks, 0 failures** - LUT byte order + masks (`SDL_PIXELFORMAT_RGBA8888` as used by the 3DS), centred/scaled blit pixels, full pad â†’ scancode map, quit combo |
+| Portable logic | `tests\build_tests.ps1` (MSVC) | **459 checks, 0 failures** - LUT byte order + masks (`SDL_PIXELFORMAT_RGBA8888` as used by the 3DS), centred/scaled blit pixels, full pad â†’ scancode map, quit combo |
 | Minimap against the real tracks | `logs\minimap_probe.c` (local throwaway host tool, not committed: `old_bpa_read` + `bpk_decode4` + `dr3_minimap_build`) | reads `TR*.BPA` from the original game data, prints the class shares and an ASCII preview - `TR7 1016x716 -> 254x179 (step 4), road 17625 / soft 10171 / other 17670` and `TR1 960x600 -> 320x200 (step 3)`, both previews show a recognisable circuit |
 | Whole engine with `-D__3DS__` | `scripts\gen_3ds_check.ps1` â†’ `tests\dRally3DSCheck.vcxproj` | **334 translation units compile and link** (exit 0) - validates every `#if defined(__3DS__)` path with the real SDL2 headers, catching typos/prototype errors before devkitARM exists |
 | Windows regression | `scripts\build_windows.ps1 -GameDir dRally-3ds -SkipDeps -SkipStage` | still builds (exit 0) |
