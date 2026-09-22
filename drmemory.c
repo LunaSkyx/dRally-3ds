@@ -26,6 +26,26 @@ typedef enum MEM_TYPE {
 #define DR3_HEAP_SLACK_FILL     0xe7
 static const unsigned char dr3_heap_guard[DR3_HEAP_GUARD_BYTES] = { 0xa5, 0x5a, 0xc3, 0x3c };
 static int dr3_heap_guard_reported;
+
+/*
+ * A block that is given back is parked here instead of being freed.  Writing into a block *after* it was
+ * freed is what corrupts malloc's free list, and that shows up as a hang inside malloc, far away from
+ * the code that did it - with the guard bytes unable to see it, because the block is not the engine's
+ * any more.  Parked blocks are filled with a pattern and watched, and the ring keeps the extra memory
+ * bounded: the oldest parked block is freed for real once the ring wraps.
+ */
+#define DR3_HEAP_QUARANTINE     32
+#define DR3_HEAP_QUAR_FILL      0xdd
+#define DR3_HEAP_QUAR_FILL_MAX  0x10000       /* park big blocks, but only wipe their first 64 KB */
+#define DR3_HEAP_QUAR_CHECK     0x100         /* how much of a parked block the check looks at */
+
+typedef struct {
+    __POINTER__ linear;
+    __DWORD__   nbytes;
+} dr3_quar_t;
+
+static dr3_quar_t dr3_quar[DR3_HEAP_QUARANTINE];
+static int        dr3_quar_next;
 #endif
 
 typedef struct AllocBase {
@@ -51,6 +71,25 @@ void ___58b20h(unsigned int err_n, ...);
 
 #if defined(DR3_CHAOS)
 /*
+ * Parks a block the engine gave back (see the quarantine notes above) and reports writes into parked
+ * blocks, which is what a damaged malloc free list comes from.
+ */
+static void dr3_drheap_park(__POINTER__ mem, __DWORD__ nbytes){
+
+    dr3_quar_t * slot = &dr3_quar[dr3_quar_next];
+    __DWORD__    fill = (nbytes < DR3_HEAP_QUAR_FILL_MAX) ? nbytes : DR3_HEAP_QUAR_FILL_MAX;
+
+    if(slot->linear != (__POINTER__)0) free(slot->linear);      /* the oldest one goes for real */
+
+    slot->linear = mem;
+    slot->nbytes = nbytes;
+
+    dr3_quar_next = (dr3_quar_next + 1) % DR3_HEAP_QUARANTINE;
+
+    if(mem != (__POINTER__)0) memset(mem, DR3_HEAP_QUAR_FILL, fill);
+}
+
+/*
  * Walks the registry and checks the guard bytes behind every block (see the notes above); reports the
  * first block whose guard is gone plus the block right in front of it, which is the one that overran.
  */
@@ -61,6 +100,28 @@ void dr3_drheap_guard(const char * where){
     unsigned char * end;
 
     if(dr3_heap_guard_reported) return;
+
+    /* first the blocks the engine already gave back: a write into one of these wrecks malloc */
+    for(m = 0; m < DR3_HEAP_QUARANTINE; m++){
+
+        unsigned char * p    = (unsigned char *)dr3_quar[m].linear;
+        __DWORD__       seen = (dr3_quar[m].nbytes < DR3_HEAP_QUAR_CHECK) ? dr3_quar[m].nbytes : DR3_HEAP_QUAR_CHECK;
+
+        if(p == (unsigned char *)0) continue;
+
+        for(n = 0; n < seen; n++){
+
+            if(p[n] != DR3_HEAP_QUAR_FILL){
+
+                dr3_log("[dr3] chaos: FREED block written to (%s): %u bytes at %p, offset %u",
+                        where, (unsigned)dr3_quar[m].nbytes, p, (unsigned)n);
+
+                dr3_heap_guard_reported = 1;
+                dr3_log_flush();        /* the heap may go bad next - get this out first */
+                return;
+            }
+        }
+    }
 
     if((ptr = (AllocEntry *)___24ccb0h.linear) == (AllocEntry *)0) return;
 
@@ -156,6 +217,10 @@ void dRMemory_free(__POINTER__ mem){
     __DWORD__           n;
     AllocEntry *    ptr;
 
+#if defined(DR3_CHAOS)
+    dr3_drheap_guard("free");
+#endif
+
     ptr = (AllocEntry *)___24ccb0h.linear;
 
     n = 0;
@@ -168,7 +233,11 @@ void dRMemory_free(__POINTER__ mem){
         ___58b20h(0xe);
         break;
     case DOS4G_MEMORY:
+#if defined(DR3_CHAOS)
+        dr3_drheap_park(ptr[n].linear, ptr[n].nbytes);
+#else
         free(ptr[n].linear);
+#endif
         break;
     default:
         break;
