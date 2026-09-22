@@ -21,6 +21,9 @@ typedef enum MEM_TYPE {
  * in front of it, which is the one the write came out of.
  */
 #define DR3_HEAP_GUARD_BYTES    4
+/* behind the guard: an overrun stops in here instead of wrecking malloc's chunk header */
+#define DR3_HEAP_SLACK_BYTES    0x1000
+#define DR3_HEAP_SLACK_FILL     0xe7
 static const unsigned char dr3_heap_guard[DR3_HEAP_GUARD_BYTES] = { 0xa5, 0x5a, 0xc3, 0x3c };
 static int dr3_heap_guard_reported;
 #endif
@@ -53,9 +56,9 @@ void ___58b20h(unsigned int err_n, ...);
  */
 void dr3_drheap_guard(const char * where){
 
-    AllocEntry *     ptr;
-    __DWORD__       n, m;
-    unsigned char * guard_at;
+    AllocEntry *    ptr;
+    __DWORD__       n, m, over;
+    unsigned char * end;
 
     if(dr3_heap_guard_reported) return;
 
@@ -63,14 +66,27 @@ void dr3_drheap_guard(const char * where){
 
     for(n = 0; (n < (MEM_REGISTRY_SIZE/sizeof(AllocEntry))) && ptr[n].type; n++){
 
+        unsigned char * guard;
+        unsigned char * slack;
+
         if(ptr[n].type != DOS4G_MEMORY) continue;
 
-        guard_at = (unsigned char *)ptr[n].linear + ptr[n].nbytes;
+        guard = (unsigned char *)ptr[n].linear + ptr[n].nbytes;
+        end   = guard + DR3_HEAP_GUARD_BYTES + DR3_HEAP_SLACK_BYTES;
 
-        if(memcmp(guard_at, dr3_heap_guard, DR3_HEAP_GUARD_BYTES) == 0) continue;
+        /* how far past the end the write went: -1 = nothing, 0..3 = into the guard, >=4 = into the
+           slack (which keeps it away from malloc), -2 = the whole slack is used up */
+        over = 0xffffffff;
 
-        dr3_log("[dr3] chaos: heap guard broken (%s): block %u, %u bytes at %p",
-                where, (unsigned)n, (unsigned)ptr[n].nbytes, ptr[n].linear);
+        for(slack = guard + DR3_HEAP_GUARD_BYTES; slack < end; slack++){
+
+            if(*slack != DR3_HEAP_SLACK_FILL){ over = (__DWORD__)(slack - guard); break; }
+        }
+
+        if(over == 0xffffffff) continue;
+
+        dr3_log("[dr3] chaos: heap guard broken (%s): block %u, %u bytes at %p, written %u bytes past the end",
+                where, (unsigned)n, (unsigned)ptr[n].nbytes, ptr[n].linear, (unsigned)over);
 
         for(m = 0; (m < (MEM_REGISTRY_SIZE/sizeof(AllocEntry))) && ptr[m].type; m++){
 
@@ -114,13 +130,14 @@ __POINTER__ dRMemory_alloc(size_t size){
     }
 
 #if defined(DR3_CHAOS)
-    if((alloc = malloc(size + DR3_HEAP_GUARD_BYTES)) != (__POINTER__)0){
+    if((alloc = malloc(size + DR3_HEAP_GUARD_BYTES + DR3_HEAP_SLACK_BYTES)) != (__POINTER__)0){
 
         ptr[n].linear = alloc;
         ptr[n].nbytes = size;
         ptr[n].type = DOS4G_MEMORY;
 
         memcpy((unsigned char *)alloc + size, dr3_heap_guard, DR3_HEAP_GUARD_BYTES);
+        memset((unsigned char *)alloc + size + DR3_HEAP_GUARD_BYTES, DR3_HEAP_SLACK_FILL, DR3_HEAP_SLACK_BYTES);
     }
 #else
     if((alloc = malloc(size)) != (__POINTER__)0){
