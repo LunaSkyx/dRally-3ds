@@ -94,16 +94,11 @@ static void dr3_func_defaults(void)
     for (i = 0; i < DR3_FUNC_COUNT; ++i)
         for (j = 0; j < DR3_FUNC_BUTTONS; ++j) dr3_func_buttons[i][j] = dr3_funcs[i].buttons[j];
 }
-/* ---------------------------------------------------------------- config file --- */
 
-#if defined(__3DS__)
+/* ------------------------------------------------------------- button names --- */
 
-#include "dr3_log.h"
-
-#include <stdio.h>
-
-#define DR3_CONTROLS_FILE "dr3_controls.txt"
-
+/* The pad buttons by name: the config file (dr3_controls.txt) parses them and the on screen hint
+   prints them, so the table lives here - outside the 3DS-only part - and is unit-tested. */
 static const struct { const char *name; uint32_t mask; } dr3_pad_names[] = {
     { "A",     DR3_PAD_A     },
     { "B",     DR3_PAD_B     },
@@ -124,6 +119,82 @@ static const struct { const char *name; uint32_t mask; } dr3_pad_names[] = {
     { "STICK_DOWN",  DR3_STICK_DOWN  },
     { "NONE",        0               }
 };
+
+/* the name of one button, NULL for "nothing" (an empty slot, or the NONE entry) */
+static const char *dr3_pad_name(uint32_t mask)
+{
+    size_t i;
+
+    if (mask == 0) return (const char *)0;
+
+    for (i = 0; i < sizeof(dr3_pad_names) / sizeof(dr3_pad_names[0]); ++i) {
+        if (dr3_pad_names[i].mask == mask) return dr3_pad_names[i].name;
+    }
+
+    return (const char *)0;
+}
+
+/* case-insensitive equality - the host tests link no SDL, so the shared code does not use SDL_strcasecmp */
+static int dr3_name_eq(const char *a, const char *b)
+{
+    while (*a && *b) {
+        unsigned char ca = (unsigned char)*a++;
+        unsigned char cb = (unsigned char)*b++;
+
+        if ((ca >= 'a') && (ca <= 'z')) ca = (unsigned char)(ca - 'a' + 'A');
+        if ((cb >= 'a') && (cb <= 'z')) cb = (unsigned char)(cb - 'a' + 'A');
+        if (ca != cb) return 0;
+    }
+
+    return (*a == 0) && (*b == 0);
+}
+
+int dr3_input_binding_name(char *out, int outlen, const char *func)
+{
+    int i, j, n = 0, used = 0;
+
+    if (!out || (outlen <= 0)) return 0;
+    out[0] = 0;
+
+    for (i = 0; i < DR3_FUNC_COUNT; ++i) {
+        if (dr3_name_eq(func, dr3_funcs[i].name)) break;
+    }
+    if (i == DR3_FUNC_COUNT) return 0;
+
+    for (j = 0; j < DR3_FUNC_BUTTONS; ++j) {
+        /* the file may have rebound the function; before that - and in the host tests, which never
+           read a file - the built-in buttons are the ones in force */
+        const uint32_t mask = dr3_func_ready ? dr3_func_buttons[i][j] : dr3_funcs[i].buttons[j];
+        const char *   name = dr3_pad_name(mask);
+        int            len;
+
+        if (!name) continue;
+
+        len = (int)strlen(name);
+        if ((used + (n ? 2 : 0) + len) >= outlen) break;      /* would not fit in one row */
+
+        if (n) {
+            out[used++] = ',';
+            out[used++] = ' ';
+        }
+
+        memcpy(out + used, name, (size_t)len);
+        used += len;
+        out[used] = 0;
+        ++n;
+    }
+
+    return n;
+}
+/* ---------------------------------------------------------------- config file --- */
+
+#if defined(__3DS__)
+
+#include "dr3_log.h"
+
+#include <stdio.h>
+
+#define DR3_CONTROLS_FILE "dr3_controls.txt"
 
 static char *dr3_trim(char *s)
 {

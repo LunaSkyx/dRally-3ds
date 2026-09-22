@@ -254,6 +254,32 @@ static void test_input_map(void)
 
     CHECK(strcmp(dr3_scancode_name(SDL_SCANCODE_A), "A (gas)") == 0,
           "scancode name lookup failed");
+
+    /* the on screen hint asks for the bound buttons by function name (see dr3_bottom.c) */
+    {
+        char b[32];
+
+        CHECK(dr3_input_binding_name(b, sizeof(b), "QUICKSAVE") == 2, "quick save must have 2 buttons");
+        CHECK(strcmp(b, "ZL, X") == 0, "quick save buttons: got '%s'", b);
+
+        CHECK(dr3_input_binding_name(b, sizeof(b), "QUICKLOAD") == 2, "quick load must have 2 buttons");
+        CHECK(strcmp(b, "ZR, Y") == 0, "quick load buttons: got '%s'", b);
+
+        CHECK(dr3_input_binding_name(b, sizeof(b), "CONFIRM") == 1, "confirm must have one button");
+        CHECK(strcmp(b, "A") == 0, "confirm button: got '%s'", b);
+
+        CHECK(dr3_input_binding_name(b, sizeof(b), "GAS") == 3, "gas must have 3 buttons");
+        CHECK(strcmp(b, "R, UP, STICK_UP") == 0, "gas buttons: got '%s'", b);
+
+        CHECK(dr3_input_binding_name(b, sizeof(b), "NOSUCHFUNCTION") == 0,
+              "an unknown function must return 0");
+        CHECK(b[0] == 0, "an unknown function must leave the buffer empty");
+
+        /* a short buffer stops instead of writing past its end */
+        memset(b, 0x7f, sizeof(b));
+        CHECK(dr3_input_binding_name(b, 6, "QUICKSAVE") == 2, "the short buffer must still be filled");
+        CHECK(b[5] == 0, "the binding list must stay inside the buffer");
+    }
 }
 
 static void test_lut_masks(void)

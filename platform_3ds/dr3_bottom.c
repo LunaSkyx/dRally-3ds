@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT (see LICENSE and THIRD_PARTY.md)
  */
 #include "dr3_bottom.h"
+#include "dr3_input_map.h"
 #include "dr3_laptime.h"
 #include "dr3_log.h"
 #include "dr3_minimap.h"
@@ -193,6 +194,10 @@ void dr3_bottom_flush(void)
    2 header rows + 14 control rows + a blank + the player row = 18. */
 #define DR3_BOTTOM_PRINT_ROWS 18
 
+/* the console is 40 columns wide; staying below that keeps a row from wrapping (which would scroll
+   the whole screen).  Used by the controls/standings block and by the two map page text rows. */
+#define DR3_BOTTOM_TEXT_W 38
+
 static int dr3_bottom_hidden;
 
 int dr3_bottom_is_hidden(void) { return dr3_bottom_hidden; }
@@ -323,7 +328,6 @@ int dr3_bottom_build_lines(char out[DR3_BOTTOM_LINES][DR3_BOTTOM_LINE_LEN])
  * them.  Those rows are the only text here: the console only repaints the cells it prints, so the map
  * pixels survive until the page is left (then the screen is cleared).
  */
-#define DR3_BOTTOM_TEXT_W  38      /* < 40: a full row would wrap and could scroll the screen */
 #define DR3_BOTTOM_MAP_Y   16      /* = two text rows: the header plus the lap times below it */
 #define DR3_BOTTOM_MAP_H   216     /* 240 - 3*8: the band between the times row and the footer */
 #define DR3_BOTTOM_MAP_W   320
@@ -476,7 +480,7 @@ static void dr3_bottom_draw_map_page(void)
             int         name_w, title_w = (int)strlen(title);
 
             if (dr3_laptime_is_set(LAP_PREVIOUS_MIN, LAP_PREVIOUS_SEC, LAP_PREVIOUS_100)) {
-                char t[16];
+                char t[12];                 /* "12:59.99" is the longest a lap time gets */
 
                 dr3_laptime_format(t, sizeof(t), LAP_PREVIOUS_MIN, LAP_PREVIOUS_SEC, LAP_PREVIOUS_100);
                 snprintf(clock, sizeof(clock), "LAP %s", t);
@@ -622,6 +626,25 @@ void dr3_bottom_track_unloaded(void)
 }
 #endif /* !DR3_PROFILE */
 
+/*
+ * The two bottom rows of the front end page: what the quick save / quick load buttons are.  The
+ * buttons are asked for by name (dr3_input_map.c), so a rebinding in dr3_controls.txt moves the hint
+ * with it.  They only exist in the front end - a race cannot be quicksaved, and during a race this
+ * page is not on the screen anyway.
+ */
+#define DR3_BOTTOM_HINT_ROW 29          /* rows 29 and 30, the last two of the 30 row screen */
+
+static void dr3_bottom_quick_hint(char *save_line, char *load_line)
+{
+    char save[24], load[24];
+
+    dr3_input_binding_name(save, sizeof(save), "QUICKSAVE");
+    dr3_input_binding_name(load, sizeof(load), "QUICKLOAD");
+
+    snprintf(save_line, DR3_BOTTOM_LINE_LEN, "%s = quick save", save[0] ? save : "(not bound)");
+    snprintf(load_line, DR3_BOTTOM_LINE_LEN, "%s = quick load", load[0] ? load : "(not bound)");
+}
+
 void dr3_bottom_update(void)
 {
     static unsigned int last_ms;
@@ -684,15 +707,34 @@ void dr3_bottom_update(void)
     last_hidden = 0;
 
     /* libctru console redraws the screen for every printf(), so printing the block line by line (and
-       clearing the screen first) was visible as flicker.  Build the whole block and write it once. */
+       clearing the screen first) was visible as flicker.  Build the whole block and write it once -
+       the quick save / quick load hint at the bottom of the screen goes into the same write. */
     for (i = 0; i < DR3_BOTTOM_PRINT_ROWS; ++i) {
         const char *text = (i < rows) ? line[i] : "                                        ";
 
         len += snprintf(block + len, sizeof(block) - (size_t)len, "%.*s\n", DR3_BOTTOM_LINE_LEN, text);
     }
 
-    /* with double buffering every repaint has to be complete - clear, then the whole block - so the
-       back buffer we swap in never shows leftovers of the previous page */
-    printf("\x1b[2J\x1b[H%s", block);
+    {
+        char hint[2][DR3_BOTTOM_LINE_LEN];
+        char tail[2 * (DR3_BOTTOM_LINE_LEN + 16)];
+        int  j, tail_len = 0;
+
+        dr3_bottom_quick_hint(hint[0], hint[1]);
+
+        for (j = 0; j < 2; ++j) {
+            const int hint_len = (int)strlen(hint[j]);
+            const int pad      = (hint_len < DR3_BOTTOM_TEXT_W) ? ((DR3_BOTTOM_TEXT_W - hint_len) / 2) : 0;
+
+            /* the last two rows of the screen, centred */
+            tail_len += snprintf(tail + tail_len, sizeof(tail) - (size_t)tail_len, "\x1b[%d;1H%*s%.*s",
+                                 DR3_BOTTOM_HINT_ROW + j, pad, "", DR3_BOTTOM_TEXT_W, hint[j]);
+        }
+
+        /* with double buffering every repaint has to be complete - clear, then the whole page - so the
+           back buffer we swap in never shows leftovers of the previous page */
+        printf("\x1b[2J\x1b[H%s%s", block, tail);
+    }
+
     dr3_bottom_flush();
 }

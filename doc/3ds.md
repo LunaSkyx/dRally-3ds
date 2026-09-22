@@ -73,10 +73,15 @@ loaded the list shows `(no game loaded)` - names are sanity checked so uninitial
 show up as drivers.  It refreshes at most once per second and only when the text changed.
 
 * the pad mapping is described with *functions* (GAS, BRAKE, BOOST, SHOOT, MINE, HORN, LEFT, RIGHT,
-  PAUSE, CONFIRM, MENU_UP/DOWN/NEXT) and can be reassigned freely in `dr3_controls.txt` in the game
-  folder: `FUNCTION = BUTTON[, BUTTON]`, with the analog stick directions usable as buttons
-  (`GAS = R, UP, STICK_UP, B`).  A function belongs to the front end, a race or both, so the same
-  button can confirm a menu entry and honk the horn (`platform_3ds/dr3_input_map.c`)
+  PAUSE, CONFIRM, MENU_UP/DOWN/NEXT, QUICKSAVE, QUICKLOAD) and can be reassigned freely in
+  `dr3_controls.txt` in the game folder: `FUNCTION = BUTTON[, BUTTON]`, with the analog stick
+  directions usable as buttons (`GAS = R, UP, STICK_UP, B`).  A function belongs to the front end, a
+  race or both, so the same button can confirm a menu entry and honk the horn
+  (`platform_3ds/dr3_input_map.c`)
+* the **last two rows of that page** name the quick save / quick load buttons (`ZL, X = quick save` /
+  `ZR, Y = quick load`).  The buttons are asked for by name through `dr3_input_binding_name()`, so a
+  rebinding in `dr3_controls.txt` shows up there as well.  Those rows exist in the front end only -
+  during a race this page is not on the screen anyway (see below)
 * tapping the bottom screen switches the controls/standings (or the profiler statistics) off and on
   again; the state is kept in `dr3_bottom_hidden`.  While a race is running the map is the only page
   there, so a tap just switches between **minimap and dark** - the standings page is not reachable
@@ -251,7 +256,7 @@ Consequences that shape this port:
 | `platform_3ds/dr3_minimap.c` / `.h` | track mask -> classified minimap bitmap, canvas drawing, ASCII log preview; no platform header, fully unit-tested |
 | `platform_3ds/dr3_laptime.c` / `.h` | lap times as text for the bottom screen (`m:ss.cc` from the engine's minute/seconds/hundredths triples and from a raw tick counter, using the engine's own arithmetic); no platform header, unit-tested |
 | `platform_3ds/sdl2_net_stub/` | inert SDL_net so the multiplayer code compiles and links |
-| `tests/test_dr3.c`, `tests/Dr3Tests.vcxproj`, `tests/build_tests.ps1` | host unit tests (459 checks), runnable **without** a 3DS toolchain |
+| `tests/test_dr3.c`, `tests/Dr3Tests.vcxproj`, `tests/build_tests.ps1` | host unit tests (471 checks), runnable **without** a 3DS toolchain |
 | `events.c` | engine patch 1: `while(dr3_poll_event(&e))` under `#if defined(__3DS__)` |
 | `drally_linux_c.c` | engine patch 2 (display): window created as the fixed 400x240 top screen, **no SDL renderer**, `__PRESENTSCREEN__` converts the 8-bit screen with the palette LUT straight into the window surface and calls `SDL_UpdateWindowSurface`; `SDL_SetWindowSize` calls are skipped |
 
@@ -461,7 +466,7 @@ so the renderer is not created at all on the 3DS.
 
 | Check | Command | Result |
 |---|---|---|
-| Portable logic | `tests\build_tests.ps1` (MSVC) | **459 checks, 0 failures** - LUT byte order + masks (`SDL_PIXELFORMAT_RGBA8888` as used by the 3DS), centred/scaled blit pixels, full pad â†’ scancode map, quit combo |
+| Portable logic | `tests\build_tests.ps1` (MSVC) | **471 checks, 0 failures** - LUT byte order + masks (`SDL_PIXELFORMAT_RGBA8888` as used by the 3DS), centred/scaled blit pixels, full pad â†’ scancode map, quit combo |
 | Minimap against the real tracks | `logs\minimap_probe.c` (local throwaway host tool, not committed: `old_bpa_read` + `bpk_decode4` + `dr3_minimap_build`) | reads `TR*.BPA` from the original game data, prints the class shares and an ASCII preview - `TR7 1016x716 -> 254x179 (step 4), road 17625 / soft 10171 / other 17670` and `TR1 960x600 -> 320x200 (step 3)`, both previews show a recognisable circuit |
 | Whole engine with `-D__3DS__` | `scripts\gen_3ds_check.ps1` â†’ `tests\dRally3DSCheck.vcxproj` | **334 translation units compile and link** (exit 0) - validates every `#if defined(__3DS__)` path with the real SDL2 headers, catching typos/prototype errors before devkitARM exists |
 | Windows regression | `scripts\build_windows.ps1 -GameDir dRally-3ds -SkipDeps -SkipStage` | still builds (exit 0) |

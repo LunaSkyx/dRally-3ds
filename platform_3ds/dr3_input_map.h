@@ -52,6 +52,13 @@ int dr3_input_scancodes(const dr3_pad_state_t *st, uint8_t *scancode_set);
 /* True when the player asked to quit (L + R + START). */
 int dr3_input_quit_combo(const dr3_pad_state_t *st);
 
+/*
+ * Fills "out" with the buttons bound to a function ("ZL, X") and returns how many were written; 0
+ * when the function is unknown.  The on-screen hint uses it, so a rebinding in dr3_controls.txt shows
+ * up there as well.  Before the file is read (and outside the 3DS build) the built-in buttons answer.
+ */
+int dr3_input_binding_name(char *out, int outlen, const char *func);
+
 /* Text typed on the 3DS software keyboard -> SDL scancode (returns -1 if unmappable). */
 int dr3_char_to_scancode(char c);
 
