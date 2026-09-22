@@ -398,24 +398,25 @@ static void test_minimap_canvas(void)
 
     memset(buf, 0x11, sizeof(buf));
     c.px       = buf;
+    c.fmt      = DR3_CANVAS_RGBA8888;
     c.stride_x = 1;                 /* a plain linear layout */
     c.stride_y = 4;
     c.w        = 4;
     c.h        = 4;
 
-    dr3_canvas_px(&c, 1, 2, 0xABCDEF01u);
-    CHECK(buf[2 * 4 + 1] == 0xABCDEF01u, "pixel not written: 0x%08X", buf[2 * 4 + 1]);
+    dr3_canvas_px(&c, 1, 2, 0x112233u);            /* colors are plain 0xRRGGBB */
+    CHECK(buf[2 * 4 + 1] == minimap_color(0x112233u), "pixel not written: 0x%08X", buf[2 * 4 + 1]);
 
-    dr3_canvas_px(&c, -1, 0, 0xDEADBEEFu);
-    dr3_canvas_px(&c, 0, -1, 0xDEADBEEFu);
-    dr3_canvas_px(&c, 4, 0, 0xDEADBEEFu);
-    dr3_canvas_px(&c, 0, 4, 0xDEADBEEFu);
+    dr3_canvas_px(&c, -1, 0, 0x445566u);
+    dr3_canvas_px(&c, 0, -1, 0x445566u);
+    dr3_canvas_px(&c, 4, 0, 0x445566u);
+    dr3_canvas_px(&c, 0, 4, 0x445566u);
 
     {
         int i, bad = 0;
 
         for (i = 0; i < 16; ++i) {
-            if ((buf[i] != 0x11111111u) && (buf[i] != 0xABCDEF01u)) ++bad;
+            if ((buf[i] != 0x11111111u) && (buf[i] != minimap_color(0x112233u))) ++bad;
         }
         CHECK(bad == 0, "%d out-of-bounds writes leaked into the buffer", bad);
     }
@@ -429,31 +430,34 @@ static void test_minimap_canvas(void)
 
         memset(rot, 0x22, sizeof(rot));
         c.px       = rot + 2;                       /* last pixel of a buffer row */
+        c.fmt      = DR3_CANVAS_RGBA8888;
         c.stride_x = 4;
         c.stride_y = -1;
         c.w        = 3;
         c.h        = 3;
 
-        dr3_canvas_px(&c, 0, 0, 0x00000001u);       /* -> rot[2]        */
-        dr3_canvas_px(&c, 0, 2, 0x00000002u);       /* -> rot[0]        */
-        dr3_canvas_px(&c, 2, 1, 0x00000003u);       /* -> rot[2*4 + 1]  */
+        dr3_canvas_px(&c, 0, 0, 0x000001u);         /* -> rot[2]        */
+        dr3_canvas_px(&c, 0, 2, 0x000002u);         /* -> rot[0]        */
+        dr3_canvas_px(&c, 2, 1, 0x000003u);         /* -> rot[2*4 + 1]  */
 
-        CHECK(rot[2] == 0x00000001u, "rotated (0,0) -> rot[2] is 0x%08X", rot[2]);
-        CHECK(rot[0] == 0x00000002u, "rotated (0,2) -> rot[0] is 0x%08X", rot[0]);
-        CHECK(rot[2 * 4 + 1] == 0x00000003u, "rotated (2,1) is 0x%08X", rot[2 * 4 + 1]);
+        CHECK(rot[2] == minimap_color(0x000001u), "rotated (0,0) -> rot[2] is 0x%08X", rot[2]);
+        CHECK(rot[0] == minimap_color(0x000002u), "rotated (0,2) -> rot[0] is 0x%08X", rot[0]);
+        CHECK(rot[2 * 4 + 1] == minimap_color(0x000003u), "rotated (2,1) is 0x%08X", rot[2 * 4 + 1]);
     }
 
-    c.px = buf; c.stride_x = 1; c.stride_y = 4; c.w = 4; c.h = 4;
+    c.px = buf; c.fmt = DR3_CANVAS_RGBA8888; c.stride_x = 1; c.stride_y = 4; c.w = 4; c.h = 4;
 
     memset(buf, 0, sizeof(buf));
-    dr3_canvas_fill(&c, 0, 0, 4, 2, 0x000000AAu);
-    CHECK((buf[0] == 0xAAu) && (buf[3] == 0xAAu) && (buf[4] == 0xAAu) && (buf[7] == 0xAAu),
+    dr3_canvas_fill(&c, 0, 0, 4, 2, 0x0000AAu);
+    CHECK((buf[0] == minimap_color(0x0000AAu)) && (buf[3] == minimap_color(0x0000AAu)) &&
+          (buf[4] == minimap_color(0x0000AAu)) && (buf[7] == minimap_color(0x0000AAu)),
           "fill did not cover two rows");
     CHECK(buf[8] == 0u, "fill wrote past its height");
 
     memset(buf, 0, sizeof(buf));
-    dr3_canvas_rect(&c, 0, 0, 4, 4, 0x000000BBu);
-    CHECK((buf[0] == 0xBBu) && (buf[3] == 0xBBu) && (buf[15] == 0xBBu), "rect corners missing");
+    dr3_canvas_rect(&c, 0, 0, 4, 4, 0x0000BBu);
+    CHECK((buf[0] == minimap_color(0x0000BBu)) && (buf[3] == minimap_color(0x0000BBu)) &&
+          (buf[15] == minimap_color(0x0000BBu)), "rect corners missing");
     CHECK(buf[5] == 0u, "rect painted its inside");
 }
 
@@ -474,7 +478,7 @@ static void test_minimap_draw(void)
     CHECK(dr3_minimap_build(mask, 8, 8) == 1, "build failed");
 
     memset(buf, 0, sizeof(buf));
-    c.px = buf; c.stride_x = 1; c.stride_y = 16; c.w = 16; c.h = 16;
+    c.px = buf; c.fmt = DR3_CANVAS_RGBA8888; c.stride_x = 1; c.stride_y = 16; c.w = 16; c.h = 16;
 
     cars[0].x = 2.5f; cars[0].y = 6.5f; cars[0].is_player = 0; cars[0].valid = 1;
     cars[1].x = 4.5f; cars[1].y = 4.5f; cars[1].is_player = 1; cars[1].valid = 1;
@@ -543,7 +547,7 @@ static void test_minimap_letterbox(void)
           dr3_minimap_w(), dr3_minimap_h());
 
     memset(buf, 0, sizeof(buf));
-    c.px = buf; c.stride_x = 1; c.stride_y = 16; c.w = 16; c.h = 16;
+    c.px = buf; c.fmt = DR3_CANVAS_RGBA8888; c.stride_x = 1; c.stride_y = 16; c.w = 16; c.h = 16;
     CHECK(dr3_minimap_draw(&c, 0, 0, 16, 16, NULL, 0) == 1, "draw failed");
 
     /* an 8x4 map in a 16x16 rectangle: 16x8, centred -> rows 4..11, map pixel (x,y) -> (2x, 4+2y) */
@@ -553,6 +557,53 @@ static void test_minimap_letterbox(void)
     CHECK(buf[15 * 16 + 5] == minimap_color(DR3_MAP_COL_BACKGROUND), "no letterbox background below");
     CHECK(buf[8 * 16 + 5] == minimap_color(DR3_MAP_COL_ROAD), "road not drawn in the letterbox: 0x%08X",
           buf[8 * 16 + 5]);
+}
+
+static void test_minimap_pixel_formats(void)
+{
+    static uint16_t rgb565[4 * 4];
+    static uint8_t  bgr888[4 * 4 * 3];
+    static uint8_t  mask[8 * 8];
+    dr3_canvas_t    c;
+    int             x, y;
+
+    printf("- minimap: RGB565 and 24-bit targets (the 3DS bottom screen is 16-bit)\n");
+
+    for (y = 0; y < 8; ++y)
+        for (x = 0; x < 8; ++x) mask[y * 8 + x] = (y == 4) ? 0x0F : 0x00;
+
+    CHECK(dr3_minimap_build(mask, 8, 8) == 1, "build failed");
+
+    /* RGB565: 2 bytes per pixel - the format the 3DS bottom screen really uses (consoleInit switches
+       it there).  A 4-byte store would overwrite two pixels at once, which is the bug this test
+       exists for. */
+    memset(rgb565, 0xAA, sizeof(rgb565));
+    c.px = rgb565; c.fmt = DR3_CANVAS_RGB565; c.stride_x = 1; c.stride_y = 4; c.w = 4; c.h = 4;
+
+    dr3_canvas_px(&c, 1, 2, 0xD2D2DCu);                 /* the road colour */
+    CHECK(rgb565[2 * 4 + 1] == (uint16_t)(((0xD2u >> 3) << 11) | ((0xD2u >> 2) << 5) | (0xDCu >> 3)),
+          "RGB565 packing: 0x%04X (want 0x%04X)", rgb565[2 * 4 + 1],
+          (unsigned)(((0xD2u >> 3) << 11) | ((0xD2u >> 2) << 5) | (0xDCu >> 3)));
+    CHECK(rgb565[2 * 4 + 2] == 0xAAAAu, "RGB565 write touched the next pixel: 0x%04X",
+          rgb565[2 * 4 + 2]);
+
+    /* a whole draw into a 16-bit target: map, frame and no damage outside */
+    memset(rgb565, 0, sizeof(rgb565));
+    CHECK(dr3_minimap_draw(&c, 0, 0, 4, 4, NULL, 0) == 1, "draw into an RGB565 target failed");
+    CHECK(rgb565[2 * 4 + 1] == (uint16_t)(((0xD2u >> 3) << 11) | ((0xD2u >> 2) << 5) | (0xDCu >> 3)),
+          "road missing in the RGB565 target: 0x%04X", rgb565[2 * 4 + 1]);
+    CHECK(rgb565[0] == (uint16_t)(((0x60u >> 3) << 11) | ((0x80u >> 2) << 5) | (0xA0u >> 3)),
+          "frame missing in the RGB565 target: 0x%04X", rgb565[0]);
+
+    /* 24-bit BGR888 (GSP_BGR8_OES): 3 bytes per pixel, memory order B, G, R */
+    memset(bgr888, 0x11, sizeof(bgr888));
+    c.px = bgr888; c.fmt = DR3_CANVAS_BGR888; c.stride_x = 1; c.stride_y = 4; c.w = 4; c.h = 4;
+
+    dr3_canvas_px(&c, 1, 1, 0x112233u);
+    CHECK((bgr888[(1 * 4 + 1) * 3 + 0] == 0x33u) && (bgr888[(1 * 4 + 1) * 3 + 1] == 0x22u) &&
+          (bgr888[(1 * 4 + 1) * 3 + 2] == 0x11u), "BGR888 byte order: %02X %02X %02X",
+          bgr888[(1 * 4 + 1) * 3 + 0], bgr888[(1 * 4 + 1) * 3 + 1], bgr888[(1 * 4 + 1) * 3 + 2]);
+    CHECK(bgr888[(1 * 4 + 2) * 3 + 0] == 0x11u, "BGR888 write touched the next pixel");
 }
 
 int main(void)
@@ -569,6 +620,7 @@ int main(void)
     test_minimap_canvas();
     test_minimap_draw();
     test_minimap_letterbox();
+    test_minimap_pixel_formats();
 
     printf("\n%d checks, %d failures\n", g_checks, g_failed);
     return g_failed ? 1 : 0;

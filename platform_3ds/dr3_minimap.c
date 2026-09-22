@@ -16,15 +16,10 @@ static int     dr3_map_ready;
 static int     dr3_map_counts[4];
 
 /*
- * The framebuffer of both 3DS screens is SDL_PIXELFORMAT_RGBA8888 (SDL's n3ds video driver calls
- * gfxInit(GSP_RGBA8_OES, GSP_RGBA8_OES, false)), i.e. R in the lowest byte, then G, B and A - the
- * same order dr3_blit.c calls DR3_LUT_RGB.  The colors in the header are plain 0xRRGGBB, so they
- * are converted here.
+ * The colors in the header are plain 0xRRGGBB; every canvas converts them for its own pixel format
+ * (see DR3_CANVAS_* in dr3_minimap.h) - the top screen is 4 bytes per pixel, the bottom screen of
+ * the 3DS is 2 (RGB565), because libctru's console switches it there.
  */
-static uint32_t dr3_map_px(uint32_t rgb)
-{
-    return ((rgb >> 16) & 0xffu) | ((rgb >> 8) & 0xff00u) | ((rgb & 0xffu) << 16) | 0xff000000u;
-}
 
 /* ------------------------------------------------------------------ data stage --- */
 
@@ -145,32 +140,56 @@ void dr3_minimap_project(float x, float y, int *mx, int *my)
 
 /* ------------------------------------------------------------------ draw stage --- */
 
-void dr3_canvas_px(const dr3_canvas_t *c, int x, int y, uint32_t color)
+void dr3_canvas_px(const dr3_canvas_t *c, int x, int y, uint32_t rgb)
 {
+    ptrdiff_t off;
+
     if (!c || !c->px) return;
     if ((x < 0) || (y < 0) || (x >= c->w) || (y >= c->h)) return;
 
     /* signed arithmetic: the 3DS framebuffer has a negative y stride */
-    c->px[(ptrdiff_t)y * (ptrdiff_t)c->stride_y + (ptrdiff_t)x * (ptrdiff_t)c->stride_x] = color;
+    off = (ptrdiff_t)y * (ptrdiff_t)c->stride_y + (ptrdiff_t)x * (ptrdiff_t)c->stride_x;
+
+    switch (c->fmt) {
+    case DR3_CANVAS_RGB565:
+        ((uint16_t *)c->px)[off] = (uint16_t)(((((rgb >> 16) & 0xffu) >> 3) << 11) |
+                                              ((((rgb >> 8) & 0xffu) >> 2) << 5) |
+                                               (((rgb & 0xffu) >> 3)));
+        break;
+
+    case DR3_CANVAS_BGR888: {
+        uint8_t *p = (uint8_t *)c->px + (off * 3);
+
+        p[0] = (uint8_t)(rgb & 0xffu);
+        p[1] = (uint8_t)((rgb >> 8) & 0xffu);
+        p[2] = (uint8_t)((rgb >> 16) & 0xffu);
+        break;
+    }
+
+    default:   /* DR3_CANVAS_RGBA8888: R in the lowest byte, then G, B and A */
+        ((uint32_t *)c->px)[off] = ((rgb >> 16) & 0xffu) | ((rgb >> 8) & 0xff00u) |
+                                   ((rgb & 0xffu) << 16) | 0xff000000u;
+        break;
+    }
 }
 
-void dr3_canvas_fill(const dr3_canvas_t *c, int x0, int y0, int w, int h, uint32_t color)
+void dr3_canvas_fill(const dr3_canvas_t *c, int x0, int y0, int w, int h, uint32_t rgb)
 {
     int x, y;
 
     for (y = y0; y < (y0 + h); ++y) {
-        for (x = x0; x < (x0 + w); ++x) dr3_canvas_px(c, x, y, color);
+        for (x = x0; x < (x0 + w); ++x) dr3_canvas_px(c, x, y, rgb);
     }
 }
 
-void dr3_canvas_rect(const dr3_canvas_t *c, int x0, int y0, int w, int h, uint32_t color)
+void dr3_canvas_rect(const dr3_canvas_t *c, int x0, int y0, int w, int h, uint32_t rgb)
 {
     if (!c || (w <= 0) || (h <= 0)) return;
 
-    dr3_canvas_fill(c, x0, y0, w, 1, color);                 /* top    */
-    dr3_canvas_fill(c, x0, y0 + h - 1, w, 1, color);         /* bottom */
-    dr3_canvas_fill(c, x0, y0, 1, h, color);                 /* left   */
-    dr3_canvas_fill(c, x0 + w - 1, y0, 1, h, color);         /* right  */
+    dr3_canvas_fill(c, x0, y0, w, 1, rgb);                 /* top    */
+    dr3_canvas_fill(c, x0, y0 + h - 1, w, 1, rgb);         /* bottom */
+    dr3_canvas_fill(c, x0, y0, 1, h, rgb);                 /* left   */
+    dr3_canvas_fill(c, x0 + w - 1, y0, 1, h, rgb);         /* right  */
 }
 
 /* Draws the cars: the player as a yellow marker with a dark outline, everyone else red.  The
@@ -190,13 +209,10 @@ static void dr3_minimap_draw_car(const dr3_canvas_t *c, int x0, int y0, int w, i
     size = car->is_player ? player_size : other_size;
 
     if (car->is_player) {
-        dr3_canvas_fill(c, cx - (size / 2) - 1, cy - (size / 2) - 1, size + 2, size + 2,
-                        dr3_map_px(0x000000));
-        dr3_canvas_fill(c, cx - (size / 2), cy - (size / 2), size, size,
-                        dr3_map_px(DR3_MAP_COL_PLAYER));
+        dr3_canvas_fill(c, cx - (size / 2) - 1, cy - (size / 2) - 1, size + 2, size + 2, 0x000000u);
+        dr3_canvas_fill(c, cx - (size / 2), cy - (size / 2), size, size, DR3_MAP_COL_PLAYER);
     } else {
-        dr3_canvas_fill(c, cx - (size / 2), cy - (size / 2), size, size,
-                        dr3_map_px(DR3_MAP_COL_CAR));
+        dr3_canvas_fill(c, cx - (size / 2), cy - (size / 2), size, size, DR3_MAP_COL_CAR);
     }
 }
 
@@ -217,12 +233,12 @@ static void dr3_minimap_draw_cars(const dr3_canvas_t *c, int x0, int y0, int w, 
 int dr3_minimap_draw(const dr3_canvas_t *c, int x0, int y0, int w, int h,
                      const dr3_map_car_t *cars, int n_cars)
 {
-    const uint32_t background = dr3_map_px(DR3_MAP_COL_BACKGROUND);
+    const uint32_t background = DR3_MAP_COL_BACKGROUND;
     const uint32_t color[4]   = {
-        dr3_map_px(DR3_MAP_COL_BACKGROUND),   /* DR3_MAP_NONE - never drawn */
-        dr3_map_px(DR3_MAP_COL_OFFROAD),
-        dr3_map_px(DR3_MAP_COL_ROAD),
-        dr3_map_px(DR3_MAP_COL_OTHER)
+        DR3_MAP_COL_BACKGROUND,   /* DR3_MAP_NONE - never drawn */
+        DR3_MAP_COL_OFFROAD,
+        DR3_MAP_COL_ROAD,
+        DR3_MAP_COL_OTHER
     };
     int x, y, dx = x0, dy = y0, dw = w, dh = h;
 
@@ -258,13 +274,13 @@ int dr3_minimap_draw(const dr3_canvas_t *c, int x0, int y0, int w, int h,
             }
         }
 
-        dr3_canvas_rect(c, dx, dy, dw, dh, dr3_map_px(DR3_MAP_COL_FRAME));
+        dr3_canvas_rect(c, dx, dy, dw, dh, DR3_MAP_COL_FRAME);
 
         if (cars && (n_cars > 0)) dr3_minimap_draw_cars(c, dx, dy, dw, dh, cars, n_cars);
     }
     else {
         /* no track loaded: just the empty frame, so the page still looks intentional */
-        dr3_canvas_rect(c, x0, y0, w, h, dr3_map_px(DR3_MAP_COL_FRAME));
+        dr3_canvas_rect(c, x0, y0, w, h, DR3_MAP_COL_FRAME);
     }
 
     return 1;

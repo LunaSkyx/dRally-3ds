@@ -308,22 +308,68 @@ static int dr3_bottom_read_cars(dr3_map_car_t *out, int max)
     return n;
 }
 
+/* Bytes per pixel of the bottom screen frame buffer plus the canvas format that matches it.
+   libctru's console switches the bottom screen to RGB565, the top screen stays 32-bit (SDL). */
+static int dr3_bottom_pixel_size(GSPGPU_FramebufferFormat fmt, int *canvas_fmt)
+{
+    switch (fmt) {
+    case GSP_RGBA8_OES:
+        *canvas_fmt = DR3_CANVAS_RGBA8888;
+        return 4;
+
+    case GSP_BGR8_OES:
+        *canvas_fmt = DR3_CANVAS_BGR888;
+        return 3;
+
+    default:            /* RGB565 / RGB5A1 / RGBA4 - all of them are 2 bytes per pixel */
+        *canvas_fmt = DR3_CANVAS_RGB565;
+        return 2;
+    }
+}
+
 static void dr3_bottom_draw_map_page(void)
 {
     dr3_canvas_t  canvas;
     dr3_map_car_t cars[4];
     uint16_t      w = 0, h = 0;
     uint32_t *    fb = (uint32_t *)gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, &w, &h);
-    int           n_cars;
+    int           n_cars, bpp = 4;
 
     if (!fb || (w <= 0) || (h <= 0)) return;
+
+    /* The bottom frame buffer is stored rotated exactly like the top screen in dr3_fb.c: screen x
+       runs along the buffer's tall axis and screen y backwards.  Its *pixel format* however differs:
+       SDL initialises both screens as GSP_RGBA8_OES, but consoleInit() switches the bottom screen to
+       GSP_RGB565_OES, because libctru's console has no 32-bit mode.  Writing 4-byte pixels there
+       covers two screen pixels per store and shifts the whole image - so the format decides the
+       pointer arithmetic. */
+    {
+        bpp = dr3_bottom_pixel_size(gfxGetScreenFormat(GFX_BOTTOM), &canvas.fmt);
+
+        canvas.px       = (uint8_t *)fb + (size_t)(w - 1) * (size_t)bpp;
+        canvas.stride_x = (int)w;
+        canvas.stride_y = -1;
+        canvas.w        = (int)h;
+        canvas.h        = (int)w;
+    }
 
     if (dr3_bottom_map_dirty) {
         /* generous on purpose: gcc's -Wformat-truncation otherwise complains about the theoretical
            worst case of four %d arguments (the real strings are far shorter) */
         char header[96];
         char footer[96];
+        PrintConsole * con = consoleGetDefault();
         int  lap = 0, pos = 0;
+
+        /* one geometry line per page: this is what proves whether the framebuffer layout the map
+           assumes (rotated, 240 pixels per row, screen y runs backwards) is really the one in use */
+        dr3_log("[dr3] bottom fb %dx%d fmt %d (%d bytes/px, canvas fmt %d) -> canvas %dx%d "
+                "(x stride %d, y stride %d), band (0,%d) %dx%d, map %dx%d, console %dx%d chars",
+                (int)w, (int)h, (int)gfxGetScreenFormat(GFX_BOTTOM), bpp, canvas.fmt,
+                canvas.w, canvas.h, canvas.stride_x, canvas.stride_y,
+                DR3_BOTTOM_MAP_Y, DR3_BOTTOM_MAP_W, DR3_BOTTOM_MAP_H,
+                dr3_minimap_w(), dr3_minimap_h(),
+                con ? con->consoleWidth : -1, con ? con->consoleHeight : -1);
 
         if ((MY_CAR_IDX >= 0) && (MY_CAR_IDX < 4)) {
             lap = (int)___1e6ed0h[MY_CAR_IDX].Lap;
@@ -339,15 +385,6 @@ static void dr3_bottom_draw_map_page(void)
         printf("\x1b[2J\x1b[1;1H%-38.38s\x1b[30;1H%-38.38s", header, footer);
         dr3_bottom_map_dirty = 0;
     }
-
-    /* The bottom framebuffer is stored rotated and holds RGBA8 pixels, exactly like the top screen in
-       dr3_fb.c: screen x runs along the buffer's tall axis and screen y backwards.  Deriving the
-       strides from gfxGetFramebuffer() keeps this correct for whatever libctru reports. */
-    canvas.px       = fb + (w - 1);
-    canvas.stride_x = (int)w;
-    canvas.stride_y = -1;
-    canvas.w        = (int)h;
-    canvas.h        = (int)w;
 
     n_cars = dr3_bottom_read_cars(cars, 4);
     dr3_minimap_draw(&canvas, 0, DR3_BOTTOM_MAP_Y, DR3_BOTTOM_MAP_W, DR3_BOTTOM_MAP_H, cars, n_cars);

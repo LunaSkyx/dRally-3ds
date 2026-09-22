@@ -35,16 +35,26 @@
 #define DR3_MAP_ROAD     2
 #define DR3_MAP_OTHER    3
 
+/* Canvas pixel formats.  The 3DS is not uniform here: the top screen is 4 bytes per pixel (SDL's
+   n3ds driver calls gfxInit(GSP_RGBA8_OES, ...)), while consoleInit() switches the *bottom* screen to
+   GSP_RGB565_OES (2 bytes) because libctru's console only supports 8/16-bit formats.  Writing 32-bit
+   pixels there covers two screen pixels per store and shifts everything - hence this field. */
+#define DR3_CANVAS_RGBA8888 0   /* 4 bytes, memory order R,G,B,A (SDL_PIXELFORMAT_RGBA8888) */
+#define DR3_CANVAS_RGB565   1   /* 2 bytes little endian: (r>>3)<<11 | (g>>2)<<5 | (b>>3) */
+#define DR3_CANVAS_BGR888   2   /* 3 bytes, memory order B,G,R (GSP_BGR8_OES) */
+
 /*
  * A drawing target.  The 3DS framebuffer is stored rotated, so x and y need different strides -
  * and y runs backwards in it.  Keeping that in the canvas (instead of in the drawing code) means
- * the drawing itself is portable and testable.
+ * the drawing itself is portable and testable.  All colors handed to the primitives below and to
+ * dr3_minimap_draw() are plain 0xRRGGBB; the canvas converts them to its own format.
  */
 typedef struct {
-    uint32_t *px;        /* pixel that belongs to (0, 0) of the canvas */
-    int       stride_x;  /* pixels to the next x (240 on the bottom screen) */
-    int       stride_y;  /* pixels to the next y (-1 on the bottom screen) */
-    int       w, h;      /* size of the canvas in pixels */
+    void *px;            /* pixel that belongs to (0, 0) of the canvas */
+    int   fmt;           /* DR3_CANVAS_* */
+    int   stride_x;      /* pixels to the next x (240 on the bottom screen) */
+    int   stride_y;      /* pixels to the next y (-1 on the bottom screen) */
+    int   w, h;          /* size of the canvas in pixels */
 } dr3_canvas_t;
 
 typedef struct {

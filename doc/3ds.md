@@ -120,11 +120,12 @@ A race has a second page on that screen: the whole track with every car on it.
   ```
 
 `platform_3ds/dr3_minimap.c` has no platform dependency at all - the framebuffer is described by a
-small `dr3_canvas_t` with per-axis strides, which turns the rotated 3DS buffer into a detail instead
-of a special case - and is unit-tested on the host, negative y stride included.  The engine hooks are
-one line in `race_main.c` (behind the reverse-track mirroring, so a mirrored race gets a mirrored
-map) and one in `race_memory.c` (the map is dropped before the track memory is freed); outside the
-3DS release build both compile to nothing (see `platform_3ds/dr3_bottom.h`).
+small `dr3_canvas_t` with per-axis strides **and the pixel format** (RGBA8888 / RGB565 / BGR888), which
+turns both the rotated 3DS buffer and the fact that the bottom screen is 16-bit into details instead
+of special cases - and is unit-tested on the host, negative y stride and 16-bit writes included.  The
+engine hooks are one line in `race_main.c` (behind the reverse-track mirroring, so a mirrored race
+gets a mirrored map) and one in `race_memory.c` (the map is dropped before the track memory is freed);
+outside the 3DS release build both compile to nothing (see `platform_3ds/dr3_bottom.h`).
 
 The profiler build keeps that screen for the profiler (`-DDR3_PROFILE` disables `dr3_bottom`).
 
@@ -166,6 +167,17 @@ The release build is untouched: without `-DDR3_PROFILE` every profiler call comp
    buffer - far too slow, hence the direct gfx output (with double buffering, otherwise it tears).
 5. **Debugging without a console**: Azahar is a GUI application, so guest stdout is lost;
    `platform_3ds/dr3_log.c` writes `sdmc:/drally_3ds.log`, which is readable from the PC.
+6. **The two screens do not share a pixel format.**  SDL's n3ds driver calls
+   `gfxInit(GSP_RGBA8_OES, GSP_RGBA8_OES, false)`, but `consoleInit(GFX_BOTTOM, ...)` switches the
+   *bottom* screen to `GSP_RGB565_OES` (2 bytes per pixel) because libctru's console has no 32-bit
+   mode.  The direct top screen output (`dr3_fb.c`) is therefore 4 bytes per pixel while the bottom
+   is 2 - and writing 32-bit pixels there covers **two** screen pixels per store, which shreds the
+   image and, with a `+239` base offset in 4-byte units, wraps content all over the screen (the first
+   minimap build looked exactly like that).  `dr3_minimap.c` now carries the pixel format in its
+   `dr3_canvas_t` (`RGBA8888` / `RGB565` / `BGR888`) and the glue asks `gfxGetScreenFormat()`; the
+   geometry line in the log (`[dr3] bottom fb 240x320 fmt 2 (2 bytes/px, canvas fmt 1) ...`) makes
+   the layout verifiable without a screenshot, and a host test asserts that a 16-bit write does not
+   touch the neighbouring pixel.
 
 ## Why there is no SDL shim
 
@@ -196,7 +208,7 @@ Consequences that shape this port:
 | `platform_3ds/dr3_bottom.c` / `.h` | the bottom screen: controls + driver standings, the minimap page and the tap handling (libctru console, plus direct framebuffer pixels for the map) |
 | `platform_3ds/dr3_minimap.c` / `.h` | track mask -> classified minimap bitmap, canvas drawing, ASCII log preview; no platform header, fully unit-tested |
 | `platform_3ds/sdl2_net_stub/` | inert SDL_net so the multiplayer code compiles and links |
-| `tests/test_dr3.c`, `tests/Dr3Tests.vcxproj`, `tests/build_tests.ps1` | host unit tests (395 checks), runnable **without** a 3DS toolchain |
+| `tests/test_dr3.c`, `tests/Dr3Tests.vcxproj`, `tests/build_tests.ps1` | host unit tests (403 checks), runnable **without** a 3DS toolchain |
 | `events.c` | engine patch 1: `while(dr3_poll_event(&e))` under `#if defined(__3DS__)` |
 | `drally_linux_c.c` | engine patch 2 (display): window created as the fixed 400x240 top screen, **no SDL renderer**, `__PRESENTSCREEN__` converts the 8-bit screen with the palette LUT straight into the window surface and calls `SDL_UpdateWindowSurface`; `SDL_SetWindowSize` calls are skipped |
 
@@ -289,7 +301,7 @@ so the renderer is not created at all on the 3DS.
 
 | Check | Command | Result |
 |---|---|---|
-| Portable logic | `tests\build_tests.ps1` (MSVC) | **395 checks, 0 failures** - LUT byte order + masks (`SDL_PIXELFORMAT_RGBA8888` as used by the 3DS), centred/scaled blit pixels, full pad â†’ scancode map, quit combo |
+| Portable logic | `tests\build_tests.ps1` (MSVC) | **403 checks, 0 failures** - LUT byte order + masks (`SDL_PIXELFORMAT_RGBA8888` as used by the 3DS), centred/scaled blit pixels, full pad â†’ scancode map, quit combo |
 | Minimap against the real tracks | `logs\minimap_probe.c` (local throwaway host tool, not committed: `old_bpa_read` + `bpk_decode4` + `dr3_minimap_build`) | reads `TR*.BPA` from the original game data, prints the class shares and an ASCII preview - `TR7 1016x716 -> 254x179 (step 4), road 17625 / soft 10171 / other 17670` and `TR1 960x600 -> 320x200 (step 3)`, both previews show a recognisable circuit |
 | Whole engine with `-D__3DS__` | `scripts\gen_3ds_check.ps1` â†’ `tests\dRally3DSCheck.vcxproj` | **333 translation units compile and link** (exit 0) - validates every `#if defined(__3DS__)` path with the real SDL2 headers, catching typos/prototype errors before devkitARM exists |
 | Windows regression | `scripts\build_windows.ps1 -GameDir dRally-3ds -SkipDeps -SkipStage` | still builds (exit 0) |
