@@ -42,6 +42,7 @@ static int dr3_heap_guard_reported;
 typedef struct {
     __POINTER__ linear;
     __DWORD__   nbytes;
+    __POINTER__ freed_by;
 } dr3_quar_t;
 
 static dr3_quar_t dr3_quar[DR3_HEAP_QUARANTINE];
@@ -74,15 +75,16 @@ void ___58b20h(unsigned int err_n, ...);
  * Parks a block the engine gave back (see the quarantine notes above) and reports writes into parked
  * blocks, which is what a damaged malloc free list comes from.
  */
-static void dr3_drheap_park(__POINTER__ mem, __DWORD__ nbytes){
+static void dr3_drheap_park(__POINTER__ mem, __DWORD__ nbytes, __POINTER__ freed_by){
 
     dr3_quar_t * slot = &dr3_quar[dr3_quar_next];
     __DWORD__    fill = (nbytes < DR3_HEAP_QUAR_FILL_MAX) ? nbytes : DR3_HEAP_QUAR_FILL_MAX;
 
     if(slot->linear != (__POINTER__)0) free(slot->linear);      /* the oldest one goes for real */
 
-    slot->linear = mem;
-    slot->nbytes = nbytes;
+    slot->linear   = mem;
+    slot->nbytes   = nbytes;
+    slot->freed_by = freed_by;
 
     dr3_quar_next = (dr3_quar_next + 1) % DR3_HEAP_QUARANTINE;
 
@@ -113,8 +115,10 @@ void dr3_drheap_guard(const char * where){
 
             if(p[n] != DR3_HEAP_QUAR_FILL){
 
-                dr3_log("[dr3] chaos: FREED block written to (%s): %u bytes at %p, offset %u",
-                        where, (unsigned)dr3_quar[m].nbytes, p, (unsigned)n);
+                dr3_log("[dr3] chaos: FREED block written to (%s): %u bytes at %p, offset %u, freed by %p,"
+                        " bytes %02x %02x %02x %02x %02x %02x %02x %02x",
+                        where, (unsigned)dr3_quar[m].nbytes, p, (unsigned)n, dr3_quar[m].freed_by,
+                        p[n], p[n+1], p[n+2], p[n+3], p[n+4], p[n+5], p[n+6], p[n+7]);
 
                 dr3_heap_guard_reported = 1;
                 dr3_log_flush();        /* the heap may go bad next - get this out first */
@@ -234,7 +238,7 @@ void dRMemory_free(__POINTER__ mem){
         break;
     case DOS4G_MEMORY:
 #if defined(DR3_CHAOS)
-        dr3_drheap_park(ptr[n].linear, ptr[n].nbytes);
+        dr3_drheap_park(ptr[n].linear, ptr[n].nbytes, __builtin_return_address(0));
 #else
         free(ptr[n].linear);
 #endif
