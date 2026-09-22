@@ -154,9 +154,12 @@ void __VGA13_SETMODE(void);
 static void helper01(void (*cb)(int)){
 
 	int 	n;
+	unsigned long long t0 = dr3_chaos_tick();
 
 	n = -1;
 	while(++n < NUM_OF_CARS) cb(n);
+
+	dr3_chaos_time(0, t0);
 }
 
 static __WORD__ helper22(const char * cp){
@@ -420,7 +423,11 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 					helper01(&race___4c434h_helper);
 					k = -1; while(++k < NUM_OF_CARS) s_35e[k].__18 = 0;
 					k = -1; while(++k < NUM_OF_CARS) s_35e[k].__1c = 0;
-					race___4dcach();
+					{
+						unsigned long long t1 = dr3_chaos_tick();
+						race___4dcach();
+						dr3_chaos_time(1, t1);
+					}
 					helper01(&race___514d8h_helper);
 
 #if defined(DR_MULTIPLAYER)
@@ -698,9 +705,17 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 		}
 #endif // DR_MULTIPLAYER
 		D(___243c60h) = -1;
-		while(++D(___243c60h) < NUM_OF_CARS){ dr3_chaos_step("50ef4h", (int)D(___243c60h)); race___50ef4h(); }
+		{
+			unsigned long long t3 = dr3_chaos_tick();
+			while(++D(___243c60h) < NUM_OF_CARS){ dr3_chaos_step("50ef4h", (int)D(___243c60h)); race___50ef4h(); }
+			dr3_chaos_time(3, t3);
+		}
 		dr3_chaos_step("4f300h", -1);
-		race___4f300h();	// RENDER CARS
+		{
+			unsigned long long t2 = dr3_chaos_tick();
+			race___4f300h();	// RENDER CARS
+			dr3_chaos_time(2, t2);
+		}
 		dr3_chaos_step("51ce0h", -1);
 		race___51ce0h();
 		dr3_chaos_step("4f170h", -1);

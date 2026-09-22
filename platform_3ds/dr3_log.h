@@ -26,9 +26,15 @@ void dr3_chaos_trace(const char *what, int n);
 
 /* flushes the log - used by the heap guard report in drmemory.c */
 void dr3_log_flush(void);
+
+/* frame time breakdown (see dr3_log.c): tick() before the section, time(slot, tick) after it */
+unsigned long long dr3_chaos_tick(void);
+void               dr3_chaos_time(int slot, unsigned long long t0);
 #else
 #define dr3_chaos_trace(what, n) ((void)0)
 #define dr3_log_flush()          ((void)0)
+#define dr3_chaos_tick()         (0ull)
+#define dr3_chaos_time(slot, t0) ((void)0)
 #endif
 
 #endif /* DR3_LOG_H */

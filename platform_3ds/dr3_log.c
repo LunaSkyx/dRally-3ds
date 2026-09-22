@@ -79,6 +79,69 @@ void dr3_log_flush(void)
 }
 #endif
 
+#if defined(__3DS__) && defined(DR3_CHAOS)
+
+#include <3ds.h>
+
+/*
+ * Frame time breakdown for the chaos build: the game slows down when the frame rate drops (it drives the
+ * physics with the frame counter), and Oasis with twelve cars drops to ~13 presents/s - far below what
+ * the extra cars alone account for.  The call sites in race_main.c time a section with dr3_chaos_tick()
+ * and hand the elapsed ticks to dr3_chaos_time(), which logs the sums once a second.
+ */
+#define DR3_CT_COUNT    6
+
+static const char * const dr3_ct_name[DR3_CT_COUNT] = {
+    "per-car", "collision", "render", "weapons", "map", "frame"
+};
+
+static unsigned long long dr3_ct_sum[DR3_CT_COUNT];
+static unsigned long long dr3_ct_second;
+static unsigned int       dr3_ct_frames;
+
+unsigned long long dr3_chaos_tick(void)
+{
+    return (unsigned long long)svcGetSystemTick();
+}
+
+void dr3_chaos_time(int slot, unsigned long long t0)
+{
+    unsigned long long now = dr3_chaos_tick();
+    int                i;
+
+    if ((slot < 0) || (slot >= DR3_CT_COUNT)) return;
+
+    dr3_ct_sum[slot] += now - t0;
+
+    if (slot == 0) ++dr3_ct_frames;
+
+    /* 268 MHz: log the breakdown every 268 million ticks (a second) */
+    if ((now - dr3_ct_second) < 268000000ull) return;
+
+    if (dr3_ct_second != 0) {
+
+        char line[256];
+        int  at = 0;
+
+        at += snprintf(line + at, sizeof(line) - at, "[dr3] chaos frame time per second:");
+
+        for (i = 0; i < DR3_CT_COUNT; ++i) {
+
+            at += snprintf(line + at, sizeof(line) - at, " %s %ums", dr3_ct_name[i],
+                           (unsigned)(dr3_ct_sum[i] / 268000ull));
+        }
+
+        dr3_log("%s", line);
+    }
+
+    for (i = 0; i < DR3_CT_COUNT; ++i) dr3_ct_sum[i] = 0;
+
+    dr3_ct_frames = 0;
+    dr3_ct_second = now;
+}
+
+#endif
+
 #if defined(DR3_CHAOS)
 /*
  * The chaos test build's step trace (see dr3_chaos.h): logs what the game is doing on the paths outside
