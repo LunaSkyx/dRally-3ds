@@ -2,6 +2,8 @@
 
 The main goal of this project is to create a port of Death Rally (1996) running natively on Linux and BSD based operating systems.
 
+Credits for the full decomp go to [urxp](https://github.com/urxp)
+
 #### Nintendo 3DS port (branch `3ds`)
 
 Native port with devkitARM, libctru and SDL2's own n3ds backend.  Renders straight into the 400x240
