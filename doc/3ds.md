@@ -225,6 +225,16 @@ The release build is untouched: without `-DDR3_PROFILE` every profiler call comp
    shown.  The bottom screen therefore stays single buffered (the top screen has no console and is
    double buffered in `dr3_fb.c`), and the calm updates come from not repainting: the minimap is
    drawn once per race, afterwards only the car markers are restored and redrawn.
+8. **ZL/ZR were read at the wrong button index - and the raw joystick was not even open.**  SDL's n3ds
+   backend passes the libctru `hidKeysDown()` bits straight through as button indices
+   (`SDL_sysjoystick.c`: `if (current_state & BIT(i)) SDL_PrivateJoystickButton(joystick, i, ...)`,
+   `NB_BUTTONS = 23`), so ZL and ZR are buttons **14** and **15** (`KEY_ZL = BIT(14)`,
+   `KEY_ZR = BIT(15)`) - this port read 12 and 13, which libctru never sets.  On top of that the
+   backend *does* provide a gamepad mapping, so SDL offered the device as a controller: only
+   `dr3_pad` was opened and `dr3_joy` stayed NULL, which means the (wrong) ZL/ZR branch could not run
+   at all.  `dr3_input.c` now opens both handles, reads 14/15, and its startup line names the button
+   count and whether ZL/ZR are readable - that one log line separates "the buttons work" from "the
+   emulator has no key mapped to ZL/ZR".
 
 ## Why there is no SDL shim
 

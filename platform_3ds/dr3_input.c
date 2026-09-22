@@ -9,8 +9,19 @@
 #include "dr3_input_map.h"
 #include "dr3_log.h"
 
-/* Raw joystick indices as exposed by SDL's n3ds backend (see SDL_sysjoystick.c):
-   A=0 B=1 SELECT=2 START=3 DRIGHT=4 DLEFT=5 DUP=6 DDOWN=7 R=8 L=9 X=10 Y=11 ZL=12 ZR=13 */
+/*
+ * Raw joystick button indices as exposed by SDL's n3ds backend: it passes the hid bits of libctru
+ * straight through (SDL_sysjoystick.c: "if (current_state & BIT(i)) SDL_PrivateJoystickButton(...)")
+ * and fills joystick->nbuttons with NB_BUTTONS = 23.  So the index is the bit position in
+ * hidKeysDown(), which is what libctru's KEY_* defines are:
+ *
+ *   KEY_A = BIT(0)  KEY_B = BIT(1)  KEY_SELECT = BIT(2)  KEY_START = BIT(3)
+ *   KEY_DPAD_RIGHT = BIT(4)  KEY_DPAD_LEFT = BIT(5)  KEY_DPAD_UP = BIT(6)  KEY_DPAD_DOWN = BIT(7)
+ *   KEY_R = BIT(8)  KEY_L = BIT(9)  KEY_X = BIT(10)  KEY_Y = BIT(11)
+ *   KEY_ZL = BIT(14)  KEY_ZR = BIT(15)                        <- New 3DS only
+ *
+ * ZL and ZR used to be read as 12 and 13, which libctru never sets - they simply could not be seen.
+ */
 #define DR3_JOY_A 0
 #define DR3_JOY_B 1
 #define DR3_JOY_SELECT 2
@@ -23,8 +34,8 @@
 #define DR3_JOY_L 9
 #define DR3_JOY_X 10
 #define DR3_JOY_Y 11
-#define DR3_JOY_ZL 12
-#define DR3_JOY_ZR 13
+#define DR3_JOY_ZL 14
+#define DR3_JOY_ZR 15
 
 #define DR3_AXIS_DEADZONE 12000
 #define DR3_QUEUE_LEN 32
@@ -35,6 +46,7 @@ static int                 dr3_ready;
 
 static uint8_t dr3_prev[SDL_NUM_SCANCODES];
 static uint32_t dr3_prev_held;
+static int      dr3_zl_zr_seen;     /* "ZL/ZR reach the game" is logged once, for diagnostics */
 
 static struct { int scancode; int pressed; } dr3_queue[DR3_QUEUE_LEN];
 static int dr3_q_head, dr3_q_tail;
@@ -48,16 +60,25 @@ int dr3_input_init(void)
 
     if (SDL_NumJoysticks() > 0) {
         if (SDL_IsGameController(0)) dr3_pad = SDL_GameControllerOpen(0);
-        if (!dr3_pad) dr3_joy = SDL_JoystickOpen(0);
+
+        /*
+         * The raw joystick is opened as well - always.  ZL and ZR only exist there (SDL has no
+         * controller button for them, its n3ds mapping exposes them as the two triggers), so while
+         * only the controller was open those two could not be read at all.  SDL allows both handles
+         * on the same device.
+         */
+        if (!dr3_joy) dr3_joy = SDL_JoystickOpen(0);
     }
 
     memset(dr3_prev, 0, sizeof(dr3_prev));
     dr3_q_head = dr3_q_tail = 0;
     dr3_ready = 1;
 
-    dr3_log("[dRally.3DS] input ready (pad=%s joystick=%s)\n",
+    dr3_log("[dRally.3DS] input ready (pad=%s joystick=%s, %d buttons, ZL/ZR %s)\n",
            dr3_pad ? SDL_GameControllerName(dr3_pad) : "-",
-           dr3_joy ? SDL_JoystickName(dr3_joy) : "-");
+           dr3_joy ? SDL_JoystickName(dr3_joy) : "-",
+           dr3_joy ? SDL_JoystickNumButtons(dr3_joy) : 0,
+           (dr3_joy && (SDL_JoystickNumButtons(dr3_joy) > DR3_JOY_ZR)) ? "readable" : "not available");
     return 0;
 }
 
@@ -102,10 +123,20 @@ static void dr3_build_state(dr3_pad_state_t *st)
     if (dr3_btn(SDL_CONTROLLER_BUTTON_BACK, DR3_JOY_SELECT))       st->held |= DR3_PAD_SELECT;
     if (dr3_btn(SDL_CONTROLLER_BUTTON_START, DR3_JOY_START))       st->held |= DR3_PAD_START;
 
-    /* ZL/ZR only exist on the New 3DS; keep them optional */
-    if (dr3_joy && SDL_JoystickNumButtons(dr3_joy) > DR3_JOY_ZR) {
+    /*
+     * ZL/ZR are raw buttons 14 and 15 (New 3DS only - on an old 3DS those hid bits are never set).  A
+     * backend that reports fewer buttons is skipped instead of reading past its end.  The first press
+     * is logged once: that line separates "the buttons work" from "the emulator has no key mapped to
+     * them at all".
+     */
+    if (dr3_joy && (SDL_JoystickNumButtons(dr3_joy) > DR3_JOY_ZR)) {
         if (SDL_JoystickGetButton(dr3_joy, DR3_JOY_ZL)) st->held |= DR3_PAD_ZL;
         if (SDL_JoystickGetButton(dr3_joy, DR3_JOY_ZR)) st->held |= DR3_PAD_ZR;
+    }
+
+    if (!dr3_zl_zr_seen && (st->held & (DR3_PAD_ZL | DR3_PAD_ZR))) {
+        dr3_zl_zr_seen = 1;
+        dr3_log("[dRally.3DS] ZL/ZR pressed - the New 3DS buttons reach the game\n");
     }
 
     /* SDL's Y axes point down, our map uses +1 = up */
