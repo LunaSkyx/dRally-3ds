@@ -1,4 +1,4 @@
-﻿# Nintendo 3DS port
+# Nintendo 3DS port
 
 Branch `3ds`, based on upstream `920d85a`.
 Windows remains the reference build - this branch does not touch it.
@@ -102,12 +102,22 @@ A race has a second page on that screen: the whole track with every car on it.
   `0xf` = hard surface (the racing line), `0x0..0x3` = soft ground, everything else = scenery.
   A `step x step` block is classified by the share of its groups, so roads much thinner than the
   step still survive (`step` is chosen so the map fits - 3..5 for the shipped tracks)
+* the colours come from **the track itself**: the average of the track image (`TRX_IMA`) through the
+  track's own palette (`___1a51d0h`, taken from `TRn-IMA.BPK`) is used for every cell, darkened a
+  little so the racing line stands out, and the asphalt average is blended in proportionally to its
+  share of the block (brightened by a quarter) - so a desert track looks sandy and a night track
+  dark.  The palette range is 0..63 or 0..100 depending on the file, so the brightest entry is
+  scaled to 255 first.  Without an image/palette the fixed scheme (`DR3_MAP_COL_*`) is the fallback
 * the map keeps the track's aspect ratio (letterboxed and centred between the header line and the
   status line, so a 1016x716 or 960x600 track is not stretched), and shows the player as a yellow
   marker with a dark outline and the other cars in red.  The player is drawn last so no other car can
   cover him
 * the cars come from `struct_35e_t ___1e6ed0h[4]` (`XLocation`/`YLocation` in track pixels, `Lap`,
   `Position`); this page refreshes four times a second instead of twice
+* the bottom screen is **double buffered** like the top one (see dr3_fb.c) and every update paints a
+  complete frame (console clear + the two text lines + the whole map) into the back buffer, which is
+  then swapped once - that is what removed the flicker/tearing of the first version, which drew
+  straight into the visible buffer while the LCD was reading it
 * every race writes one summary line plus an ASCII preview into `sdmc:/drally_3ds.log`, so the
   classification can be checked from a log without looking at the screen:
 
@@ -208,7 +218,7 @@ Consequences that shape this port:
 | `platform_3ds/dr3_bottom.c` / `.h` | the bottom screen: controls + driver standings, the minimap page and the tap handling (libctru console, plus direct framebuffer pixels for the map) |
 | `platform_3ds/dr3_minimap.c` / `.h` | track mask -> classified minimap bitmap, canvas drawing, ASCII log preview; no platform header, fully unit-tested |
 | `platform_3ds/sdl2_net_stub/` | inert SDL_net so the multiplayer code compiles and links |
-| `tests/test_dr3.c`, `tests/Dr3Tests.vcxproj`, `tests/build_tests.ps1` | host unit tests (403 checks), runnable **without** a 3DS toolchain |
+| `tests/test_dr3.c`, `tests/Dr3Tests.vcxproj`, `tests/build_tests.ps1` | host unit tests (410 checks), runnable **without** a 3DS toolchain |
 | `events.c` | engine patch 1: `while(dr3_poll_event(&e))` under `#if defined(__3DS__)` |
 | `drally_linux_c.c` | engine patch 2 (display): window created as the fixed 400x240 top screen, **no SDL renderer**, `__PRESENTSCREEN__` converts the 8-bit screen with the palette LUT straight into the window surface and calls `SDL_UpdateWindowSurface`; `SDL_SetWindowSize` calls are skipped |
 
@@ -301,7 +311,7 @@ so the renderer is not created at all on the 3DS.
 
 | Check | Command | Result |
 |---|---|---|
-| Portable logic | `tests\build_tests.ps1` (MSVC) | **403 checks, 0 failures** - LUT byte order + masks (`SDL_PIXELFORMAT_RGBA8888` as used by the 3DS), centred/scaled blit pixels, full pad â†’ scancode map, quit combo |
+| Portable logic | `tests\build_tests.ps1` (MSVC) | **410 checks, 0 failures** - LUT byte order + masks (`SDL_PIXELFORMAT_RGBA8888` as used by the 3DS), centred/scaled blit pixels, full pad â†’ scancode map, quit combo |
 | Minimap against the real tracks | `logs\minimap_probe.c` (local throwaway host tool, not committed: `old_bpa_read` + `bpk_decode4` + `dr3_minimap_build`) | reads `TR*.BPA` from the original game data, prints the class shares and an ASCII preview - `TR7 1016x716 -> 254x179 (step 4), road 17625 / soft 10171 / other 17670` and `TR1 960x600 -> 320x200 (step 3)`, both previews show a recognisable circuit |
 | Whole engine with `-D__3DS__` | `scripts\gen_3ds_check.ps1` â†’ `tests\dRally3DSCheck.vcxproj` | **333 translation units compile and link** (exit 0) - validates every `#if defined(__3DS__)` path with the real SDL2 headers, catching typos/prototype errors before devkitARM exists |
 | Windows regression | `scripts\build_windows.ps1 -GameDir dRally-3ds -SkipDeps -SkipStage` | still builds (exit 0) |

@@ -51,13 +51,14 @@ void dr3_bottom_flush(void);
  */
 #if defined(__3DS__) && defined(DR3_USE_GFX) && !defined(DR3_PROFILE)
 
-void dr3_bottom_track_loaded(const void *mask, int mask_w, int mask_h, const char *track_id);
+void dr3_bottom_track_loaded(const void *mask, const void *image, const void *palette,
+                             int mask_w, int mask_h, const char *track_id);
 void dr3_bottom_track_unloaded(void);
 
 #else
 
-#define dr3_bottom_track_loaded(mask, mask_w, mask_h, track_id) ((void)0)
-#define dr3_bottom_track_unloaded()                             ((void)0)
+#define dr3_bottom_track_loaded(mask, image, palette, mask_w, mask_h, track_id) ((void)0)
+#define dr3_bottom_track_unloaded()                                            ((void)0)
 
 #endif /* 3DS release build */
 

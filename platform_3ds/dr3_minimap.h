@@ -66,11 +66,15 @@ typedef struct {
 /* ------------------------------------------------------------------ data stage --- */
 
 /*
- * Builds the small map from the engine's track mask.  "mask" may be NULL (nothing loaded).
- * step is chosen so that the result fits DR3_MINIMAP_MAX_W x DR3_MINIMAP_MAX_H.  Returns 1 when a
- * map was built, 0 otherwise.
+ * Builds the small map from the engine's track mask plus - when available - the track's own image and
+ * palette (TRX_IMA + ___1a51d0h, i.e. the colors the track is drawn with), so the minimap looks like
+ * that particular track instead of a generic scheme.  "mask" may be NULL (nothing loaded); "image"
+ * and "palette" may be NULL as well, then the DR3_MAP_COL_* fallback colors are used.
+ * step is chosen so that the result fits DR3_MINIMAP_MAX_W x DR3_MINIMAP_MAX_H.  Returns 1 when a map
+ * was built, 0 otherwise.
  */
-int  dr3_minimap_build(const uint8_t *mask, int mask_w, int mask_h);
+int  dr3_minimap_build(const uint8_t *mask, const uint8_t *image, const uint8_t *palette,
+                       int mask_w, int mask_h);
 
 /* Drops the map (call it when the track is freed, so no stale pointer is used). */
 void dr3_minimap_reset(void);

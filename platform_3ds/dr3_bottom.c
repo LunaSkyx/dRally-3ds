@@ -127,6 +127,11 @@ int dr3_bottom_console_ensure(void)
     if (dr3_bottom_ready) return 1;
     if (!SDL_WasInit(SDL_INIT_VIDEO)) return 0;      /* gfx is not up yet - try again later */
 
+    /* Double buffering, exactly like the top screen in dr3_fb.c: we paint whole frames into the back
+       buffer and swap once, so nothing is ever seen half drawn (single buffering made the minimap
+       tear and flicker, because the map is redrawn four times a second). */
+    gfxSetDoubleBuffering(GFX_BOTTOM, true);
+
     dr3_bottom_ready = 1;
     consoleInit(GFX_BOTTOM, NULL);
 
@@ -353,23 +358,31 @@ static void dr3_bottom_draw_map_page(void)
         canvas.h        = (int)w;
     }
 
-    if (dr3_bottom_map_dirty) {
-        /* generous on purpose: gcc's -Wformat-truncation otherwise complains about the theoretical
-           worst case of four %d arguments (the real strings are far shorter) */
-        char header[96];
-        char footer[96];
-        PrintConsole * con = consoleGetDefault();
-        int  lap = 0, pos = 0;
+    {
+        /* Header and status line are printed on *every* map update: with double buffering each frame
+           has to be complete, otherwise the text would blink between the two buffers.  Topping it with
+           \x1b[2J also makes the console repaint its whole grid, so no stale pixels survive in the
+           buffer we are about to swap in. */
+        char           header[96];
+        char           footer[96];
+        int            lap = 0, pos = 0;
 
-        /* one geometry line per page: this is what proves whether the framebuffer layout the map
-           assumes (rotated, 240 pixels per row, screen y runs backwards) is really the one in use */
-        dr3_log("[dr3] bottom fb %dx%d fmt %d (%d bytes/px, canvas fmt %d) -> canvas %dx%d "
-                "(x stride %d, y stride %d), band (0,%d) %dx%d, map %dx%d, console %dx%d chars",
-                (int)w, (int)h, (int)gfxGetScreenFormat(GFX_BOTTOM), bpp, canvas.fmt,
-                canvas.w, canvas.h, canvas.stride_x, canvas.stride_y,
-                DR3_BOTTOM_MAP_Y, DR3_BOTTOM_MAP_W, DR3_BOTTOM_MAP_H,
-                dr3_minimap_w(), dr3_minimap_h(),
-                con ? con->consoleWidth : -1, con ? con->consoleHeight : -1);
+        if (dr3_bottom_map_dirty) {
+            const PrintConsole * con = consoleGetDefault();
+
+            /* one geometry line per track: this is what proves whether the frame buffer layout the map
+               assumes (rotated, screen y runs backwards) and its pixel format are really the ones in
+               use - it made the first broken minimap build obvious from the log alone */
+            dr3_log("[dr3] bottom fb %dx%d fmt %d (%d bytes/px, canvas fmt %d) -> canvas %dx%d "
+                    "(x stride %d, y stride %d), band (0,%d) %dx%d, map %dx%d, console %dx%d chars",
+                    (int)w, (int)h, (int)gfxGetScreenFormat(GFX_BOTTOM), bpp, canvas.fmt,
+                    canvas.w, canvas.h, canvas.stride_x, canvas.stride_y,
+                    DR3_BOTTOM_MAP_Y, DR3_BOTTOM_MAP_W, DR3_BOTTOM_MAP_H,
+                    dr3_minimap_w(), dr3_minimap_h(),
+                    con ? con->consoleWidth : -1, con ? con->consoleHeight : -1);
+
+            dr3_bottom_map_dirty = 0;
+        }
 
         if ((MY_CAR_IDX >= 0) && (MY_CAR_IDX < 4)) {
             lap = (int)___1e6ed0h[MY_CAR_IDX].Lap;
@@ -383,7 +396,6 @@ static void dr3_bottom_draw_map_page(void)
                  lap, (NUM_OF_LAPS > 0) ? NUM_OF_LAPS : 0);
 
         printf("\x1b[2J\x1b[1;1H%-38.38s\x1b[30;1H%-38.38s", header, footer);
-        dr3_bottom_map_dirty = 0;
     }
 
     n_cars = dr3_bottom_read_cars(cars, 4);
@@ -393,12 +405,14 @@ static void dr3_bottom_draw_map_page(void)
 
 /* --------------------------------------------------------------- track hooks --- */
 
-void dr3_bottom_track_loaded(const void *mask, int mask_w, int mask_h, const char *track_id)
+void dr3_bottom_track_loaded(const void *mask, const void *image, const void *palette,
+                             int mask_w, int mask_h, const char *track_id)
 {
     char preview[1024];
     int  counts[4];
 
-    if (!dr3_minimap_build((const uint8_t *)mask, mask_w, mask_h)) {
+    if (!dr3_minimap_build((const uint8_t *)mask, (const uint8_t *)image, (const uint8_t *)palette,
+                           mask_w, mask_h)) {
         dr3_log("[dr3] minimap: no map for this track (%dx%d)", mask_w, mask_h);
         return;
     }
@@ -406,9 +420,11 @@ void dr3_bottom_track_loaded(const void *mask, int mask_w, int mask_h, const cha
     snprintf(dr3_bottom_track_id, sizeof(dr3_bottom_track_id), "%s", track_id ? track_id : "-");
 
     dr3_minimap_class_counts(counts);
-    dr3_log("[dr3] minimap: %s %dx%d track -> %dx%d map (step %d): road %d, soft %d, other %d, none %d",
+    dr3_log("[dr3] minimap: %s %dx%d track -> %dx%d map (step %d): road %d, soft %d, other %d, none %d"
+            "%s",
             dr3_bottom_track_id, mask_w, mask_h, dr3_minimap_w(), dr3_minimap_h(), dr3_minimap_step(),
-            counts[DR3_MAP_ROAD], counts[DR3_MAP_OFFROAD], counts[DR3_MAP_OTHER], counts[DR3_MAP_NONE]);
+            counts[DR3_MAP_ROAD], counts[DR3_MAP_OFFROAD], counts[DR3_MAP_OTHER], counts[DR3_MAP_NONE],
+            (image && palette) ? ", colours from the track image" : ", fallback colours");
 
     /* the shape of the map as text, so a log from a console/emulator is enough to check it */
     if (dr3_minimap_ascii(preview, sizeof(preview), 40, 18) > 0) dr3_log("minimap preview:\n%s", preview);
@@ -497,6 +513,8 @@ void dr3_bottom_update(void)
         len += snprintf(block + len, sizeof(block) - (size_t)len, "%.*s\n", DR3_BOTTOM_LINE_LEN, text);
     }
 
-    printf("%s\x1b[H%s", clear_first ? "\x1b[2J" : "", block);
+    /* with double buffering every repaint has to be complete - clear, then the whole block - so the
+       back buffer we swap in never shows leftovers of the previous page */
+    printf("\x1b[2J\x1b[H%s", block);
     dr3_bottom_flush();
 }

@@ -322,7 +322,7 @@ static void test_minimap_build(void)
         for (x = 0; x < 8; ++x) mask[y * 8 + x] = (y == 4) ? 0x0F : 0x00;
     mask[0] = 0x07;
 
-    CHECK(dr3_minimap_build(mask, 8, 8) == 1, "build refused an 8x8 track");
+    CHECK(dr3_minimap_build(mask, NULL, NULL, 8, 8) == 1, "build refused an 8x8 track");
     CHECK(dr3_minimap_ready() == 1, "map not marked ready");
     CHECK((dr3_minimap_w() == 8) && (dr3_minimap_h() == 8), "map size %dx%d (want 8x8)",
           dr3_minimap_w(), dr3_minimap_h());
@@ -354,9 +354,9 @@ static void test_minimap_build(void)
     /* nothing loaded: no map, and an old map must be gone */
     dr3_minimap_reset();
     CHECK(dr3_minimap_ready() == 0, "reset did not drop the map");
-    CHECK(dr3_minimap_build(NULL, 8, 8) == 0, "build accepted a NULL mask");
-    CHECK(dr3_minimap_build(mask, 0, 8) == 0, "build accepted a 0 width");
-    CHECK(dr3_minimap_build(mask, 8, 0) == 0, "build accepted a 0 height");
+    CHECK(dr3_minimap_build(NULL, NULL, NULL, 8, 8) == 0, "build accepted a NULL mask");
+    CHECK(dr3_minimap_build(mask, NULL, NULL, 0, 8) == 0, "build accepted a 0 width");
+    CHECK(dr3_minimap_build(mask, NULL, NULL, 8, 0) == 0, "build accepted a 0 height");
 }
 
 static void test_minimap_downscale(void)
@@ -372,7 +372,7 @@ static void test_minimap_downscale(void)
         mask[y * 1024 + 101] = 0x0F;
     }
 
-    CHECK(dr3_minimap_build(mask, 1024, 1024) == 1, "build refused a 1024x1024 track");
+    CHECK(dr3_minimap_build(mask, NULL, NULL, 1024, 1024) == 1, "build refused a 1024x1024 track");
 
     /* step = max(ceil(1024/320), ceil(1024/224)) = max(4, 5) = 5  ->  205x205 map */
     CHECK(dr3_minimap_step() == 5, "step %d for a 1024 track (want 5)", dr3_minimap_step());
@@ -475,7 +475,7 @@ static void test_minimap_draw(void)
     for (y = 0; y < 8; ++y)
         for (x = 0; x < 8; ++x) mask[y * 8 + x] = (y == 4) ? 0x0F : 0x00;
 
-    CHECK(dr3_minimap_build(mask, 8, 8) == 1, "build failed");
+    CHECK(dr3_minimap_build(mask, NULL, NULL, 8, 8) == 1, "build failed");
 
     memset(buf, 0, sizeof(buf));
     c.px = buf; c.fmt = DR3_CANVAS_RGBA8888; c.stride_x = 1; c.stride_y = 16; c.w = 16; c.h = 16;
@@ -516,7 +516,7 @@ static void test_minimap_draw(void)
     memset(buf, 0, sizeof(buf));
     cars[0].valid = 0;
     cars[1].valid = 0;
-    CHECK(dr3_minimap_build(mask, 8, 8) == 1, "second build failed");
+    CHECK(dr3_minimap_build(mask, NULL, NULL, 8, 8) == 1, "second build failed");
     dr3_minimap_draw(&c, 0, 0, 16, 16, cars, 2);
     CHECK(buf[0 * 16 + 5] != minimap_color(DR3_MAP_COL_CAR), "an invalid car was drawn");
 
@@ -542,7 +542,7 @@ static void test_minimap_letterbox(void)
     for (y = 0; y < 4; ++y)
         for (x = 0; x < 8; ++x) mask[y * 8 + x] = (y == 2) ? 0x0F : 0x00;
 
-    CHECK(dr3_minimap_build(mask, 8, 4) == 1, "build failed for an 8x4 track");
+    CHECK(dr3_minimap_build(mask, NULL, NULL, 8, 4) == 1, "build failed for an 8x4 track");
     CHECK((dr3_minimap_w() == 8) && (dr3_minimap_h() == 4), "map %dx%d (want 8x4)",
           dr3_minimap_w(), dr3_minimap_h());
 
@@ -572,7 +572,7 @@ static void test_minimap_pixel_formats(void)
     for (y = 0; y < 8; ++y)
         for (x = 0; x < 8; ++x) mask[y * 8 + x] = (y == 4) ? 0x0F : 0x00;
 
-    CHECK(dr3_minimap_build(mask, 8, 8) == 1, "build failed");
+    CHECK(dr3_minimap_build(mask, NULL, NULL, 8, 8) == 1, "build failed");
 
     /* RGB565: 2 bytes per pixel - the format the 3DS bottom screen really uses (consoleInit switches
        it there).  A 4-byte store would overwrite two pixels at once, which is the bug this test
@@ -606,6 +606,52 @@ static void test_minimap_pixel_formats(void)
     CHECK(bgr888[(1 * 4 + 2) * 3 + 0] == 0x11u, "BGR888 write touched the next pixel");
 }
 
+static void test_minimap_track_colors(void)
+{
+    static uint8_t  mask[4 * 4];          /* row 2 is the road, the rest is soft ground */
+    static uint8_t  image[4 * 4];         /* road pixels use palette 1, ground palette 2 */
+    static uint8_t  palette[0x300];       /* entry 0 is the brightest -> sets the scale */
+    static uint32_t buf[4 * 4];
+    dr3_canvas_t    c;
+    int             x, y;
+
+    printf("- minimap: colours taken from the track image\n");
+
+    memset(palette, 0, sizeof(palette));
+    palette[0 * 3 + 0] = 200;                                     /* 200 -> scale 255/200 */
+    palette[1 * 3 + 0] = 100; palette[1 * 3 + 1] = 100; palette[1 * 3 + 2] = 100;
+    palette[2 * 3 + 0] = 0;   palette[2 * 3 + 1] = 100; palette[2 * 3 + 2] = 0;
+
+    for (y = 0; y < 4; ++y) {
+        for (x = 0; x < 4; ++x) {
+            const int road = (y == 2);
+
+            mask [y * 4 + x] = (uint8_t)(road ? 0x0F : 0x00);
+            image[y * 4 + x] = (uint8_t)(road ? 1 : 2);
+        }
+    }
+
+    CHECK(dr3_minimap_build(mask, image, palette, 4, 4) == 1, "build with a track image failed");
+
+    memset(buf, 0, sizeof(buf));
+    c.px = buf; c.fmt = DR3_CANVAS_RGBA8888; c.stride_x = 1; c.stride_y = 4; c.w = 4; c.h = 4;
+    CHECK(dr3_minimap_draw(&c, 0, 0, 4, 4, NULL, 0) == 1, "draw failed");
+
+    /* palette 1 = (100,100,100) scales to 127 and is brightened by 5/4 on the road = 158 */
+    CHECK(buf[2 * 4 + 1] == minimap_color(0x9E9E9Eu), "road colour: 0x%08X (want 0x%08X)",
+          buf[2 * 4 + 1], minimap_color(0x9E9E9Eu));
+    /* palette 2 = (0,100,0) scales to green 127 and is darkened by 3/4 off the road = 95 */
+    CHECK(buf[1 * 4 + 1] == minimap_color(0x005F00u), "ground colour: 0x%08X (want 0x%08X)",
+          buf[1 * 4 + 1], minimap_color(0x005F00u));
+
+    /* without a palette the fixed fallback scheme has to come back */
+    CHECK(dr3_minimap_build(mask, image, NULL, 4, 4) == 1, "build without a palette failed");
+    memset(buf, 0, sizeof(buf));
+    CHECK(dr3_minimap_draw(&c, 0, 0, 4, 4, NULL, 0) == 1, "draw failed");
+    CHECK(buf[2 * 4 + 1] == minimap_color(DR3_MAP_COL_ROAD), "fallback road colour: 0x%08X",
+          buf[2 * 4 + 1]);
+}
+
 int main(void)
 {
     printf("dRally 3DS port - host tests\n\n");
@@ -621,6 +667,7 @@ int main(void)
     test_minimap_draw();
     test_minimap_letterbox();
     test_minimap_pixel_formats();
+    test_minimap_track_colors();
 
     printf("\n%d checks, %d failures\n", g_checks, g_failed);
     return g_failed ? 1 : 0;

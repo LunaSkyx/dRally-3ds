@@ -7,13 +7,17 @@
 #include <stddef.h>
 #include <string.h>
 
-/* the small map: one byte per drawn pixel, one row per DR3_MINIMAP_MAX_W (simple indexing) */
-static uint8_t dr3_map_bits[DR3_MINIMAP_MAX_W * DR3_MINIMAP_MAX_H];
-static int     dr3_map_w, dr3_map_h;
-static int     dr3_map_step;
-static int     dr3_map_mask_w, dr3_map_mask_h;   /* size of the track the map was built from */
-static int     dr3_map_ready;
-static int     dr3_map_counts[4];
+/* the small map: one byte per drawn pixel (class) and the color that goes with it, one row per
+   DR3_MINIMAP_MAX_W (simple indexing) */
+static uint8_t  dr3_map_bits[DR3_MINIMAP_MAX_W * DR3_MINIMAP_MAX_H];
+static uint32_t dr3_map_col [DR3_MINIMAP_MAX_W * DR3_MINIMAP_MAX_H];
+static uint32_t dr3_map_palette[256];        /* the track's own colors, scaled to 0..255 */
+static int      dr3_map_have_palette;
+static int      dr3_map_w, dr3_map_h;
+static int      dr3_map_step;
+static int      dr3_map_mask_w, dr3_map_mask_h;   /* size of the track the map was built from */
+static int      dr3_map_ready;
+static int      dr3_map_counts[4];
 
 /*
  * The colors in the header are plain 0xRRGGBB; every canvas converts them for its own pixel format
@@ -46,46 +50,160 @@ void dr3_minimap_class_counts(int counts[4])
     for (i = 0; i < 4; ++i) counts[i] = dr3_map_counts[i];
 }
 
-/* Classifies one block of the track mask.  See the header for the meaning of the nibble groups. */
-static int dr3_map_classify_block(const uint8_t *mask, int mask_w, int mask_h,
-                                  int x0, int y0, int step)
+/* Classifies one block of the track mask and derives its colour from the track's own image.
+   See the header for the meaning of the nibble groups. */
+typedef struct {
+    int      cls;
+    uint32_t color;      /* 0xRRGGBB */
+} dr3_map_cell_t;
+
+static uint32_t dr3_map_scale(uint32_t rgb, int num, int den)
 {
-    int x, y, n = 0, hard = 0, soft = 0;
+    int r = (int)((rgb >> 16) & 0xffu);
+    int g = (int)((rgb >> 8) & 0xffu);
+    int b = (int)(rgb & 0xffu);
+
+    r = (r * num) / den;
+    g = (g * num) / den;
+    b = (b * num) / den;
+
+    if (r > 255) r = 255;
+    if (g > 255) g = 255;
+    if (b > 255) b = 255;
+
+    return ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)b;
+}
+
+/*
+ * The palette of a track image is 256 RGB triplets whose range is either 0..63 (VGA DAC) or 0..100
+ * (percent).  Scaling the brightest entry to 255 makes the map look right in both cases.
+ */
+static void dr3_map_build_palette(const uint8_t *palette)
+{
+    int n, max = 0;
+
+    dr3_map_have_palette = 0;
+    if (!palette) return;
+
+    for (n = 0; n < 0x300; ++n) {
+        if (palette[n] > max) max = palette[n];
+    }
+    if (max <= 0) return;
+
+    for (n = 0; n < 256; ++n) {
+        const int r = ((int)palette[3 * n + 0] * 255) / max;
+        const int g = ((int)palette[3 * n + 1] * 255) / max;
+        const int b = ((int)palette[3 * n + 2] * 255) / max;
+
+        dr3_map_palette[n] = ((uint32_t)(r > 255 ? 255 : r) << 16) |
+                             ((uint32_t)(g > 255 ? 255 : g) << 8) |
+                              (uint32_t)(b > 255 ? 255 : b);
+    }
+
+    dr3_map_have_palette = 1;
+}
+
+static dr3_map_cell_t dr3_map_analyse_block(const uint8_t *mask, const uint8_t *image,
+                                            int mask_w, int mask_h, int x0, int y0, int step)
+{
+    static const uint32_t fallback[4] = { DR3_MAP_COL_BACKGROUND, DR3_MAP_COL_OFFROAD,
+                                          DR3_MAP_COL_ROAD, DR3_MAP_COL_OTHER };
+    dr3_map_cell_t cell;
+    int            x, y, n = 0, hard = 0, soft = 0;
+    unsigned long  all_r = 0, all_g = 0, all_b = 0;
+    unsigned long  road_r = 0, road_g = 0, road_b = 0;
 
     for (y = y0; y < (y0 + step); ++y) {
         const uint8_t *row;
+        const uint8_t *irow;
 
         if (y >= mask_h) break;
-        row = mask + (size_t)y * (size_t)mask_w;
+
+        row  = mask + (size_t)y * (size_t)mask_w;
+        irow = (image && dr3_map_have_palette) ? (image + (size_t)y * (size_t)mask_w) : NULL;
 
         for (x = x0; x < (x0 + step); ++x) {
-            int v;
+            int v, is_road;
 
             if (x >= mask_w) break;
             ++n;
 
-            v = row[x] & 0x0f;
-            if (v == 0x0f)  ++hard;
+            v       = row[x] & 0x0f;
+            is_road = (v == 0x0f);
+
+            if (is_road)    ++hard;
             else if (v < 4) ++soft;
+
+            if (irow) {
+                const uint32_t c = dr3_map_palette[irow[x]];
+
+                all_r += (c >> 16) & 0xffu;
+                all_g += (c >> 8) & 0xffu;
+                all_b += c & 0xffu;
+
+                if (is_road) {
+                    road_r += (c >> 16) & 0xffu;
+                    road_g += (c >> 8) & 0xffu;
+                    road_b += c & 0xffu;
+                }
+            }
         }
     }
 
-    if (n == 0) return DR3_MAP_NONE;               /* the block lies outside the mask */
+    cell.cls   = DR3_MAP_NONE;
+    cell.color = DR3_MAP_COL_OTHER;
+
+    if (n == 0) return cell;                       /* the block lies outside the mask */
 
     /* A road thinner than the block still has to be visible on the map, so a share of an eighth is
        already enough for it to win.  Everything else is decided by the dominant group. */
-    if ((hard * 8) >= n) return DR3_MAP_ROAD;
-    if ((soft * 2) >= n) return DR3_MAP_OFFROAD;
+    if ((hard * 8) >= n)      cell.cls = DR3_MAP_ROAD;
+    else if ((soft * 2) >= n) cell.cls = DR3_MAP_OFFROAD;
+    else                      cell.cls = DR3_MAP_OTHER;
 
-    return DR3_MAP_OTHER;
+    if (image && dr3_map_have_palette) {
+        /* start from the average of the whole block (a little darker, so the racing line stands out) */
+        uint32_t base = ((uint32_t)(all_r / (unsigned long)n) << 16) |
+                        ((uint32_t)(all_g / (unsigned long)n) << 8) |
+                         (uint32_t)(all_b / (unsigned long)n);
+
+        base = dr3_map_scale(base, 3, 4);
+
+        if (hard > 0) {
+            /* blend the brighter asphalt average in proportionally to its share of the block, so even
+               a thin road shows up on the minimap */
+            const uint32_t road = dr3_map_scale(((uint32_t)(road_r / (unsigned long)hard) << 16) |
+                                                ((uint32_t)(road_g / (unsigned long)hard) << 8) |
+                                                 (uint32_t)(road_b / (unsigned long)hard), 5, 4);
+            const int      s = (hard * 256) / n;                   /* 0..256 */
+            const int      br = (int)((base >> 16) & 0xffu), bg = (int)((base >> 8) & 0xffu);
+            const int      bb = (int)(base & 0xffu);
+            const int      rr = (int)((road >> 16) & 0xffu), rg = (int)((road >> 8) & 0xffu);
+            const int      rb = (int)(road & 0xffu);
+
+            base = ((uint32_t)((br * (256 - s) + rr * s) / 256) << 16) |
+                   ((uint32_t)((bg * (256 - s) + rg * s) / 256) << 8) |
+                    (uint32_t)((bb * (256 - s) + rb * s) / 256);
+        }
+
+        cell.color = base;
+    }
+    else {
+        cell.color = fallback[cell.cls & 3];       /* no track image: the fixed scheme */
+    }
+
+    return cell;
 }
 
-int dr3_minimap_build(const uint8_t *mask, int mask_w, int mask_h)
+int dr3_minimap_build(const uint8_t *mask, const uint8_t *image, const uint8_t *palette,
+                      int mask_w, int mask_h)
 {
     int step, step_y, ox, oy, x, y;
 
     dr3_minimap_reset();
     if (!mask || (mask_w <= 0) || (mask_h <= 0)) return 0;
+
+    dr3_map_build_palette(palette);
 
     /* one step for both axes keeps the aspect ratio of the track */
     step   = (mask_w + DR3_MINIMAP_MAX_W - 1) / DR3_MINIMAP_MAX_W;
@@ -103,10 +221,13 @@ int dr3_minimap_build(const uint8_t *mask, int mask_w, int mask_h)
 
     for (y = 0; y < oy; ++y) {
         for (x = 0; x < ox; ++x) {
-            const int k = dr3_map_classify_block(mask, mask_w, mask_h, x * step, y * step, step);
+            const dr3_map_cell_t cell = dr3_map_analyse_block(mask, image, mask_w, mask_h,
+                                                              x * step, y * step, step);
+            const size_t         idx  = (size_t)y * DR3_MINIMAP_MAX_W + x;
 
-            dr3_map_bits[(size_t)y * DR3_MINIMAP_MAX_W + x] = (uint8_t)k;
-            ++dr3_map_counts[k & 3];
+            dr3_map_bits[idx] = (uint8_t)cell.cls;
+            dr3_map_col [idx] = cell.color;
+            ++dr3_map_counts[cell.cls & 3];
         }
     }
 
@@ -234,12 +355,6 @@ int dr3_minimap_draw(const dr3_canvas_t *c, int x0, int y0, int w, int h,
                      const dr3_map_car_t *cars, int n_cars)
 {
     const uint32_t background = DR3_MAP_COL_BACKGROUND;
-    const uint32_t color[4]   = {
-        DR3_MAP_COL_BACKGROUND,   /* DR3_MAP_NONE - never drawn */
-        DR3_MAP_COL_OFFROAD,
-        DR3_MAP_COL_ROAD,
-        DR3_MAP_COL_OTHER
-    };
     int x, y, dx = x0, dy = y0, dw = w, dh = h;
 
     if (!c || !c->px || (w <= 0) || (h <= 0)) return 0;
@@ -263,14 +378,15 @@ int dr3_minimap_draw(const dr3_canvas_t *c, int x0, int y0, int w, int h,
         dy = y0 + (h - dh) / 2;
 
         for (y = 0; y < dh; ++y) {
-            const int      my  = (y * dr3_map_h) / dh;
-            const uint8_t *row = dr3_map_bits + (size_t)my * DR3_MINIMAP_MAX_W;
+            const int       my   = (y * dr3_map_h) / dh;
+            const uint8_t * row  = dr3_map_bits + (size_t)my * DR3_MINIMAP_MAX_W;
+            const uint32_t *crow = dr3_map_col  + (size_t)my * DR3_MINIMAP_MAX_W;
 
             for (x = 0; x < dw; ++x) {
-                const int k = row[(x * dr3_map_w) / dw] & 3;
+                const int idx = (x * dr3_map_w) / dw;
 
-                if (k == DR3_MAP_NONE) continue;
-                dr3_canvas_px(c, dx + x, dy + y, color[k]);
+                if ((row[idx] & 3) == DR3_MAP_NONE) continue;      /* outside the track */
+                dr3_canvas_px(c, dx + x, dy + y, crow[idx]);       /* the track's own colour */
             }
         }
 

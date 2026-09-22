@@ -18,6 +18,7 @@
 	extern int TRX_HEIGHT;
 	extern __POINTER__ TRX_IMA;
 	extern __POINTER__ TRX_MAS;
+	extern __BYTE__ ___1a51d0h[0x300];	/* the palette of the loaded track image */
 	extern __POINTER__ BACKBUFFER;
 	extern __BYTE__ ___243d08h[];
 	extern __BYTE__ ___243d0ch[];
@@ -298,10 +299,10 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 	if(!dRally_Race_getSettings(RACE_SFX)) dRally_Sound_setEffectsVolume(0);
 	race___45a24h();
 	if(D(___196dach) != 0) race___4af3ch();
-	/* hand the finished track mask to the bottom screen minimap - a no-op on every other build
-	   (see platform_3ds/dr3_bottom.h).  It goes here, behind the reverse-track mirroring, so the
-	   map shows the track as it is driven. */
-	dr3_bottom_track_loaded(TRX_MAS, TRX_WIDTH, TRX_HEIGHT, ___19bd64h);
+	/* hand the finished track (mask + image + its palette) to the bottom screen minimap - a no-op on
+	   every other build (see platform_3ds/dr3_bottom.h).  It goes here, behind the reverse-track
+	   mirroring, so the map shows the track as it is driven. */
+	dr3_bottom_track_loaded(TRX_MAS, TRX_IMA, ___1a51d0h, TRX_WIDTH, TRX_HEIGHT, ___19bd64h);
 	race___496b0h();
 	race___405bch();
 	race___49a34h();
