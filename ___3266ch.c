@@ -54,6 +54,7 @@ void ___17324h(void);
 void ___12cb8h__VESA101_PRESENTSCREEN(void);
 void ___2ab50h(void);
 void ___3079ch_cdecl(__DWORD__);
+void dr3_adversary_join(int);
 __BYTE__ ___5994ch(void);
 void dRally_Sound_pushEffect(__BYTE__ channel, __BYTE__ n, __DWORD__ unk, __DWORD__ a0, __DWORD__ a1, __DWORD__ a2);
 void ___281d0h_cdecl(__DWORD__, __DWORD__, __DWORD__, __DWORD__);
@@ -194,6 +195,13 @@ void ___3266ch(void){
 							___3079ch_cdecl(3);
 							if((B(___1a1f64h+3) >= 4)&&(B(___1a1f64h+4) >= 4)&&(B(___1a1f64h+5) >= 4)) break;
 						}
+
+						/*
+						 * "pedal to the metal": make sure the adversary is one of the opponents in the race
+						 * the player just signed up for - the picker may have missed him, or the player may
+						 * have switched to another tier while the lists were filling up (see doc/3ds.md)
+						 */
+						dr3_adversary_join((int)D(___185a50h));
 
 						n2 = -1;
 						while(++n2 < 3){

@@ -48,8 +48,8 @@ typedef void (*void_cb)(void);
  */
 #define DR3_DIFFICULTY_ADVERSARY    3      /* = PEDAL_TO_THE_METAL in race___3f970h.c */
 #define DR3_ADVERSARY_CAR           6      /* DELIVERATOR_ADVERSARY - the car the adversary drives */
-#define DR3_ADVERSARY_RACER         18     /* the roster seat that becomes the adversary (0..18 = AI) */
-#define DR3_ADVERSARY_LEAD          20     /* his head start in points over the best of the others */
+#define DR3_ADVERSARY_RACER         18     /* seat he is created in (he moves up the table later) */
+#define DR3_ADVERSARY_START_RANK    3      /* he starts third in points and works his way up */
 
 extern __DWORD__ ___196a94h_difficulty;
 

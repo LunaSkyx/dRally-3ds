@@ -41,8 +41,22 @@ static void dr3_adversary_seed(void){
 		if((int)s_6c[i].car == DR3_ADVERSARY_CAR) return;           /* he is already in the game */
 	}
 
-	for(i = 0; i < 0x14; ++i){
-		if((i != me) && (i != DR3_ADVERSARY_RACER) && ((int)s_6c[i].points > best)) best = (int)s_6c[i].points;
+	/*
+	 * He starts third: the two best scores of the others stay ahead of him, so the first race is about
+	 * beating him - and he works his way up from there (see doc/3ds.md).  He is that good.
+	 */
+	{
+		int first = 0, second = 0;
+
+		for(i = 0; i < 0x14; ++i){
+
+			if((i == me) || (i == DR3_ADVERSARY_RACER)) continue;
+
+			if((int)s_6c[i].points >= first){ second = first; first = (int)s_6c[i].points; }
+			else if((int)s_6c[i].points > second) second = (int)s_6c[i].points;
+		}
+
+		best = (second > 0) ? (second - 1) : 0;
 	}
 
 	strcpy(s_6c[DR3_ADVERSARY_RACER].name, "ADVERSARY");
@@ -51,9 +65,12 @@ static void dr3_adversary_seed(void){
 	s_6c[DR3_ADVERSARY_RACER].engine = ___18e298h[DR3_ADVERSARY_CAR].n_engine_upgrades - 1;
 	s_6c[DR3_ADVERSARY_RACER].tires  = ___18e298h[DR3_ADVERSARY_CAR].n_tire_upgrades - 1;
 	s_6c[DR3_ADVERSARY_RACER].armor  = ___18e298h[DR3_ADVERSARY_CAR].n_armor_upgrades - 1;
-	s_6c[DR3_ADVERSARY_RACER].points = best + DR3_ADVERSARY_LEAD;
-	s_6c[DR3_ADVERSARY_RACER].rank   = 1;
+	s_6c[DR3_ADVERSARY_RACER].points = best;
+	s_6c[DR3_ADVERSARY_RACER].rank   = DR3_ADVERSARY_START_RANK;
 	s_6c[DR3_ADVERSARY_RACER].refund = ___18e298h[DR3_ADVERSARY_CAR].price;
+
+	dr3_log("[dr3] adversary: created in seat %d, %d points (should be rank %d)",
+	        DR3_ADVERSARY_RACER, (int)s_6c[DR3_ADVERSARY_RACER].points, DR3_ADVERSARY_START_RANK);
 }
 
 /*
@@ -96,6 +113,44 @@ static int dr3_adversary_pending(void){
 	return 1;
 }
 
+/*
+ * Put him into the grid of the tier the player is signing up for.  Called when the signup is confirmed,
+ * which also covers the case that the field was filled without him (the picker has the last word on the
+ * slot, and the tier can still be changed while the screen is open).
+ *
+ * He never appears twice: if he was in another grid, the racer he displaces takes that old slot - and a
+ * racer is in at most one grid per event anyway (the "picked" flag).  The player's own slot is left
+ * alone.  Without a free slot for him nothing happens (the grid is full of opponents and the player).
+ */
+void dr3_adversary_join(int tier){
+
+	const int seat = dr3_adversary_seat();
+	int       slot, free_slot = -1, was = -1;
+
+	if((seat < 0) || (tier < 0) || (tier > 2)) return;
+
+	for(slot = 0; slot < 4; ++slot){
+		if(B(___1a0ef8h+4*tier+slot) == seat) return;            /* he is in this grid already */
+	}
+
+	for(slot = 0; slot < 0xc; ++slot){
+		if(B(___1a0ef8h+slot) == seat){ was = slot; break; }     /* his current grid slot, if any */
+	}
+
+	for(slot = 0; slot < 4; ++slot){
+		if(B(___1a0ef8h+4*tier+slot) != (int)D(___1a1ef8h)){ free_slot = 4*tier+slot; break; }
+	}
+
+	if(free_slot < 0) return;
+
+	if(was >= 0) B(___1a0ef8h+was) = B(___1a0ef8h+free_slot);    /* the displaced racer takes his old place */
+
+	B(___1a0ef8h+free_slot) = seat;
+
+	dr3_log("[dr3] adversary: joined tier %d as slot %d%s", tier, free_slot%4,
+	        (was >= 0) ? " (moved)" : "");
+}
+
 // RACE SIGNUP RANDOMIZATION
 void ___3079ch_cdecl(__DWORD__ A1){
 
@@ -110,7 +165,15 @@ void ___3079ch_cdecl(__DWORD__ A1){
 	dr3_adversary_seed();
 
 	if((rand_watcom106()%A1) == 0){
-	
+
+		dr3_log("[dr3] adversary: diff %d, seat %d; field %d,%d,%d,%d / %d,%d,%d,%d / %d,%d,%d,%d; "
+		        "counters %d,%d,%d; selected tier %d",
+		        (int)___196a94h_difficulty, dr3_adversary_seat(),
+		        B(___1a0ef8h+0), B(___1a0ef8h+1), B(___1a0ef8h+2), B(___1a0ef8h+3),
+		        B(___1a0ef8h+4), B(___1a0ef8h+5), B(___1a0ef8h+6), B(___1a0ef8h+7),
+		        B(___1a0ef8h+8), B(___1a0ef8h+9), B(___1a0ef8h+0xa), B(___1a0ef8h+0xb),
+		        B(___1a1f64h+3), B(___1a1f64h+4), B(___1a1f64h+5), (int)D(___185a50h));
+
 		n = -1;
 		while(++n < 0x32){
 
@@ -123,16 +186,15 @@ void ___3079ch_cdecl(__DWORD__ A1){
 			while(1){
 
 				/*
-				 * The adversary takes part in the race the player is signing up for: D(___185a50h) is
-				 * the tier he is looking at, and dr3_adversary_pending() keeps this to one race per
-				 * event (see doc/3ds.md).  If that tier is already full he takes one of the other two,
-				 * so he is always in one of the three races.  He goes through the same bookkeeping as
-				 * any other candidate.
+				 * The adversary rides along like any other candidate: the first free slot of the event is
+				 * his, and dr3_adversary_pending() keeps that to one race per event.  He goes through the
+				 * same bookkeeping as everybody else, so counters and flags stay consistent - and
+				 * dr3_adversary_join() then puts him into the race the player signs up for.
 				 */
-				if(dr3_adversary_pending() && ((ebp == (int)D(___185a50h)) || ((int)D(___185a50h) > 2) ||
-				   ((int)D(___185a50h) <= 2 && (B(___1a1f64h+(int)D(___185a50h)+3) > 3)))){
+				if(dr3_adversary_pending()){
 
 					r = dr3_adversary_seat();
+					dr3_log("[dr3] adversary: placed in tier %d as slot %d", ebp, B(___1a1f64h+ebp+3));
 					break;
 				}
 
