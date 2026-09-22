@@ -6,9 +6,24 @@ The main goal of this project is to create a port of Death Rally (1996) running 
 
 This branch adds a native Nintendo 3DS port of the engine - no SDL shim, it uses SDL2's own n3ds
 backend, writes the 8 bit screen straight into the double buffered framebuffer, feeds the DSP at its
-native 32728 Hz, translates the pad into the engine's keyboard scancodes (fully remappable through
-`dr3_controls.txt`) and uses the otherwise unused bottom screen for the controls, the current driver
-standings and - during a race - a minimap of the track with every car on it.
+native 32728 Hz and translates the pad into the engine's keyboard scancodes (fully remappable through
+`dr3_controls.txt`).
+
+What this branch adds on top of the plain engine:
+
+* a **fourth difficulty, "30th Anniversary"**: the black SPECIAL races in every event as a full
+  championship participant with his own seat and points, and the title is settled in a final two car
+  challenge - the end game only runs when that challenge was won
+* the Anniversary car is **for sale** in the shop (upgrades included) and keeps its own lap records
+* the otherwise unused **bottom screen**: the controls, the current driver standings and - during a
+  race - a minimap of the track with every car on it, the running lap clock and the last/best/record
+  lap (with a "new record" notice); outside a race its last two rows name the quick save / quick load
+  buttons
+* **quick save / quick load** from the front end (`X` or `ZL` saves, `Y` or `ZR` loads - rebindable)
+* `SELECT` opens the 3DS software keyboard; typed names arrive reliably (the port delivers one
+  character at a time and holds every key until the engine has read it) and umlauts are transliterated
+* an optional **profiler build** that measures the frame budget on the console itself, rotates
+  measurement variants automatically and writes everything to `sdmc:/drally_3ds.log`
 
 * **installation, controls and configuration: [INSTALL_3DS.md](INSTALL_3DS.md)**
 * technical notes, measurements and the profiler build: [doc/3ds.md](doc/3ds.md)

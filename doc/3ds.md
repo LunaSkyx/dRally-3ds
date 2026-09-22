@@ -3,7 +3,7 @@
 Branch `3ds`, based on upstream `920d85a`.
 Windows remains the reference build - this branch does not touch it.
 
-## Status (2026-09-21): runs on the emulator, playable
+## Status (2026-09-22): runs in the emulator, playable
 
 | | |
 |---|---|
@@ -489,17 +489,25 @@ whitespace tolerant + idempotent), `gen_3ds_check.ps1` (`__3DS__` syntax/link ch
 
 ## Roadmap
 
-1. ~~branch, makefile, input layer, host tests~~ (done)
-2. ~~display patch: renderer-free present path + `dr3_blit` LUT with SDL masks, fixed 400x240
-   window~~ (done, verified by the `-D__3DS__` link check)
-3. Software keyboard (`SDL_n3dsswkb.c`) for the driver-name / save prompts.
-4. Audio sanity check (ndsp) and frame-time measurement; the old 3DS may need a reduced frame rate.
-5. Make `cinem.c` (HAF cinematics) skippable - CPU heavy.
-6. Packaging (`*.3dsx`, optional `.cia`) and a user-facing README.
-7. First real 3DS run: `make -f Makefile.3ds` with devkitARM, then Azahar / `3dslink`.
+Done: the branch/makefile/input layer/host tests, the renderer-free display path with the `dr3_blit`
+LUT, the software keyboard for driver names and save slots, the audio sanity check, the frame-time
+measurements (profiler build), packaging (`.3dsx` + `smdh` + release folder), the user-facing
+`INSTALL_3DS.md`/`README`, the fourth difficulty with its adversary, and the bottom screen work
+(standings, minimap with lap times, quick save/load hint).  The port runs in Azahar with sound.
+
+Still open:
+
+1. **First run on real hardware.**  `make -f Makefile.3ds` with devkitARM, then copy the `.3dsx` into
+   `sdmc:/3ds/drally/` (or `3dslink`).  Everything else has been verified in the emulator and by the
+   host tests - this is the one item no one else can do from here.
+2. Make `cinem.c` (HAF cinematics) skippable - they are CPU heavy.
+3. Multiplayer: the engine's IPX layer could be revived over UDP through libctru's `soc`.  Nothing
+   blocks it, it is a project of its own (the research is written down, see `docs/NETWORK_NOTES.md`).
 
 ## Open blocker
 
-`devkitpro.org`, `registry-1.docker.io` and `ghcr.io` are unreachable from this machine, so
-devkitARM/SDL2 cannot be fetched or built here yet. Options: VPN/proxy, another machine/network, or
-a GitHub Actions workflow (the `dRally-vita` fork has CI examples). See `docs/NETWORK_NOTES.md`.
+None.  devkitARM, libctru and SDL2 are installed locally (`C:\devkitPro` and
+`third_party/SDL2-3ds-install`) and every build is green: 3DS release, the profiler build, the
+`-D__3DS__` check build and the Windows build.  Earlier revisions of this file listed `devkitpro.org`,
+`registry-1.docker.io` and `ghcr.io` as unreachable - that was the state of this machine before the
+toolchain was installed here and no longer applies.
