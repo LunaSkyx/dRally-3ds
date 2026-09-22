@@ -16,7 +16,7 @@
 	extern __POINTER__ ___19de70h[20];
 	extern __POINTER__ ___1a1e6ch;
 	extern __POINTER__ ___1a1ea8h;
-	extern cardata_t ___18e298h[6];
+	extern cardata_t ___18e298h[7];
 #define CARENCS ___185cbch
 	extern __DWORD__ ___185cbch[][0x40];
 	extern __POINTER__ ___1a01b8h[6];

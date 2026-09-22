@@ -664,7 +664,11 @@ void ___33010h_cdecl(int NumCars){
 		if(((int)edx < (int)s_6c[n].points)&&(n != D(___1a1ef8h))) edx = s_6c[n].points;
 	}
 
-	if((int)edx < (int)s_6c[D(___1a1ef8h)].points){
+	/*
+	 * On the fourth difficulty the adversary is in the race anyway (see doc/3ds.md), so nobody else's
+	 * race entry has to turn into him here.  On the other difficulties this stays as it was.
+	 */
+	if(!dr3_adversary_active() && ((int)edx < (int)s_6c[D(___1a1ef8h)].points)){
 #if defined(DR_MULTIPLAYR)
 		if(___19bd60h == 0){
 #endif // DR_MULTIPLAYER

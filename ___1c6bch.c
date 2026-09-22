@@ -15,7 +15,7 @@
 	extern __BYTE__ ___196a98h[];
 	extern __BYTE__ ___196a9ch[];
 	extern __BYTE__ ___196aa0h[];
-	extern cardata_t ___18e298h[6];
+	extern cardata_t ___18e298h[7];
 	extern __BYTE__ ___1a1168h[];
 	extern __BYTE__ ___1a2010h[];
 	extern __BYTE__ ___18d492h[];

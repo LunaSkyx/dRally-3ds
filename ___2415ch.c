@@ -9,7 +9,7 @@
 	extern __BYTE__ ___185a50h[];
 	extern __BYTE__ ___1a1ef8h[];
 	extern __BYTE__ ___185a30h[];
-	extern cardata_t ___18e298h[6];
+	extern cardata_t ___18e298h[7];
 	extern __BYTE__ ___1a1ee8h[];
 	extern __BYTE__ ___1a1ec0h[];
 	extern __BYTE__ ___1a1ee0h[];
@@ -112,6 +112,32 @@ void ___2415ch(void){
 	s_6c[D(___1a1ef8h)].loanshark_counter = -1;
 	s_6c[D(___1a1ef8h)].rank = 20;
 	s_6c[D(___1a1ef8h)].refund = ___18e298h[0].price;
+
+	/*
+	 * The adversary ("pedal to the metal", see doc/3ds.md): one of the AI seats belongs to him - his
+	 * own name, his own car (the SPECIAL), full equipment and enough points to lead the championship,
+	 * so he is the one to beat and the final challenge is about him.  Only on that difficulty.
+	 */
+	if(dr3_adversary_active()){
+
+		const int adv  = DR3_ADVERSARY_RACER;
+		int       best = 0;
+
+		for(int i = 0; i < 0x13; ++i){
+			if((i != adv) && ((int)s_6c[i].points > best)) best = (int)s_6c[i].points;
+		}
+
+		strcpy(s_6c[adv].name, "ADVERSARY");
+		s_6c[adv].car    = DR3_ADVERSARY_CAR;
+		s_6c[adv].damage = 0;
+		s_6c[adv].engine = ___18e298h[DR3_ADVERSARY_CAR].n_engine_upgrades - 1;
+		s_6c[adv].tires  = ___18e298h[DR3_ADVERSARY_CAR].n_tire_upgrades - 1;
+		s_6c[adv].armor  = ___18e298h[DR3_ADVERSARY_CAR].n_armor_upgrades - 1;
+		s_6c[adv].points = best + DR3_ADVERSARY_LEAD;
+		s_6c[adv].rank   = 1;
+		s_6c[adv].refund = ___18e298h[DR3_ADVERSARY_CAR].price;
+	}
+
 	___2b318h();
 	D(___1a1ee8h) = 0;
 	D(___1a1ec0h) = 0;

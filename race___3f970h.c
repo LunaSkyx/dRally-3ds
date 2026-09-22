@@ -322,12 +322,20 @@ void race___3f970h(void){
 	while(++n < (int)D(NUM_OF_CARS)){
 
 		___1de580h[n].car = ___1de7d0h[n].car;
-		F32(___1de580h[n].raw+4) = ___3f1f0h_floats[___1de7d0h[n].dfclty][___1de580h[n].car][D(___1de7d0h[n].raw+0x14)];
-		F32(___1de580h[n].raw+8) = F32(___1de580h[n].raw+4);
-		F32(___1de580h[n].raw+0xc) = ___3f3d0h_floats[___1de7d0h[n].dfclty][___1de580h[n].car][D(___1de7d0h[n].raw+0x18)];
 
-		F32(___1de580h[n].raw+0x14) = (float)(3.75/((double)___3f5b0h_floats[___1de7d0h[n].dfclty][___1de580h[n].car]-0.05*(double)D(___1de7d0h[n].raw+0x14)));
-		D(___1de580h[n].raw+0x1c) = ___3f610h_ints[___1de7d0h[n].dfclty][___1de580h[n].car]+___3f670h_ints[___1de7d0h[n].dfclty][D(___1de7d0h[n].raw+0x1c)];
+		/*
+		 * The adversary drives car 6 (DELIVERATOR_ADVERSARY), which has no row of its own in the
+		 * parameter tables - he gets the Deliverator's, the SPECIAL being its black twin.  When he
+		 * holds grid slot 0 the block further down gives the race entry its own (higher) top speed.
+		 */
+		const int car = ((int)___1de580h[n].car == DELIVERATOR_ADVERSARY) ? (int)DELIVERATOR : (int)___1de580h[n].car;
+
+		F32(___1de580h[n].raw+4) = ___3f1f0h_floats[___1de7d0h[n].dfclty][car][D(___1de7d0h[n].raw+0x14)];
+		F32(___1de580h[n].raw+8) = F32(___1de580h[n].raw+4);
+		F32(___1de580h[n].raw+0xc) = ___3f3d0h_floats[___1de7d0h[n].dfclty][car][D(___1de7d0h[n].raw+0x18)];
+
+		F32(___1de580h[n].raw+0x14) = (float)(3.75/((double)___3f5b0h_floats[___1de7d0h[n].dfclty][car]-0.05*(double)D(___1de7d0h[n].raw+0x14)));
+		D(___1de580h[n].raw+0x1c) = ___3f610h_ints[___1de7d0h[n].dfclty][car]+___3f670h_ints[___1de7d0h[n].dfclty][D(___1de7d0h[n].raw+0x1c)];
 
 		if(D(MY_CAR_IDX) == n) D(___1de580h[n].raw+0x1c) += 0x64;
 
@@ -342,7 +350,7 @@ void race___3f970h(void){
 		D(___1de580h[n].raw+0x30) = D(___1de580h[n].raw+0x34) = 512*200;
 		D(___1de580h[n].raw+0x50) = 0;
 		D(___1de580h[n].raw+0x58) = 0;
-		F32(___1de580h[n].raw+0x10) = ___3f6c0h_floats[___1de580h[n].car];
+		F32(___1de580h[n].raw+0x10) = ___3f6c0h_floats[car];
 		D(___1de580h[n].raw+0x60) = 0;
 
 		if(___1de580h[n].car == VAGABOND){
@@ -389,6 +397,17 @@ void race___3f970h(void){
 
 		if(___1de580h[n].car == DELIVERATOR){
 
+			___1de580h[n].numofguns = 2;
+			D(___1de580h[n].raw+0x64) = 16;
+			D(___1de580h[n].raw+0x68) = -17;
+			D(___1de580h[n].raw+0x74) = D(___1de580h[n].raw+0x78) = 20;
+			___1de580h[n].gun1_type = ___1de580h[n].gun2_type = 5;
+		}
+
+		if(___1de580h[n].car == DELIVERATOR_ADVERSARY){
+
+			/* the SPECIAL: the Deliverator's armament (two guns) - the adversary rides with them
+			   whenever he takes part, not only in the final race on slot 0 */
 			___1de580h[n].numofguns = 2;
 			D(___1de580h[n].raw+0x64) = 16;
 			D(___1de580h[n].raw+0x68) = -17;

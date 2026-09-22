@@ -14,7 +14,7 @@
 	extern __POINTER__ ___1a01b8h[6];
 	extern __BYTE__ ___1a1ef8h[];
 	extern __BYTE__ ___1a01e0h[];
-	extern cardata_t ___18e298h[6];
+	extern cardata_t ___18e298h[7];
 	extern __POINTER__ ___1a1e78h;
 
 int ___25180h_cdecl(const char * A1);

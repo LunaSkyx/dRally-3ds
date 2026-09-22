@@ -8,7 +8,7 @@
 	extern __POINTER__ ___1a112ch__VESA101_ACTIVESCREEN_PTR;
 	extern __BYTE__ ___1a1ef8h[];
 	extern __BYTE__ ___1a01e0h[];
-	extern cardata_t ___18e298h[6];
+	extern cardata_t ___18e298h[7];
 	extern __DWORD__ ___1862bch[][0x18];
 	extern __DWORD__ ___1864fch[][0x10];
 	extern __DWORD__ ___18643ch[][0xc];

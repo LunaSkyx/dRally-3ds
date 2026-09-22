@@ -10,7 +10,7 @@
 	extern __POINTER__ ___1a0180h;
 	extern __BYTE__ ___1a01e0h[];
 	extern __POINTER__ ___1a1e90h;
-	extern cardata_t ___18e298h[6];
+	extern cardata_t ___18e298h[7];
 
 void ___12e78h_cdecl(__BYTE__ * A1, font_props_t * A2, const char * A3, __DWORD__ dst_off);
 

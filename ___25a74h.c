@@ -11,7 +11,7 @@
 	extern __BYTE__ ___1a1ed0h[];
 	extern __POINTER__ ___1a01b8h[6];
 	extern __BYTE__ ___185a14h_UseWeapons[];
-	extern cardata_t ___18e298h[6];
+	extern cardata_t ___18e298h[7];
 	extern __POINTER__ ___1a1e78h;
 
 void ___259e0h_cdecl(int dx, int dy, int aFrameIdx, __POINTER__ aEncoded, int * aOffsets);

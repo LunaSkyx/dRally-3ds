@@ -39,6 +39,18 @@ void ___3079ch_cdecl(__DWORD__ A1){
 
 			while(1){
 
+				/*
+				 * The adversary rides along: on the fourth difficulty the first slot of every race is
+				 * his ("pedal to the metal", see doc/3ds.md).  The pick below would never choose him
+				 * (his car is outside every class range), so he is placed here - and the break keeps
+				 * the retry loop from spinning around his already-set "picked" flag.
+				 */
+				if(dr3_adversary_active() && (ebp == 0)){
+
+					r = DR3_ADVERSARY_RACER;
+					break;
+				}
+
 				if(ebp == 0){
 
 					n = -1;

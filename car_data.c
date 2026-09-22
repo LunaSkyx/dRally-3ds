@@ -1,7 +1,7 @@
 #include "drally.h"
 #include "drally_structs_free.h"
 
-const cardata_t ___18e298h[6] = {
+const cardata_t ___18e298h[7] = {
     [0] = {
         .name = "Vagabond",
         .price = 500,
@@ -505,6 +505,90 @@ const cardata_t ___18e298h[6] = {
             [3] = 15505
         },
         .price_repair = 1625
+    },
+    [6] = {   /* the adversary - the game's own SPECIAL car, not for sale in a shop */
+        .name = "Adversary",
+        .price = 250000,
+        .txt_info = {
+            [0] = "[Adversary - Speed 200 mph",
+            [1] = "",
+            [2] = "The demon king of the race, the",
+            [3] = "one they tell stories about. He",
+            [4] = "takes what he wants.",
+            [5] = ""
+        },
+        .txt_winfo = {
+            [0] = "[Adversary - Speed 200 mph",
+            [1] = "",
+            [2] = "Two guns, spikes and all the",
+            [3] = "mines in the world. Nothing you",
+            [4] = "can buy comes close to him.",
+            [5] = ""
+        },
+        .txt_bought = {
+            [0] = "[Adversary bought",
+            [1] = "",
+            [2] = "Nobody buys the demon king. He",
+            [3] = "took your money anyway - and",
+            [4] = "left you with the keys.",
+            [5] = ""
+        },
+        .txt_engine_upgrades = {
+            [0] = {
+                [0] = "[Demon motor - Speed: [180 mph",
+                [1] = "",
+                [2] = "It does not idle, it howls. The",
+                [3] = "neighbours filed a complaint, he",
+                [4] = "ate the neighbours.",
+                [5] = ""
+            },
+            [1] = {
+                [0] = "[Demon V6 - Speed: [190 mph",
+                [1] = "",
+                [2] = "Burns fuel, tires and the",
+                [3] = "occasional opponent. Mostly the",
+                [4] = "opponent.",
+                [5] = ""
+            },
+            [2] = {
+                [0] = "[Demon V8 - Speed: [195 mph",
+                [1] = "",
+                [2] = "The engine sounds like a promise",
+                [3] = "you should not have asked him to",
+                [4] = "keep.",
+                [5] = ""
+            },
+            [3] = {
+                [0] = "[Demon V8 Turbo - Speed: [200 mph",
+                [1] = "",
+                [2] = "There is no faster machine in",
+                [3] = "this world, and he made sure of",
+                [4] = "it personally.",
+                [5] = ""
+            }
+        },
+        .n_engine_upgrades = 4,
+        .n_tire_upgrades = 4,
+        .n_armor_upgrades = 4,
+        .price_engine_upgrades = {
+            [0] = 25000,
+            [1] = 35000,
+            [2] = 45000,
+            [3] = 60000
+        },
+        .price_tire_upgrades = {
+            [0] = 20000,
+            [1] = 30000,
+            [2] = 40000,
+            [3] = 55000
+        },
+        .price_armor_upgrades = {
+            [0] = 22000,
+            [1] = 32000,
+            [2] = 42000,
+            [3] = 58000
+        },
+        .price_repair = 5000
     }
 };
 

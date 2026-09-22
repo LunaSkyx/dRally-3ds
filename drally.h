@@ -37,6 +37,24 @@
 
 typedef void (*void_cb)(void);
 
+/*
+ * ------------------------------------------------------------------------------------------------
+ * The fourth difficulty this port adds ("pedal to the metal", see doc/3ds.md).  On that level the
+ * adversary - the SPECIAL car - is a full championship participant: he has a seat in the roster,
+ * drives his own car, rides along in every race, collects points like all the others (so he ends up
+ * leading the championship) and the final challenge is offered once the player is second.
+ * Everything hangs off the difficulty value, so it travels with dr.cfg and with the save games.
+ * ------------------------------------------------------------------------------------------------
+ */
+#define DR3_DIFFICULTY_ADVERSARY    3      /* = PEDAL_TO_THE_METAL in race___3f970h.c */
+#define DR3_ADVERSARY_CAR           6      /* DELIVERATOR_ADVERSARY - the car the adversary drives */
+#define DR3_ADVERSARY_RACER         18     /* the roster seat that becomes the adversary (0..18 = AI) */
+#define DR3_ADVERSARY_LEAD          20     /* his head start in points over the best of the others */
+
+extern __DWORD__ ___196a94h_difficulty;
+
+#define dr3_adversary_active()      (___196a94h_difficulty == DR3_DIFFICULTY_ADVERSARY)
+
 #define S(s, type, offset)     (*(type *)((__POINTER__)(s)+(offset)))
 
 #define Q(q)    (*(__QWORD__ *)(q))

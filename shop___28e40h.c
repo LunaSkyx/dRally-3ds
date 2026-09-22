@@ -11,7 +11,7 @@
 	extern __BYTE__ ___1a1ec4h[];
 	extern __BYTE__ ___1a1ee4h[];
 	extern __DWORD__ ___24cc54h_sfx_volume;
-	extern cardata_t ___18e298h[6];
+	extern cardata_t ___18e298h[7];
 #define CARENCS ___185cbch
 	extern __DWORD__ ___185cbch[][0x40];
 	extern __BYTE__ ___1a1ed0h[];
@@ -446,7 +446,25 @@ void shop___28e40h(void){
 						if(((int)ecx < (int)s_6c[n].points)&&(n != D(___1a1ef8h))) ecx = s_6c[n].points;
 					}
 
-					if((int)ecx < (int)s_6c[D(___1a1ef8h)].points){
+					/*
+					 * Usually the final challenge is offered once the player leads the championship.  On
+					 * the fourth difficulty the adversary leads it, so there the challenge is offered as
+					 * soon as the player is second - right behind him (see doc/3ds.md).
+					 */
+					if(dr3_adversary_active()){
+
+						int ahead = 0;
+
+						n = -1;
+						while(++n < 0x14){
+
+							if((n != D(___1a1ef8h))&&((int)s_6c[n].points > (int)s_6c[D(___1a1ef8h)].points)) ahead++;
+						}
+
+						if(ahead == 1) ___31008h();	// challenge adversary
+						else           ___3266ch();	// sign up
+					}
+					else if((int)ecx < (int)s_6c[D(___1a1ef8h)].points){
 
 						___31008h();	// challenge adversary
 					}

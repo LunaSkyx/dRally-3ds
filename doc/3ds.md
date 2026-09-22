@@ -263,6 +263,27 @@ Renaming means the string in `___3ab5ch.c` (twice - the dialog and its repaint) 
 
 Because it is engine code, the level is there in every build of this branch, not only on the 3DS.
 
+### The adversary on the fourth difficulty
+
+What the level does to the *opponents* is the difficulty table above.  On top of that the adversary -
+the black SPECIAL car - stops being a guest: he becomes a full championship participant, and the final
+challenge is offered to the runner-up instead of to the leader.
+
+| Where | What |
+|---|---|
+| `drally.h` | `DR3_DIFFICULTY_ADVERSARY` (3), `DR3_ADVERSARY_CAR` (6), `DR3_ADVERSARY_RACER` (18), `DR3_ADVERSARY_LEAD` (20) and `dr3_adversary_active()`.  The whole feature hangs off the difficulty value, so it travels with `dr.cfg` and with the save games |
+| `car_data.c` | a seventh `cardata_t` (row 6, the adversary's car) and a seventh `CARENCS` record - without them every screen that looks up `___18e298h[s_6c[x].car]` would read past the table.  He is not for sale: the shop list stays at six |
+| `___2415ch.c` | when a game is created, roster seat 18 becomes the adversary: name, car 6, full equipment (engine/tires/armor at the cap) and `points = best of the others + 20`, so he leads from the first race on |
+| `race___3f970h.c` | car 6 has no row of its own in the parameter tables, so he borrows the Deliverator's (`const int car = ...` in the setup loop) and got his own two-gun entry in the car-body chain.  Grid slot 0 still adds the SPECIAL's own top speed (4.5-4.7) |
+| `___3079ch.c` | the race field is randomised and would never pick him (his car is outside every class range), so the first opponent slot of every race is his - he rides along in every event, and the "he only shows up when you lead" rule is gone |
+| `___33010h.c` | the old rule ("the leader's race entry turns into the adversary") is switched off on this difficulty - he is in the race anyway |
+| `shop___28e40h.c`, `underground___2e350h.c` | the final challenge is offered once the **player is second** instead of once he leads - the adversary is assumed to be first |
+
+His points come from the normal race results (he is an ordinary roster entry, so nothing else had to
+change), and because the roster gets sorted by points he is identified by his **car**, never by his seat
+number.  The roster is built when a game starts, so an **existing** save keeps the roster it has - the
+adversary appears in games created on this difficulty.
+
 ### Why the multiplayer code stays in
 
 Removing the multiplayer objects was tried and **fails to link**: menus, race code and the chat box
