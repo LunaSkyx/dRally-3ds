@@ -5,6 +5,7 @@
 #include "dr3_files.h"
 #include "dr3_bottom.h"
 #include "dr3_log.h"
+#include "dr3_paths.h"
 #include "drally.h"
 
 /* this file prints on the bottom screen console, so it needs the real printf */
@@ -12,6 +13,7 @@
 #undef printf
 #endif
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <3ds.h>
@@ -64,26 +66,78 @@ static void dr3_files_log(void)
     }
 }
 
+/*
+ * The console on the bottom screen is 40x30 characters.  A row that does not fit wraps and scrolls the
+ * whole screen - the heading would go with it, on the one screen that has to tell a new user why the
+ * game did not start.  dr3_bottom.c keeps its block below the console width for the same reason, so
+ * every row here goes through dr3_files_row() and the list of names is cut off when it would not fit.
+ */
+#define DR3_FILES_TEXT_W 38
+#define DR3_FILES_ROWS   30
+#define DR3_FILES_HEAD   8                          /* header rows + a blank + "Not found (...)" */
+#define DR3_FILES_FOOT   2                          /* a blank + "Press A to quit." */
+#define DR3_FILES_LIST_MAX (DR3_FILES_ROWS - DR3_FILES_HEAD - DR3_FILES_FOOT)
+
+/* one row of the screen, cut to the console width instead of wrapped */
+static void dr3_files_row(const char *fmt, ...)
+{
+    char    row[DR3_FILES_TEXT_W + 1];
+    va_list ap;
+
+    va_start(ap, fmt);
+    vsnprintf(row, sizeof(row), fmt, ap);
+    va_end(ap);
+
+    printf("%s\n", row);
+}
+
+/* the folder the game looked in - when the files ended up elsewhere its tail is the useful part */
+static void dr3_files_row_cwd(void)
+{
+    const char *label = "looked in: ";
+    const char *path  = dr3_cwd();
+    const int   max   = DR3_FILES_TEXT_W - (int)strlen(label);
+
+    if ((int)strlen(path) > max) path += strlen(path) - max;
+
+    dr3_files_row("%s%s", label, path);
+}
+
 static void dr3_files_show(void)
 {
     const int missing = dr3_files_missing();
+    int       shown   = 0;
     int       i;
 
     if (!dr3_bottom_console_ensure()) consoleInit(GFX_BOTTOM, NULL);
 
     printf("\x1b[2J\x1b[H");
-    printf("Death Rally - game files missing\n\n");
-    printf("This port needs the files of an original Death Rally\n");
-    printf("copy.  They belong next to dRally_3ds.3dsx:\n\n");
-    printf("    sdmc:/3ds/drally/ENGINE.BPA, MENU.BPA, TR0.BPA ...\n");
-    printf("    sdmc:/3ds/drally/CDROM.INI, CINEM/*.HAF\n\n");
-    printf("Not found (%d of %d):\n", missing, DR3_REQUIRED_COUNT);
+
+    dr3_files_row("Death Rally - files missing");
+    dr3_files_row("Needs the files of an original copy,");
+    dr3_files_row("next to dRally_3ds.3dsx in:");
+    dr3_files_row("  sdmc:/3ds/drally/");
+    dr3_files_row("  (all .BPA, CDROM.INI, CINEM/*.HAF)");
+    dr3_files_row_cwd();
+    printf("\n");
+
+    dr3_files_row("Not found (%d of %d):", missing, DR3_REQUIRED_COUNT);
 
     for (i = 0; i < DR3_REQUIRED_COUNT; ++i) {
-        if (!dr3_file_ok(dr3_required[i])) printf("    %s\n", dr3_required[i]);
+        if (dr3_file_ok(dr3_required[i])) continue;
+
+        /* more names than rows: the log has the rest (dr3_files_log already wrote them) */
+        if ((missing > DR3_FILES_LIST_MAX) && (shown == DR3_FILES_LIST_MAX - 1)) {
+            dr3_files_row("  ... and %d more (log)", missing - shown);
+            break;
+        }
+
+        dr3_files_row("  %s", dr3_required[i]);
+        ++shown;
     }
 
-    printf("\n\nPress A to quit.\n");
+    printf("\n");
+    dr3_files_row("Press A to quit.");
 
     dr3_bottom_flush();
 }
@@ -91,13 +145,10 @@ static void dr3_files_show(void)
 static void dr3_files_wait(void)
 {
     /* libctru reads the pad directly here: SDL's input layer is not running yet */
-    touchPosition touch;
-
     do {
         svcSleepThread(16000000);           /* ~1 frame, also drains the launcher's button press */
         hidScanInput();
-        hidTouchRead(&touch);
-    } while (!(hidKeysDown() & (KEY_A | KEY_B | KEY_START | KEY_SELECT)) && !touch.px && !touch.py);
+    } while (!(hidKeysDown() & (KEY_A | KEY_B | KEY_START | KEY_SELECT)) && !(hidKeysHeld() & KEY_TOUCH));
 }
 
 int dr3_files_ok_or_wait(void)
