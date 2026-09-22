@@ -30,6 +30,9 @@ extern int       MY_CAR_IDX;
 extern int       NUM_OF_CARS;
 extern int       NUM_OF_LAPS;
 
+/* the per-driver colours used by the front end (3 bytes per entry, menu_main.c) */
+extern __BYTE__ *___1a0fb8h;
+
 #define DR3_BOTTOM_TOP 10          /* how many drivers the standings list shows */
 
 static int  dr3_bottom_ready;
@@ -46,7 +49,10 @@ static int  dr3_bottom_ready;
 #if !defined(DR3_PROFILE)
 static int         dr3_bottom_view;
 static char        dr3_bottom_track_id[16];
-static int         dr3_bottom_map_dirty;      /* page switched: the text has to be printed once */
+static int         dr3_bottom_map_dirty;      /* the geometry line still has to be logged */
+static int         dr3_bottom_map_full = 1;   /* the next map draw has to repaint everything */
+static char        dr3_bottom_map_hdr[96];    /* text currently on the map page */
+static char        dr3_bottom_map_ftr[96];
 #endif
 
 /* ------------------------------------------------------------------ controls --- */
@@ -127,11 +133,13 @@ int dr3_bottom_console_ensure(void)
     if (dr3_bottom_ready) return 1;
     if (!SDL_WasInit(SDL_INIT_VIDEO)) return 0;      /* gfx is not up yet - try again later */
 
-    /* Double buffering, exactly like the top screen in dr3_fb.c: we paint whole frames into the back
-       buffer and swap once, so nothing is ever seen half drawn (single buffering made the minimap
-       tear and flicker, because the map is redrawn four times a second). */
-    gfxSetDoubleBuffering(GFX_BOTTOM, true);
-
+    /*
+     * Deliberately *single* buffered: libctru's console remembers the frame buffer it was initialised
+     * with, so with double buffering its text would end up in the buffer that is not being shown (the
+     * text blinked) and my pixels and its cells disagreed about which buffer is current.  Flicker is
+     * avoided the other way round instead: the static map is painted once and the frequent updates
+     * only repaint the few pixels a car marker occupies (dr3_minimap_draw_incremental).
+     */
     dr3_bottom_ready = 1;
     consoleInit(GFX_BOTTOM, NULL);
 
@@ -168,6 +176,7 @@ static void dr3_bottom_cycle_view(void)
         dr3_bottom_hidden    = 0;
         dr3_bottom_view      = map_available ? DR3_VIEW_MAP : DR3_VIEW_TEXT;
         dr3_bottom_map_dirty = 1;
+        dr3_bottom_map_full  = 1;
 
         dr3_log("[dr3] bottom screen: %s page", map_available ? "minimap" : "ranking");
         return;
@@ -176,6 +185,7 @@ static void dr3_bottom_cycle_view(void)
     if (map_available && (dr3_bottom_view == DR3_VIEW_TEXT)) {
         dr3_bottom_view      = DR3_VIEW_MAP;
         dr3_bottom_map_dirty = 1;
+        dr3_bottom_map_full  = 1;
 
         dr3_log("[dr3] bottom screen: minimap page");
         return;
@@ -289,12 +299,36 @@ int dr3_bottom_build_lines(char out[DR3_BOTTOM_LINES][DR3_BOTTOM_LINE_LEN])
 #define DR3_BOTTOM_MAP_H   224     /* 240 - 2*8: the band between header and footer */
 #define DR3_BOTTOM_MAP_W   320
 
+/*
+ * The colour the player picked for his car: the engine keeps the per-driver colours in
+ * menu_main.c's ___1a0fb8h table (3 bytes per entry, indexed by racer_t.color).  Returns 0 when it is
+ * not available yet, then the marker falls back to yellow.
+ */
+static uint32_t dr3_bottom_player_rgb(void)
+{
+    const racer_t *r  = (const racer_t *)___1a01e0h;
+    const int      me = (int)D(___1a1ef8h);
+    unsigned int   idx;
+    const unsigned char *c;
+
+    if (!___1a0fb8h || (me < 0) || (me >= 20)) return 0;
+
+    idx = (unsigned int)r[me].color;
+    if (idx >= 20) return 0;
+
+    c = (const unsigned char *)___1a0fb8h + (3 * idx);
+    if ((c[0] | c[1] | c[2]) == 0) return 0;          /* not loaded yet */
+
+    return ((uint32_t)c[0] << 16) | ((uint32_t)c[1] << 8) | (uint32_t)c[2];
+}
+
 /* Reads the cars of the running race (positions in track pixels).  Returns how many were written. */
 static int dr3_bottom_read_cars(dr3_map_car_t *out, int max)
 {
-    const struct_35e_t *s  = ___1e6ed0h;
-    const int           me = ((MY_CAR_IDX >= 0) && (MY_CAR_IDX < 4)) ? MY_CAR_IDX : 0;
-    int                 n  = NUM_OF_CARS;
+    const struct_35e_t *s     = ___1e6ed0h;
+    const int           me    = ((MY_CAR_IDX >= 0) && (MY_CAR_IDX < 4)) ? MY_CAR_IDX : 0;
+    const uint32_t      my_rgb = dr3_bottom_player_rgb();
+    int                 n     = NUM_OF_CARS;
     int                 i;
 
     if (n < 0) n = 0;
@@ -305,6 +339,7 @@ static int dr3_bottom_read_cars(dr3_map_car_t *out, int max)
         out[i].x         = s[i].XLocation;
         out[i].y         = s[i].YLocation;
         out[i].is_player = (i == me);
+        out[i].color     = (i == me) ? my_rgb : 0u;   /* 0 = the default colour for the role */
 
         /* before the first frame of a race the array holds zeros - nothing to draw then */
         out[i].valid     = (out[i].x >= 1.0f) && (out[i].y >= 1.0f);
@@ -359,13 +394,16 @@ static void dr3_bottom_draw_map_page(void)
     }
 
     {
-        /* Header and status line are printed on *every* map update: with double buffering each frame
-           has to be complete, otherwise the text would blink between the two buffers.  Topping it with
-           \x1b[2J also makes the console repaint its whole grid, so no stale pixels survive in the
-           buffer we are about to swap in. */
+        /*
+         * The map page keeps its text in the cache below and only rewrites the two text rows when
+         * something in them changed - and it never clears the screen except when the page is entered,
+         * because a clear would also wipe the map band.  Everything else (the markers) goes through
+         * dr3_minimap_draw_incremental(), so the pixels of the static map are written exactly once
+         * per race: that is what removed the flicker.
+         */
         char           header[96];
         char           footer[96];
-        int            lap = 0, pos = 0;
+        int            lap = 0, pos = 0, text_changed;
 
         if (dr3_bottom_map_dirty) {
             const PrintConsole * con = consoleGetDefault();
@@ -395,11 +433,35 @@ static void dr3_bottom_draw_map_page(void)
                  pos, (NUM_OF_CARS > 0) ? NUM_OF_CARS : 0,
                  lap, (NUM_OF_LAPS > 0) ? NUM_OF_LAPS : 0);
 
-        printf("\x1b[2J\x1b[1;1H%-38.38s\x1b[30;1H%-38.38s", header, footer);
+        text_changed = (strcmp(header, dr3_bottom_map_hdr) != 0) ||
+                       (strcmp(footer, dr3_bottom_map_ftr) != 0);
+
+        if (dr3_bottom_map_full) {
+            /* entering the page: clear once, print both text lines and paint the whole map */
+            printf("\x1b[2J\x1b[1;1H%-38.38s\x1b[30;1H%-38.38s", header, footer);
+            snprintf(dr3_bottom_map_hdr, sizeof(dr3_bottom_map_hdr), "%s", header);
+            snprintf(dr3_bottom_map_ftr, sizeof(dr3_bottom_map_ftr), "%s", footer);
+
+            n_cars = dr3_bottom_read_cars(cars, 4);
+            dr3_minimap_draw(&canvas, 0, DR3_BOTTOM_MAP_Y, DR3_BOTTOM_MAP_W, DR3_BOTTOM_MAP_H,
+                             cars, n_cars);
+
+            dr3_bottom_map_full = 0;
+            dr3_bottom_flush();
+            return;
+        }
+
+        if (text_changed) {
+            /* only the two text rows - the map band below is left alone */
+            printf("\x1b[1;1H%-38.38s\x1b[30;1H%-38.38s", header, footer);
+            snprintf(dr3_bottom_map_hdr, sizeof(dr3_bottom_map_hdr), "%s", header);
+            snprintf(dr3_bottom_map_ftr, sizeof(dr3_bottom_map_ftr), "%s", footer);
+        }
     }
 
     n_cars = dr3_bottom_read_cars(cars, 4);
-    dr3_minimap_draw(&canvas, 0, DR3_BOTTOM_MAP_Y, DR3_BOTTOM_MAP_W, DR3_BOTTOM_MAP_H, cars, n_cars);
+    dr3_minimap_draw_incremental(&canvas, 0, DR3_BOTTOM_MAP_Y, DR3_BOTTOM_MAP_W, DR3_BOTTOM_MAP_H,
+                                 cars, n_cars);
     dr3_bottom_flush();
 }
 
@@ -434,6 +496,7 @@ void dr3_bottom_track_loaded(const void *mask, const void *image, const void *pa
     if (!dr3_bottom_is_hidden()) {
         dr3_bottom_view      = DR3_VIEW_MAP;
         dr3_bottom_map_dirty = 1;
+        dr3_bottom_map_full  = 1;      /* a new track: repaint the whole band */
     }
 }
 
@@ -443,6 +506,7 @@ void dr3_bottom_track_unloaded(void)
 
     dr3_bottom_track_id[0] = 0;
     dr3_bottom_view        = DR3_VIEW_TEXT;
+    dr3_bottom_map_full    = 1;
 }
 #endif /* !DR3_PROFILE */
 

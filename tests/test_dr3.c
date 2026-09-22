@@ -309,6 +309,14 @@ static uint32_t minimap_color(uint32_t rgb)
     return ((rgb >> 16) & 0xFFu) | ((rgb >> 8) & 0xFF00u) | ((rgb & 0xFFu) << 16) | 0xFF000000u;
 }
 
+/* the same for a 16-bit target (RGB565), which is what the 3DS bottom screen uses */
+static uint16_t minimap_color565(uint32_t rgb)
+{
+    return (uint16_t)((((((rgb >> 16) & 0xFFu) >> 3)) << 11) |
+                      (((((rgb >> 8) & 0xFFu) >> 2)) << 5) |
+                        (((rgb & 0xFFu) >> 3)));
+}
+
 static void test_minimap_build(void)
 {
     uint8_t mask[8 * 8];
@@ -480,8 +488,8 @@ static void test_minimap_draw(void)
     memset(buf, 0, sizeof(buf));
     c.px = buf; c.fmt = DR3_CANVAS_RGBA8888; c.stride_x = 1; c.stride_y = 16; c.w = 16; c.h = 16;
 
-    cars[0].x = 2.5f; cars[0].y = 6.5f; cars[0].is_player = 0; cars[0].valid = 1;
-    cars[1].x = 4.5f; cars[1].y = 4.5f; cars[1].is_player = 1; cars[1].valid = 1;
+    cars[0].x = 2.5f; cars[0].y = 6.5f; cars[0].color = 0; cars[0].is_player = 0; cars[0].valid = 1;
+    cars[1].x = 4.5f; cars[1].y = 4.5f; cars[1].color = 0; cars[1].is_player = 1; cars[1].valid = 1;
 
     CHECK(dr3_minimap_draw(&c, 0, 0, 16, 16, cars, 2) == 1, "draw failed");
 
@@ -491,26 +499,39 @@ static void test_minimap_draw(void)
           buf[8 * 16 + 3]);
     CHECK(buf[2 * 16 + 2] == minimap_color(DR3_MAP_COL_OFFROAD), "ground not drawn: 0x%08X",
           buf[2 * 16 + 2]);
-    CHECK(buf[0] == minimap_color(DR3_MAP_COL_FRAME), "no frame: 0x%08X", buf[0]);
-    CHECK(buf[15 * 16 + 15] == minimap_color(DR3_MAP_COL_FRAME), "frame corner missing");
+    CHECK(buf[0] == minimap_color(DR3_MAP_COL_OFFROAD), "no frame expected: 0x%08X", buf[0]);
+    CHECK(buf[15 * 16 + 15] == minimap_color(DR3_MAP_COL_OFFROAD), "bottom right is not the map: 0x%08X",
+          buf[15 * 16 + 15]);
 
-    /* the player: map (4,4) -> canvas (8,8), a 5x5 yellow marker with a dark outline around it */
+    /* the player: map (4,4) -> canvas (8,8), a 5x5 marker in the fallback yellow with a dark, rounded
+       outline around it */
     CHECK(buf[8 * 16 + 8] == minimap_color(DR3_MAP_COL_PLAYER), "player marker: 0x%08X",
           buf[8 * 16 + 8]);
-    CHECK(buf[5 * 16 + 5] == 0xFF000000u, "player marker has no outline: 0x%08X", buf[5 * 16 + 5]);
-    CHECK(buf[4 * 16 + 4] == minimap_color(DR3_MAP_COL_OFFROAD), "player outline too large: 0x%08X",
+    CHECK(buf[5 * 16 + 6] == minimap_color(DR3_MAP_COL_OUTLINE), "player marker has no outline: 0x%08X",
+          buf[5 * 16 + 6]);
+    CHECK(buf[5 * 16 + 5] == minimap_color(DR3_MAP_COL_OFFROAD),
+          "the outline corner should be left out (rounded marker): 0x%08X", buf[5 * 16 + 5]);
+    CHECK(buf[4 * 16 + 4] == minimap_color(DR3_MAP_COL_OFFROAD), "player marker too large: 0x%08X",
           buf[4 * 16 + 4]);
 
     /* another car: map (2,6) -> canvas (4,12), 3x3 - and it must not cover the player */
     CHECK(buf[12 * 16 + 4] == minimap_color(DR3_MAP_COL_CAR), "car marker: 0x%08X", buf[12 * 16 + 4]);
 
-    /* without a loaded track: background + frame only, and it must not crash */
+    /* a marker in the driver's own colour when one is given */
+    cars[1].color = 0x123456u;
+    CHECK(dr3_minimap_draw(&c, 0, 0, 16, 16, cars, 2) == 1, "draw with a car colour failed");
+    CHECK(buf[8 * 16 + 8] == minimap_color(0x123456u), "player colour ignored: 0x%08X",
+          buf[8 * 16 + 8]);
+    cars[1].color = 0;
+
+    /* without a loaded track: plain background, and it must not crash */
     dr3_minimap_reset();
     memset(buf, 0, sizeof(buf));
     CHECK(dr3_minimap_draw(&c, 0, 0, 16, 16, cars, 2) == 1, "draw without a track failed");
     CHECK(buf[8 * 16 + 8] == minimap_color(DR3_MAP_COL_BACKGROUND), "background missing: 0x%08X",
           buf[8 * 16 + 8]);
-    CHECK(buf[0] == minimap_color(DR3_MAP_COL_FRAME), "frame missing without a track");
+    CHECK(buf[0] == minimap_color(DR3_MAP_COL_BACKGROUND), "background missing top left");
+    CHECK(buf[15 * 16 + 15] == minimap_color(DR3_MAP_COL_BACKGROUND), "background missing bottom right");
 
     /* invalid cars must be skipped instead of drawn at (0,0) */
     memset(buf, 0, sizeof(buf));
@@ -519,6 +540,8 @@ static void test_minimap_draw(void)
     CHECK(dr3_minimap_build(mask, NULL, NULL, 8, 8) == 1, "second build failed");
     dr3_minimap_draw(&c, 0, 0, 16, 16, cars, 2);
     CHECK(buf[0 * 16 + 5] != minimap_color(DR3_MAP_COL_CAR), "an invalid car was drawn");
+    cars[0].valid = 1;
+    cars[1].valid = 1;
 
     /* the ASCII preview that goes into drally_3ds.log */
     CHECK(dr3_minimap_ascii(ascii, sizeof(ascii), 8, 8) > 0, "ascii preview is empty");
@@ -551,8 +574,10 @@ static void test_minimap_letterbox(void)
     CHECK(dr3_minimap_draw(&c, 0, 0, 16, 16, NULL, 0) == 1, "draw failed");
 
     /* an 8x4 map in a 16x16 rectangle: 16x8, centred -> rows 4..11, map pixel (x,y) -> (2x, 4+2y) */
-    CHECK(buf[4 * 16 + 0] == minimap_color(DR3_MAP_COL_FRAME), "letterbox frame top missing");
-    CHECK(buf[11 * 16 + 15] == minimap_color(DR3_MAP_COL_FRAME), "letterbox frame bottom missing");
+    CHECK(buf[4 * 16 + 0] == minimap_color(DR3_MAP_COL_OFFROAD), "letterbox top row missing: 0x%08X",
+          buf[4 * 16 + 0]);
+    CHECK(buf[11 * 16 + 15] == minimap_color(DR3_MAP_COL_OFFROAD), "letterbox bottom row missing: 0x%08X",
+          buf[11 * 16 + 15]);
     CHECK(buf[0] == minimap_color(DR3_MAP_COL_BACKGROUND), "no letterbox background above");
     CHECK(buf[15 * 16 + 5] == minimap_color(DR3_MAP_COL_BACKGROUND), "no letterbox background below");
     CHECK(buf[8 * 16 + 5] == minimap_color(DR3_MAP_COL_ROAD), "road not drawn in the letterbox: 0x%08X",
@@ -581,19 +606,18 @@ static void test_minimap_pixel_formats(void)
     c.px = rgb565; c.fmt = DR3_CANVAS_RGB565; c.stride_x = 1; c.stride_y = 4; c.w = 4; c.h = 4;
 
     dr3_canvas_px(&c, 1, 2, 0xD2D2DCu);                 /* the road colour */
-    CHECK(rgb565[2 * 4 + 1] == (uint16_t)(((0xD2u >> 3) << 11) | ((0xD2u >> 2) << 5) | (0xDCu >> 3)),
-          "RGB565 packing: 0x%04X (want 0x%04X)", rgb565[2 * 4 + 1],
-          (unsigned)(((0xD2u >> 3) << 11) | ((0xD2u >> 2) << 5) | (0xDCu >> 3)));
+    CHECK(rgb565[2 * 4 + 1] == minimap_color565(0xD2D2DCu),
+          "RGB565 packing: 0x%04X (want 0x%04X)", rgb565[2 * 4 + 1], minimap_color565(0xD2D2DCu));
     CHECK(rgb565[2 * 4 + 2] == 0xAAAAu, "RGB565 write touched the next pixel: 0x%04X",
           rgb565[2 * 4 + 2]);
 
-    /* a whole draw into a 16-bit target: map, frame and no damage outside */
+    /* a whole draw into a 16-bit target: map and no damage outside */
     memset(rgb565, 0, sizeof(rgb565));
     CHECK(dr3_minimap_draw(&c, 0, 0, 4, 4, NULL, 0) == 1, "draw into an RGB565 target failed");
-    CHECK(rgb565[2 * 4 + 1] == (uint16_t)(((0xD2u >> 3) << 11) | ((0xD2u >> 2) << 5) | (0xDCu >> 3)),
+    CHECK(rgb565[2 * 4 + 1] == minimap_color565(DR3_MAP_COL_ROAD),
           "road missing in the RGB565 target: 0x%04X", rgb565[2 * 4 + 1]);
-    CHECK(rgb565[0] == (uint16_t)(((0x60u >> 3) << 11) | ((0x80u >> 2) << 5) | (0xA0u >> 3)),
-          "frame missing in the RGB565 target: 0x%04X", rgb565[0]);
+    CHECK(rgb565[0] == minimap_color565(DR3_MAP_COL_OFFROAD),
+          "map missing in the RGB565 target: 0x%04X", rgb565[0]);
 
     /* 24-bit BGR888 (GSP_BGR8_OES): 3 bytes per pixel, memory order B, G, R */
     memset(bgr888, 0x11, sizeof(bgr888));
@@ -652,6 +676,48 @@ static void test_minimap_track_colors(void)
           buf[2 * 4 + 1]);
 }
 
+static void test_minimap_incremental(void)
+{
+    static uint32_t buf[32 * 32];
+    static uint8_t  mask[8 * 8];
+    dr3_canvas_t    c;
+    dr3_map_car_t   cars[1];
+    int             x, y;
+
+    printf("- minimap: incremental update (only the markers are repainted)\n");
+
+    for (y = 0; y < 8; ++y)
+        for (x = 0; x < 8; ++x) mask[y * 8 + x] = (y == 4) ? 0x0F : 0x00;
+    CHECK(dr3_minimap_build(mask, NULL, NULL, 8, 8) == 1, "build failed");
+
+    memset(buf, 0, sizeof(buf));
+    c.px = buf; c.fmt = DR3_CANVAS_RGBA8888; c.stride_x = 1; c.stride_y = 32; c.w = 32; c.h = 32;
+
+    /* the first incremental call has no previous state and paints the whole thing */
+    cars[0].x = 2.5f; cars[0].y = 2.5f; cars[0].color = 0; cars[0].is_player = 1; cars[0].valid = 1;
+    CHECK(dr3_minimap_draw_incremental(&c, 0, 0, 32, 32, cars, 1) == 1, "first incremental failed");
+    /* an 8x8 map in a 32x32 rectangle: scale 4, so map (2,2) -> canvas (8,8) */
+    CHECK(buf[8 * 32 + 8] == minimap_color(DR3_MAP_COL_PLAYER), "marker missing: 0x%08X",
+          buf[8 * 32 + 8]);
+
+    /* move the car: the old marker pixels must be restored from the map and the new marker drawn */
+    cars[0].x = 6.5f; cars[0].y = 6.5f;
+    dr3_minimap_draw_incremental(&c, 0, 0, 32, 32, cars, 1);
+    CHECK(buf[8 * 32 + 8] == minimap_color(DR3_MAP_COL_OFFROAD),
+          "old marker position not restored: 0x%08X", buf[8 * 32 + 8]);
+    CHECK(buf[24 * 32 + 24] == minimap_color(DR3_MAP_COL_PLAYER), "new marker missing: 0x%08X",
+          buf[24 * 32 + 24]);
+    /* a road pixel away from both markers is untouched (the static map is not repainted at all) */
+    CHECK(buf[16 * 32 + 4] == minimap_color(DR3_MAP_COL_ROAD), "road damaged by the update: 0x%08X",
+          buf[16 * 32 + 4]);
+
+    /* the car disappears -> the marker has to vanish completely */
+    cars[0].valid = 0;
+    dr3_minimap_draw_incremental(&c, 0, 0, 32, 32, cars, 1);
+    CHECK(buf[24 * 32 + 24] == minimap_color(DR3_MAP_COL_OFFROAD), "marker not removed: 0x%08X",
+          buf[24 * 32 + 24]);
+}
+
 int main(void)
 {
     printf("dRally 3DS port - host tests\n\n");
@@ -668,6 +734,7 @@ int main(void)
     test_minimap_letterbox();
     test_minimap_pixel_formats();
     test_minimap_track_colors();
+    test_minimap_incremental();
 
     printf("\n%d checks, %d failures\n", g_checks, g_failed);
     return g_failed ? 1 : 0;

@@ -58,9 +58,10 @@ typedef struct {
 } dr3_canvas_t;
 
 typedef struct {
-    float x, y;          /* car position in track pixels (TRX_WIDTH/TRX_HEIGHT space) */
-    int   is_player;
-    int   valid;
+    float    x, y;       /* car position in track pixels (TRX_WIDTH/TRX_HEIGHT space) */
+    uint32_t color;      /* 0xRRGGBB of that driver, 0 = the default colour for his role */
+    int      is_player;
+    int      valid;
 } dr3_map_car_t;
 
 /* ------------------------------------------------------------------ data stage --- */
@@ -104,6 +105,15 @@ void dr3_canvas_px(const dr3_canvas_t *c, int x, int y, uint32_t color);
 int  dr3_minimap_draw(const dr3_canvas_t *c, int x0, int y0, int w, int h,
                       const dr3_map_car_t *cars, int n_cars);
 
+/*
+ * Same, but only repaints the pixels the car markers occupy: the markers of the previous call are
+ * restored from the map and the new ones are drawn.  That is what the bottom screen uses for its
+ * frequent updates, because a full redraw of the band four times a second was visible as flicker.
+ * Falls back to a full draw when it has no previous state.
+ */
+int  dr3_minimap_draw_incremental(const dr3_canvas_t *c, int x0, int y0, int w, int h,
+                                  const dr3_map_car_t *cars, int n_cars);
+
 /* ASCII preview of the map (for drally_3ds.log) - '#' road, ':' soft ground, '.' other, ' ' none.
    Returns the number of characters written. */
 int  dr3_minimap_ascii(char *out, int out_size, int cols, int rows);
@@ -113,8 +123,8 @@ int  dr3_minimap_ascii(char *out, int out_size, int cols, int rows);
 #define DR3_MAP_COL_ROAD       0x00D2D2DCu
 #define DR3_MAP_COL_OFFROAD    0x00264A28u
 #define DR3_MAP_COL_OTHER      0x00404048u
-#define DR3_MAP_COL_FRAME      0x006080A0u
 #define DR3_MAP_COL_PLAYER     0x00FFE020u
 #define DR3_MAP_COL_CAR        0x00E03030u
+#define DR3_MAP_COL_OUTLINE    0x00101010u
 
 #endif /* DR3_MINIMAP_H */

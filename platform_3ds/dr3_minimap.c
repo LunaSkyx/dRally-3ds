@@ -313,91 +313,203 @@ void dr3_canvas_rect(const dr3_canvas_t *c, int x0, int y0, int w, int h, uint32
     dr3_canvas_fill(c, x0 + w - 1, y0, 1, h, rgb);         /* right  */
 }
 
-/* Draws the cars: the player as a yellow marker with a dark outline, everyone else red.  The
-   non-player cars go first so that the player marker is never covered by one of them. */
-static void dr3_minimap_draw_car(const dr3_canvas_t *c, int x0, int y0, int w, int h,
-                                 const dr3_map_car_t *car)
+/* ------------------------------------------------------------- band + cell helpers --- */
+
+/* Fits the map into the given rectangle without distorting it (the tracks are not square, e.g.
+   1016x716 or 960x600) and centres it there. */
+static void dr3_map_band(int x0, int y0, int w, int h, int *dx, int *dy, int *dw, int *dh)
+{
+    int bw = w, bh = h;
+
+    if (dr3_map_ready && (dr3_map_w > 0) && (dr3_map_h > 0)) {
+        bh = (int)(((long)dr3_map_h * (long)w) / (long)dr3_map_w);
+
+        if (bh > h) {
+            bh = h;
+            bw = (int)(((long)dr3_map_w * (long)h) / (long)dr3_map_h);
+        }
+        if (bw > w) bw = w;
+        if (bh > h) bh = h;
+    }
+
+    *dx = x0 + (w - bw) / 2;
+    *dy = y0 + (h - bh) / 2;
+    *dw = bw;
+    *dh = bh;
+}
+
+/* Colour of a map cell (background when the cell lies outside the track). */
+static uint32_t dr3_map_cell_rgb(int mx, int my)
+{
+    size_t idx;
+
+    if (!dr3_map_ready || (mx < 0) || (my < 0) || (mx >= dr3_map_w) || (my >= dr3_map_h)) {
+        return DR3_MAP_COL_BACKGROUND;
+    }
+
+    idx = (size_t)my * DR3_MINIMAP_MAX_W + (size_t)mx;
+    if ((dr3_map_bits[idx] & 3) == DR3_MAP_NONE) return DR3_MAP_COL_BACKGROUND;
+
+    return dr3_map_col[idx];
+}
+
+/* Restores one canvas pixel to what the map has there (used to erase a marker). */
+static void dr3_map_repaint_px(const dr3_canvas_t *c, int dx, int dy, int dw, int dh, int cx, int cy)
+{
+    int mx, my;
+
+    if ((dw <= 0) || (dh <= 0) || (cx < dx) || (cy < dy) || (cx >= (dx + dw)) || (cy >= (dy + dh))) {
+        dr3_canvas_px(c, cx, cy, DR3_MAP_COL_BACKGROUND);
+        return;
+    }
+
+    mx = ((cx - dx) * dr3_map_w) / dw;
+    my = ((cy - dy) * dr3_map_h) / dh;
+
+    dr3_canvas_px(c, cx, cy, dr3_map_cell_rgb(mx, my));
+}
+
+/* ---------------------------------------------------------------------- markers --- */
+
+/* the markers remembered from the last draw, so an update can erase exactly those pixels */
+#define DR3_MARKER_MAX 4
+
+static int dr3_marker_n;
+static int dr3_marker_box[DR3_MARKER_MAX][4];      /* x, y, w, h in canvas pixels */
+
+/* A blob with the corners left out - a 5x5 square reads as a square, this reads as a car dot. */
+static void dr3_canvas_blob(const dr3_canvas_t *c, int x, int y, int size, uint32_t rgb)
+{
+    int i, j;
+
+    for (j = 0; j < size; ++j) {
+        for (i = 0; i < size; ++i) {
+            const int corner = ((i == 0) || (i == (size - 1))) && ((j == 0) || (j == (size - 1)));
+
+            if (corner) continue;
+            dr3_canvas_px(c, x + i, y + j, rgb);
+        }
+    }
+}
+
+/*
+ * The player gets a rounded marker in his own car colour (the engine's per-driver colours live in
+ * menu_main.c's ___1a0fb8h table) with a dark outline; the others stay red and smaller.
+ */
+static void dr3_minimap_draw_car(const dr3_canvas_t *c, int dx, int dy, int dw, int dh,
+                                 const dr3_map_car_t *car, int slot)
 {
     const int player_size = 5;
     const int other_size  = 3;
+    const int outline     = car->is_player ? 1 : 0;
+    uint32_t  rgb         = car->color ? car->color
+                                       : (car->is_player ? DR3_MAP_COL_PLAYER : DR3_MAP_COL_CAR);
     int       mx, my, cx, cy, size;
 
     dr3_minimap_project(car->x, car->y, &mx, &my);
 
     /* map pixel -> canvas pixel, then centre the marker */
-    cx   = x0 + (int)(((long)mx * (long)w) / (long)((dr3_map_w > 0) ? dr3_map_w : 1));
-    cy   = y0 + (int)(((long)my * (long)h) / (long)((dr3_map_h > 0) ? dr3_map_h : 1));
+    cx   = dx + (int)(((long)mx * (long)dw) / (long)((dr3_map_w > 0) ? dr3_map_w : 1));
+    cy   = dy + (int)(((long)my * (long)dh) / (long)((dr3_map_h > 0) ? dr3_map_h : 1));
     size = car->is_player ? player_size : other_size;
 
-    if (car->is_player) {
-        dr3_canvas_fill(c, cx - (size / 2) - 1, cy - (size / 2) - 1, size + 2, size + 2, 0x000000u);
-        dr3_canvas_fill(c, cx - (size / 2), cy - (size / 2), size, size, DR3_MAP_COL_PLAYER);
-    } else {
-        dr3_canvas_fill(c, cx - (size / 2), cy - (size / 2), size, size, DR3_MAP_COL_CAR);
+    if (outline) {
+        dr3_canvas_blob(c, cx - (size / 2) - 1, cy - (size / 2) - 1, size + 2, DR3_MAP_COL_OUTLINE);
+    }
+    dr3_canvas_blob(c, cx - (size / 2), cy - (size / 2), size, rgb);
+
+    if ((slot >= 0) && (slot < DR3_MARKER_MAX)) {
+        dr3_marker_box[slot][0] = cx - (size / 2) - outline;
+        dr3_marker_box[slot][1] = cy - (size / 2) - outline;
+        dr3_marker_box[slot][2] = size + (2 * outline);
+        dr3_marker_box[slot][3] = size + (2 * outline);
     }
 }
 
-static void dr3_minimap_draw_cars(const dr3_canvas_t *c, int x0, int y0, int w, int h,
+static void dr3_minimap_draw_cars(const dr3_canvas_t *c, int dx, int dy, int dw, int dh,
                                   const dr3_map_car_t *cars, int n_cars)
 {
-    int i;
+    int i, slot = 0;
 
+    dr3_marker_n = 0;
+
+    /* the others first, so the player marker can never be covered by one of them */
     for (i = 0; i < n_cars; ++i) {
-        if (cars[i].valid && !cars[i].is_player) dr3_minimap_draw_car(c, x0, y0, w, h, &cars[i]);
+        if (cars[i].valid && !cars[i].is_player) {
+            dr3_minimap_draw_car(c, dx, dy, dw, dh, &cars[i], slot++);
+        }
     }
 
     for (i = 0; i < n_cars; ++i) {
-        if (cars[i].valid && cars[i].is_player) dr3_minimap_draw_car(c, x0, y0, w, h, &cars[i]);
+        if (cars[i].valid && cars[i].is_player) {
+            dr3_minimap_draw_car(c, dx, dy, dw, dh, &cars[i], slot++);
+        }
     }
+
+    dr3_marker_n = slot;
 }
+
+/* ---------------------------------------------------------------- full and partial --- */
 
 int dr3_minimap_draw(const dr3_canvas_t *c, int x0, int y0, int w, int h,
                      const dr3_map_car_t *cars, int n_cars)
 {
-    const uint32_t background = DR3_MAP_COL_BACKGROUND;
-    int x, y, dx = x0, dy = y0, dw = w, dh = h;
+    int x, y, dx, dy, dw, dh;
 
     if (!c || !c->px || (w <= 0) || (h <= 0)) return 0;
 
-    dr3_canvas_fill(c, x0, y0, w, h, background);
+    dr3_canvas_fill(c, x0, y0, w, h, DR3_MAP_COL_BACKGROUND);
+
+    dr3_map_band(x0, y0, w, h, &dx, &dy, &dw, &dh);
 
     if (dr3_map_ready && (dr3_map_w > 0) && (dr3_map_h > 0)) {
-        /* fit the map into the given rectangle without distorting it (the tracks are not square,
-           e.g. 1016x716 or 960x600) and centre it there */
-        dw = w;
-        dh = (int)(((long)dr3_map_h * (long)w) / (long)dr3_map_w);
-
-        if (dh > h) {
-            dh = h;
-            dw = (int)(((long)dr3_map_w * (long)h) / (long)dr3_map_h);
-        }
-        if (dw > w) dw = w;
-        if (dh > h) dh = h;
-
-        dx = x0 + (w - dw) / 2;
-        dy = y0 + (h - dh) / 2;
-
         for (y = 0; y < dh; ++y) {
-            const int       my   = (y * dr3_map_h) / dh;
-            const uint8_t * row  = dr3_map_bits + (size_t)my * DR3_MINIMAP_MAX_W;
-            const uint32_t *crow = dr3_map_col  + (size_t)my * DR3_MINIMAP_MAX_W;
+            const int       my  = (y * dr3_map_h) / dh;
+            const uint8_t * row = dr3_map_bits + (size_t)my * DR3_MINIMAP_MAX_W;
 
             for (x = 0; x < dw; ++x) {
                 const int idx = (x * dr3_map_w) / dw;
 
-                if ((row[idx] & 3) == DR3_MAP_NONE) continue;      /* outside the track */
-                dr3_canvas_px(c, dx + x, dy + y, crow[idx]);       /* the track's own colour */
+                if ((row[idx] & 3) == DR3_MAP_NONE) continue;     /* outside the track */
+                dr3_canvas_px(c, dx + x, dy + y, dr3_map_cell_rgb(idx, my));
             }
         }
-
-        dr3_canvas_rect(c, dx, dy, dw, dh, DR3_MAP_COL_FRAME);
-
-        if (cars && (n_cars > 0)) dr3_minimap_draw_cars(c, dx, dy, dw, dh, cars, n_cars);
     }
-    else {
-        /* no track loaded: just the empty frame, so the page still looks intentional */
-        dr3_canvas_rect(c, x0, y0, w, h, DR3_MAP_COL_FRAME);
+
+    dr3_marker_n = 0;
+    if (cars && (n_cars > 0) && dr3_map_ready) dr3_minimap_draw_cars(c, dx, dy, dw, dh, cars, n_cars);
+
+    return 1;
+}
+
+int dr3_minimap_draw_incremental(const dr3_canvas_t *c, int x0, int y0, int w, int h,
+                                 const dr3_map_car_t *cars, int n_cars)
+{
+    static int have_state;
+    int        i, dx, dy, dw, dh;
+
+    if (!c || !c->px || (w <= 0) || (h <= 0)) return 0;
+
+    if (!have_state || !dr3_map_ready) {
+        have_state = 1;
+        return dr3_minimap_draw(c, x0, y0, w, h, cars, n_cars);
     }
+
+    dr3_map_band(x0, y0, w, h, &dx, &dy, &dw, &dh);
+
+    /* put the map back where the markers were, then draw them at their new place */
+    for (i = 0; i < dr3_marker_n; ++i) {
+        int px, py;
+
+        for (py = dr3_marker_box[i][1]; py < (dr3_marker_box[i][1] + dr3_marker_box[i][3]); ++py) {
+            for (px = dr3_marker_box[i][0]; px < (dr3_marker_box[i][0] + dr3_marker_box[i][2]); ++px) {
+                dr3_map_repaint_px(c, dx, dy, dw, dh, px, py);
+            }
+        }
+    }
+
+    dr3_marker_n = 0;
+    if (cars && (n_cars > 0) && dr3_map_ready) dr3_minimap_draw_cars(c, dx, dy, dw, dh, cars, n_cars);
 
     return 1;
 }
