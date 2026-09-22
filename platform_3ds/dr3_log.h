@@ -23,8 +23,12 @@ int  dr3_log_lines(void);
  * (the post race screens and the front end), so a hang or a crash shows how far the game got.
  */
 void dr3_chaos_trace(const char *what, int n);
+
+/* flushes the log - used by the heap guard report in drmemory.c */
+void dr3_log_flush(void);
 #else
 #define dr3_chaos_trace(what, n) ((void)0)
+#define dr3_log_flush()          ((void)0)
 #endif
 
 #endif /* DR3_LOG_H */

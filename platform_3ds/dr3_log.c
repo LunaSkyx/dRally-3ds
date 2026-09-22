@@ -4,6 +4,10 @@
  */
 #include "dr3_log.h"
 
+#if defined(DR3_CHAOS)
+#include "drmemory.h"       /* dr3_drheap_guard() - the heap check that runs with the trace */
+#endif
+
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -48,6 +52,14 @@ void dr3_log(const char *fmt, ...)
     }
     va_end(ap);
 
+#if defined(DR3_CHAOS)
+    /*
+     * The chaos test build's heap guard (drmemory.c) reports from inside an allocation, right before the
+     * game can hang in it, so the report has to reach the SD card at once.
+     */
+    dr3_log_flush();
+#endif
+
     /* NOTE: nothing goes to stdout here on purpose.  libctru's consoleInit() makes stdout draw onto
        the bottom screen, which would overwrite the controls/standings/statistics we show there. */
 }
@@ -56,6 +68,16 @@ int dr3_log_lines(void)
 {
     return dr3_log_count;
 }
+
+#if defined(__3DS__) && defined(DR3_CHAOS)
+/* flushes what the chaos build has written so far (see the heap guard in drmemory.c) */
+void dr3_log_flush(void)
+{
+    FILE *f = dr3_log_handle();
+
+    if (f) fflush(f);
+}
+#endif
 
 #if defined(DR3_CHAOS)
 /*
@@ -66,6 +88,9 @@ int dr3_log_lines(void)
 void dr3_chaos_trace(const char *what, int n)
 {
     static int shown;
+
+    /* a trace point is a cheap place to look at the engine's heap (see drmemory.c) */
+    if (shown < 4000) dr3_drheap_guard(what);
 
     if (shown >= 4000) return;
 
