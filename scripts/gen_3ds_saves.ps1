@@ -2,7 +2,7 @@
 #
 #   powershell -ExecutionPolicy Bypass -File scripts/gen_3ds_saves.ps1
 #
-# Writes DR.SG1..DR.SG3 into the game folder on the emulator's SD card and into the release package.
+# Writes DR.SG1..DR.SG4 into the game folder on the emulator's SD card and into the release package.
 # The format is a raw saved_game_t (0x883 bytes, see drally_structs_fixed.h) with the racer dwords stored
 # little-endian and then encoded exactly like dREncryption_encodeSavedGame() does it:
 #
@@ -64,14 +64,18 @@ function New-Racer([string]$name, [int]$car, [int]$pts, [int]$rank, [int]$face, 
     return ,$b
 }
 
+# $difficulty is the value the game keeps in byte 3 (the enum in race___3f970h.c):
+#       0 = speed makes me dizzy         1 = i live to ride
+#       2 = petrol in my veins           3 = 30th Anniversary (the level this port adds)
+# Only level 3 has the black anniversary adversary in the field, so an easy save is a plain championship.
 function New-Save([string]$slotName, [int]$money, [int]$playerPoints, [int]$playerRank,
-                  [int]$leaderPoints){
+                  [int]$leaderPoints, [int]$difficulty = 3){
     $b = New-Object byte[] 0x883
 
     $b[0] = 0x2a                           # key
     $b[1] = 19                             # me: the player sits in the last seat
     $b[2] = 1                              # weapons on
-    $b[3] = 3                              # difficulty: "30th Anniversary"
+    $b[3] = $difficulty                    # difficulty
     $n = [Text.Encoding]::ASCII.GetBytes($slotName)
     [Array]::Copy($n, 0, $b, 4, [Math]::Min($n.Length, 0xe))
 
@@ -120,10 +124,14 @@ Save-File 'DR.SG2' (New-Save 'CHAMPION' $million 200 1 0)
 Write-Host '=== DR.SG3: player second, one racer ahead - the final challenge should trigger ==='
 Save-File 'DR.SG3' (New-Save 'FINAL RACE' $million 110 2 150)
 
+# the same table as DR.SG1, only on the easiest level: no anniversary in the field, no final challenge
+Write-Host '=== DR.SG4: millions of dollars on "speed makes me dizzy" (easy) ==='
+Save-File 'DR.SG4' (New-Save 'EASY MONEY' $million 60 5 0 0)
+
 # ---- verify: decode what was written and print what the game will see ------------------------------
 Write-Host '=== verification (decoded again) ==='
 
-foreach ($f in 'DR.SG1','DR.SG2','DR.SG3'){
+foreach ($f in 'DR.SG1','DR.SG2','DR.SG3','DR.SG4'){
 
     $p = Join-Path $outDirs[0] $f
     if (-not (Test-Path $p)) { continue }
@@ -158,6 +166,9 @@ foreach ($f in 'DR.SG1','DR.SG2','DR.SG3'){
         if ($q -gt $best) { $best = $q }
     }
 
-    Write-Host ("{0}: slot '{1}', difficulty {2}, me = seat {3} '{4}' car {5}, money {6}, {7} points, rank {8}, racers ahead {9} (best {10})" -f
-        $f, $nm, $diff, $me, $pname, $car, $money, $pts, $rank, $ahead, $best)
+    # the black anniversary only exists on difficulty 3, the other three levels race without him
+    $adv = $(if ($diff -eq 3) { 'on' } else { 'off' })
+
+    Write-Host ("{0}: slot '{1}', difficulty {2} (anniversary {3}), me = seat {4} '{5}' car {6}, money {7}, {8} points, rank {9}, racers ahead {10} (best {11})" -f
+        $f, $nm, $diff, $adv, $me, $pname, $car, $money, $pts, $rank, $ahead, $best)
 }

@@ -5,7 +5,7 @@
 # Copies build/3ds/dRally_3ds.3dsx (and the debug build) to
 #   %APPDATA%\Azahar\sdmc\3ds\drally\   (where the emulator reads its SD card from)
 #   ..\3ds-release\dRally_3ds\          (the release package next to the repository)
-# and (re)creates DR.SG1..DR.SG3 there and in build/3ds, so the saves are always next to the .3dsx.
+# and (re)creates DR.SG1..DR.SG4 there and in build/3ds, so the saves are always next to the .3dsx.
 #
 $ErrorActionPreference = 'Stop'
 

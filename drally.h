@@ -42,7 +42,8 @@ typedef void (*void_cb)(void);
  * The fourth difficulty this port adds ("30th Anniversary", see doc/3ds.md).  On that level the
  * adversary - the SPECIAL car - is a full championship participant: he has a seat in the roster,
  * drives his own car, rides along in every race, collects points like all the others (so he ends up
- * leading the championship) and the final challenge is offered once the player is second.
+ * leading the championship) and the final challenge is offered from the top of the table on - first
+ * place (he is the champion, now face him) or second place, right behind him.
  * Everything hangs off the difficulty value, so it travels with dr.cfg and with the save games.
  * ------------------------------------------------------------------------------------------------
  */

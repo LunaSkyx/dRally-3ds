@@ -390,6 +390,24 @@ CDROM.INI                 <- contains: ./CINEM
 CINEM/ENDANI.HAF  ENDANI0.HAF  SANIM.HAF
 ```
 
+### Ready-made test saves
+
+`scripts/gen_3ds_saves.ps1` writes four save games (raw `saved_game_t`, 0x883 bytes, encoded exactly the
+way the game encodes them when it saves) into the game folder on the emulator's SD card, into
+`build/3ds` and into the release package.  `scripts/3ds/deploy_emulator.ps1` runs it after every build,
+so the saves are always next to the `.3dsx`.
+
+| File | Name | Difficulty | Money | Table |
+|---|---|---|---|---|
+| `DR.SG1` | MILLIONS | 3 - 30th Anniversary | 5 000 000 | 60 points, 5th place - the anniversary races along, so a normal signup |
+| `DR.SG2` | CHAMPION | 3 - 30th Anniversary | 5 000 000 | 200 points, 1st place - he is the champion, the challenge is offered |
+| `DR.SG3` | FINAL RACE | 3 - 30th Anniversary | 5 000 000 | 110 points, 2nd place, one racer ahead (150) - the challenge is offered |
+| `DR.SG4` | EASY MONEY | 0 - speed makes me dizzy | 5 000 000 | 60 points, 5th place - a plain championship, no anniversary in the field |
+
+The season itself is not part of a save game (only difficulty, weapons and the racers are), so a loaded
+save simply continues wherever the running session stands.  What the save sets is the money, the points
+and the places - which is enough to test the final challenge: `DR.SG2` and `DR.SG3` are near the top.
+
 ## Why there is no SDL renderer on the 3DS
 
 `src/video/n3ds` only registers a *frame-buffer* driver (`CreateWindowFramebuffer` /

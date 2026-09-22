@@ -205,8 +205,8 @@ void underground___2e350h(void){
 
 				/*
 				 * Usually the final challenge is offered once the player leads the championship.  On the
-				 * fourth difficulty the adversary leads it, so there the challenge is offered as soon as
-				 * the player is second - right behind him (see doc/3ds.md).
+				 * fourth difficulty the anniversary is meant to lead it, so the challenge is offered from
+				 * the top of the table on - first place (champion, now face him) or second (see doc/3ds.md).
 				 */
 				if(dr3_adversary_active()){
 
