@@ -52,13 +52,17 @@ void dr3_bottom_flush(void);
 #if defined(__3DS__) && defined(DR3_USE_GFX) && !defined(DR3_PROFILE)
 
 void dr3_bottom_track_loaded(const void *mask, const void *image, const void *palette,
-                             int mask_w, int mask_h, const char *track_id);
+                             int mask_w, int mask_h, const char *track_id, const char *track_name);
 void dr3_bottom_track_unloaded(void);
 
 #else
 
-#define dr3_bottom_track_loaded(mask, image, palette, mask_w, mask_h, track_id) ((void)0)
-#define dr3_bottom_track_unloaded()                                            ((void)0)
+/* the no-op variants reference their arguments, exactly like the ones in dr3_prof.h, so a caller
+   that computes something for the call (e.g. the track name) does not warn about dead stores */
+#define dr3_bottom_track_loaded(mask, image, palette, mask_w, mask_h, track_id, track_name) \
+    ((void)(mask), (void)(image), (void)(palette), (void)(mask_w), (void)(mask_h),          \
+     (void)(track_id), (void)(track_name))
+#define dr3_bottom_track_unloaded() ((void)0)
 
 #endif /* 3DS release build */
 

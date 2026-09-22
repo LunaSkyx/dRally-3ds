@@ -49,6 +49,7 @@ static int  dr3_bottom_ready;
 #if !defined(DR3_PROFILE)
 static int         dr3_bottom_view;
 static char        dr3_bottom_track_id[16];
+static char        dr3_bottom_track_name[24]; /* the human readable name, e.g. "Suburbia" */
 static int         dr3_bottom_map_dirty;      /* the geometry line still has to be logged */
 static int         dr3_bottom_map_full = 1;   /* the next map draw has to repaint everything */
 static char        dr3_bottom_map_hdr[96];    /* text currently on the map page */
@@ -427,8 +428,15 @@ static void dr3_bottom_draw_map_page(void)
             pos = (int)___1e6ed0h[MY_CAR_IDX].Position;
         }
 
-        snprintf(header, sizeof(header), "MINIMAP  %s",
-                 dr3_bottom_track_id[0] ? dr3_bottom_track_id : "-");
+        {
+            /* the map name, centred - that is what the header is for */
+            const char * title = dr3_bottom_track_name[0] ? dr3_bottom_track_name : "-";
+            const int    len   = (int)strlen(title);
+            const int    pad   = (len < DR3_BOTTOM_TEXT_W) ? ((DR3_BOTTOM_TEXT_W - len) / 2) : 0;
+
+            snprintf(header, sizeof(header), "%*s%s", pad, "", title);
+        }
+
         snprintf(footer, sizeof(footer), "POS %d/%d  LAP %d/%d  tap: ranking",
                  pos, (NUM_OF_CARS > 0) ? NUM_OF_CARS : 0,
                  lap, (NUM_OF_LAPS > 0) ? NUM_OF_LAPS : 0);
@@ -468,7 +476,7 @@ static void dr3_bottom_draw_map_page(void)
 /* --------------------------------------------------------------- track hooks --- */
 
 void dr3_bottom_track_loaded(const void *mask, const void *image, const void *palette,
-                             int mask_w, int mask_h, const char *track_id)
+                             int mask_w, int mask_h, const char *track_id, const char *track_name)
 {
     char preview[1024];
     int  counts[4];
@@ -480,11 +488,14 @@ void dr3_bottom_track_loaded(const void *mask, const void *image, const void *pa
     }
 
     snprintf(dr3_bottom_track_id, sizeof(dr3_bottom_track_id), "%s", track_id ? track_id : "-");
+    snprintf(dr3_bottom_track_name, sizeof(dr3_bottom_track_name), "%s",
+             (track_name && track_name[0]) ? track_name : dr3_bottom_track_id);
 
     dr3_minimap_class_counts(counts);
-    dr3_log("[dr3] minimap: %s %dx%d track -> %dx%d map (step %d): road %d, soft %d, other %d, none %d"
-            "%s",
-            dr3_bottom_track_id, mask_w, mask_h, dr3_minimap_w(), dr3_minimap_h(), dr3_minimap_step(),
+    dr3_log("[dr3] minimap: %s '%s' %dx%d track -> %dx%d map (step %d): road %d, soft %d, other %d, "
+            "none %d%s",
+            dr3_bottom_track_id, dr3_bottom_track_name, mask_w, mask_h,
+            dr3_minimap_w(), dr3_minimap_h(), dr3_minimap_step(),
             counts[DR3_MAP_ROAD], counts[DR3_MAP_OFFROAD], counts[DR3_MAP_OTHER], counts[DR3_MAP_NONE],
             (image && palette) ? ", colours from the track image" : ", fallback colours");
 
@@ -504,9 +515,10 @@ void dr3_bottom_track_unloaded(void)
 {
     dr3_minimap_reset();
 
-    dr3_bottom_track_id[0] = 0;
-    dr3_bottom_view        = DR3_VIEW_TEXT;
-    dr3_bottom_map_full    = 1;
+    dr3_bottom_track_id[0]   = 0;
+    dr3_bottom_track_name[0] = 0;
+    dr3_bottom_view          = DR3_VIEW_TEXT;
+    dr3_bottom_map_full      = 1;
 }
 #endif /* !DR3_PROFILE */
 

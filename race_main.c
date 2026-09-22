@@ -19,6 +19,7 @@
 	extern __POINTER__ TRX_IMA;
 	extern __POINTER__ TRX_MAS;
 	extern __BYTE__ ___1a51d0h[0x300];	/* the palette of the loaded track image */
+	extern const char ___18d492h[][0xf];	/* the track names the front end shows */
 	extern __POINTER__ BACKBUFFER;
 	extern __BYTE__ ___243d08h[];
 	extern __BYTE__ ___243d0ch[];
@@ -299,10 +300,25 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 	if(!dRally_Race_getSettings(RACE_SFX)) dRally_Sound_setEffectsVolume(0);
 	race___45a24h();
 	if(D(___196dach) != 0) race___4af3ch();
-	/* hand the finished track (mask + image + its palette) to the bottom screen minimap - a no-op on
-	   every other build (see platform_3ds/dr3_bottom.h).  It goes here, behind the reverse-track
-	   mirroring, so the map shows the track as it is driven. */
-	dr3_bottom_track_loaded(TRX_MAS, TRX_IMA, ___1a51d0h, TRX_WIDTH, TRX_HEIGHT, ___19bd64h);
+	/* hand the finished track (mask + image + its palette + its name) to the bottom screen minimap -
+	   a no-op on every other build (see platform_3ds/dr3_bottom.h).  It goes here, behind the
+	   reverse-track mirroring, so the map shows the track as it is driven. */
+	{
+		/*
+		 * The name for the header: ___106cbh[0..8] holds TR1..TR9 for the first season half and
+		 * [9..17] the same tracks driven backwards, [18] is TR0 - and ___18d492h holds 18 names for
+		 * exactly those slots (so "TR7" has a different name in the reversed half).
+		 */
+		const int    n    = ((___19bd64h[0] == 'T') && (___19bd64h[1] == 'R')) ? (___19bd64h[2] - '0') : -1;
+		int          slot = -1;
+		const char * name = NULL;
+
+		if ((n >= 1) && (n <= 9)) slot = (n - 1) + ((D(___196dach) != 0) ? 9 : 0);
+		if ((slot >= 0) && (slot <= 17)) name = ___18d492h[slot];
+
+		dr3_bottom_track_loaded(TRX_MAS, TRX_IMA, ___1a51d0h, TRX_WIDTH, TRX_HEIGHT,
+		                        ___19bd64h, name);
+	}
 	race___496b0h();
 	race___405bch();
 	race___49a34h();

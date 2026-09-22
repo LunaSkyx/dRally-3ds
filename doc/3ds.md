@@ -109,9 +109,11 @@ A race has a second page on that screen: the whole track with every car on it.
   dark.  The palette range is 0..63 or 0..100 depending on the file, so the brightest entry is
   scaled to 255 first.  Without an image/palette the fixed scheme (`DR3_MAP_COL_*`) is the fallback
 * the map keeps the track's aspect ratio (letterboxed and centred between the header line and the
-  status line, so a 1016x716 or 960x600 track is not stretched), and shows the player as a yellow
-  marker with a dark outline and the other cars in red.  The player is drawn last so no other car can
-  cover him
+  status line, so a 1016x716 or 960x600 track is not stretched).  The header shows **the map's name**
+  ("Suburbia", "Downtown", ..., centred) - the very names the front end uses (`___18d492h`), resolved
+  from the loaded track id plus the reverse flag, because the second season half drives the same tracks
+  backwards under different names (`race_main.c` does that lookup, the platform layer only prints it).
+  The status line below shows position/lap and the tap hint
 * the cars come from `struct_35e_t ___1e6ed0h[4]` (`XLocation`/`YLocation` in track pixels, `Lap`,
   `Position`); this page refreshes four times a second instead of twice
 * no border is drawn any more, and the player marker is a rounded blob in **his own car colour**
@@ -129,7 +131,7 @@ A race has a second page on that screen: the whole track with every car on it.
   classification can be checked from a log without looking at the screen:
 
   ```
-  [dr3] minimap: TR7 1016x716 track -> 254x179 map (step 4): road 17625, soft 10171, other 17670, none 0
+  [dr3] minimap: TR7 'Holocaust' 1016x716 track -> 254x179 map (step 4): road 17625, soft 10171, other 17670, none 0, colours from the track image
   minimap preview:
   ::::....#######..::::::::::::::....:::::
   :::...############.::::::::::.........:
