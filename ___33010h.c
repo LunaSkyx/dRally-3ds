@@ -1242,6 +1242,8 @@ void ___33010h_cdecl(int NumCars){
 	n = -1;
 	while(++n < 0x100) __DISPLAY_SET_PALETTE_COLOR(0, 0, 0, n);
 
+	dr3_chaos_trace("palette down", 0);
+
 #if defined(DR_MULTIPLAYER)
 	if(___19bd60h == 0){
 #endif // DR_MULTIPLAYER
@@ -1264,12 +1266,40 @@ void ___33010h_cdecl(int NumCars){
 
 			___31588h();
 
+			dr3_chaos_trace("next event", 0);
+
+#if defined(DR3_CHAOS)
+			/*
+			 * The signup below fills the field of the next event.  Its loop is unbounded in the original,
+			 * and a chaos race can leave the racer pool without a candidate the loop accepts: that is the
+			 * black screen freeze (the palette was set to black a few lines above).  The chaos build
+			 * gives up after a while and logs what it had, so the game stays playable.
+			 */
+			{
+				int dr3_passes = 0;
+
+				while(1){
+
+					___3079ch_cdecl(1);
+
+					if((4 <= B(___1a1f64h+3))&&(4 <= B(___1a1f64h+4))&&(4 <= B(___1a1f64h+5))) break;
+
+					if(++dr3_passes >= 200){
+
+						dr3_log("[dr3] chaos: signup stuck after %d passes, field %d,%d,%d",
+						        dr3_passes, B(___1a1f64h+3), B(___1a1f64h+4), B(___1a1f64h+5));
+						break;
+					}
+				}
+			}
+#else
 			while(1){
 				
 				___3079ch_cdecl(1);
 				
 				if((4 <= B(___1a1f64h+3))&&(4 <= B(___1a1f64h+4))&&(4 <= B(___1a1f64h+5))) break;
 			}
+#endif
 
 			memset(esp+0x4c, 0, 4);
 

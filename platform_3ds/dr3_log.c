@@ -34,7 +34,17 @@ void dr3_log(const char *fmt, ...)
     if (f && dr3_log_count < DR3_LOG_MAX) {
         vfprintf(f, fmt, ap);
         fputc('\n', f);
+#if defined(DR3_CHAOS)
+        /*
+         * The chaos test build traces the race car by car, which is hundreds of lines per frame: one
+         * fflush per line stalls on the SD card and costs more than the frame it is tracing (72 -> 18
+         * presents/s).  Flushing every 32 lines keeps the cost out and still loses at most a fraction
+         * of a frame when the game hangs.
+         */
+        if ((dr3_log_count & 0x1f) == 0) fflush(f);
+#else
         fflush(f);
+#endif
     }
     va_end(ap);
 

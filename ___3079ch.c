@@ -337,6 +337,10 @@ void ___3079ch_cdecl(__DWORD__ A1){
 
 		if(n < 0x32){
 
+#if defined(DR3_CHAOS)
+			int dr3_tries = 0;
+#endif
+
 			while(1){
 
 				/*
@@ -393,6 +397,28 @@ void ___3079ch_cdecl(__DWORD__ A1){
 					}
 				}
 
+#if defined(DR3_CHAOS)
+				/*
+				 * This tier needs somebody the class filter accepts, and the loop below only leaves when a
+				 * free one is found - with more cars in the event than the front end knows (chaos test
+				 * build) that can be nobody at all, and the palette is already black when this runs, so a
+				 * hang here is the black screen freeze.  After a few thousand tries any free racer will
+				 * do, and the log says who it was.
+				 */
+				if(++dr3_tries > 4000){
+
+					r = -1;
+					for(n = 0; n < 0x14; ++n){
+
+						if(B(___1a0f04h+n) != 1){ r = n; break; }
+					}
+
+					if(r < 0) r = (int)D(___1a1ef8h);      /* the pool is empty - keep the counters sane */
+
+					dr3_log("[dr3] chaos: tier %d took racer %d after %d tries", ebp, r, dr3_tries);
+					break;
+				}
+#endif
 				if(B(___1a0f04h+r) != 1) break;
 			}
 

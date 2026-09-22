@@ -42,7 +42,12 @@ meets the engine, the things worth knowing:
   unset and sent an arbitrary index into `s_6c[]` and the screen buffer - it now falls back to the grid's
   own seats and clamps whatever it is handed.
   `dr3_log.c`/`dr3_log.h` carry the build's step trace (`[dr3] chaos step ...`), which is what makes a
-  hang outside the race loop (results, front end) readable from the log
+  hang outside the race loop (results, front end) readable from the log.  Two things that trace taught:
+  the signup loops of the next event (`___33010h.c`, `___3079ch.c`) are unbounded in the original and a
+  twelve car race can leave the racer pool without a candidate they accept - that is the black screen
+  freeze (the palette is already down there), so the chaos build bounds them and logs what it had; and
+  the trace itself has to flush every 32nd line instead of every line, because one SD flush per line
+  costs more than the frame it traces (72 -> 18 presents/s)
 
 Profiler build (`debug`): `-DDR3_PROFILE` measures the frame budget on the console and writes `STAT`
 and `SUMMARY` lines to the log; `scripts/analyze_3ds_profile.ps1` turns them into a table.
