@@ -9,7 +9,7 @@ framebuffer (no SDL renderer), DSP audio at the DAC's native rate, pad remappabl
 `dr3_controls.txt`.  The bottom screen shows the standings and, during a race, the track map with every
 car and the lap times.  Technical notes: [doc/3ds.md](doc/3ds.md).
 
-The branch also adds a fourth difficulty ("30th Anniversary"): the black SPECIAL races as a normal
+The branch also adds a fourth very hard difficulty ("30th Anniversary").
 championship entry, the title is settled in a two car challenge, and that car can be bought in the shop.
 
 Install: copy the release folder to `sdmc:/3ds/drally/` so that `dRally_3ds.3dsx` sits next to the game
