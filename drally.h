@@ -50,6 +50,8 @@ typedef void (*void_cb)(void);
 #define DR3_ADVERSARY_CAR           6      /* DELIVERATOR_ADVERSARY - the car the adversary drives */
 #define DR3_ADVERSARY_RACER         18     /* seat he is created in (he moves up the table later) */
 #define DR3_ADVERSARY_START_RANK    3      /* he starts third in points and works his way up */
+#define DR3_ADVERSARY_CAR_PIC       5      /* the picture the standings show for him: the Deliverator,
+                                              the SPECIAL being its black twin (carres.bpk holds six) */
 
 extern __DWORD__ ___196a94h_difficulty;
 extern int       dr3_adversary_wanted;

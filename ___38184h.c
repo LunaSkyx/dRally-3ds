@@ -119,7 +119,8 @@ void ___38184h_cdecl(__DWORD__ A1, __POINTER__ A2){
 			L(eax) = B(esp+ebp+0x14);
 			eax = 0x6c*eax;
 			ecx = D(esp+0x3c);
-			esi = s_6c[eax/0x6c].face;
+			esi = (int)s_6c[eax/0x6c].face;
+			if((esi < 0) || (esi > 0x13)) esi = 0x13;      /* face01..face20 - never read past them */
 			ebxp = ___1a112ch__VESA101_ACTIVESCREEN_PTR+ecx+0x1a6;
 			ecx = 0x40;
 			edx = ecx;
@@ -154,7 +155,14 @@ void ___38184h_cdecl(__DWORD__ A1, __POINTER__ A2){
 			ebxp = ___1a112ch__VESA101_ACTIVESCREEN_PTR+ebx+0x1ea;
 			eax = B(esp+ebp+0x14);
 			eax = 0x6c*eax;
-			esi = 0x5140*s_6c[eax/0x6c].car;
+
+			/*
+			 * The car picture out of carres.bpk: 0x5140 bytes per car, and the file is 0x1e780 bytes -
+			 * six cars, nothing more.  The adversary drives car 6, so without this his picture in the
+			 * standings is read from past the end of that table (see doc/3ds.md).
+			 */
+			esi = 0x5140*(((int)s_6c[eax/0x6c].car == DR3_ADVERSARY_CAR) ? (int)DR3_ADVERSARY_CAR_PIC
+			                                                           : (int)s_6c[eax/0x6c].car);
 			ebp++;
 			ecx = 0x34;
 			eax = D(esp+0x18);
