@@ -13,7 +13,8 @@ $ErrorActionPreference = 'Stop'
 
 $outDirs = @(
     'C:\Users\M-PC\AppData\Roaming\Azahar\sdmc\3ds\drally',
-    'C:\Users\M-PC\rally\3ds-release\dRally_3ds'
+    'C:\Users\M-PC\rally\3ds-release\dRally_3ds',
+    (Join-Path (Split-Path -Parent $PSScriptRoot) 'build\3ds')
 )
 
 $names = @('SAM SPEED','JANE HONDA','DUKE NUKEM','NASTY NICK','MOTOR MARY','MAD MAC','MATT MILER',
