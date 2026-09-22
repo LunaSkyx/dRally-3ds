@@ -246,7 +246,7 @@ this branch adds a fourth one, one step above "petrol in my veins", for when eve
 | Where | What changed |
 |---|---|
 | `___3ab5ch.c` | the "Select difficulty:" dialog: a fourth row at `y+0x9e`, the down key stops at `NUM_OF_DIFFICULTIES-1`, the frame grew from `0xba` to `0xd6` (so the highlight cannot run into the bottom border) and the repaint block covers `0x70` rows instead of `0x54` |
-| `race___3f970h.c` | the AI parameter tables grew from 4 to 5 rows: rows 0..3 are the four levels, row 4 stays `MY_DIFFICULTY` - the row of the **player's own car**.  The new row is the "petrol" row with more top speed (+0.15), quicker acceleration and a higher target speed |
+| `race___3f970h.c` | the AI parameter tables grew from 4 to 5 rows: rows 0..3 are the four levels, row 4 stays `MY_DIFFICULTY` - the row of the **player's own car**.  The new row is the "petrol" row with more top speed (+0.15), a sharper steering rate and noticeably more armour (see the field table below) |
 | `___33010h.c` | the player's car still gets `MY_DIFFICULTY` - now 4, it was a hardcoded 3.  **This has to follow the enum**, otherwise his car would silently use the new AI row and every difficulty would feel different |
 | `race___4c21ch.c` | the rubber band tables are indexed by `2*difficulty`, so they grew from 6 to 8 values |
 | `menu_data.c` | the name for the hall of fame (`___18768ah[3]`) - without it that screen would read past the table |
@@ -256,10 +256,23 @@ Everything else works unchanged: the level is picked and saved like the other th
 `difficulty = 3`), and the hall of fame, savegames and quicksaves all store it as a plain number that
 nobody validates.  It has no jingle of its own in the game data, so it plays `SFX_LETS_ROCK`.
 
+| Field | Set from | What it does in the race | petrol -> pedal |
+|---|---|---|---|
+| `+4` / `+8` | `___3f1f0h_floats[diff][car][engine]` | the car's **top speed**: it scales the per-frame acceleration (`__b0 += 0.8*F32(+4)/30`) and the terminal speed | **+0.15** per value |
+| `+0x14` | `3.75 / (___3f5b0h_floats[diff][car] - 0.05*engine)` | becomes `s_35e.__a8`, the **steering rate**: `Direction += __a8` per frame | 1.60..1.20 -> **1.50..1.10** (sharper) |
+| `+0x1c` | `___3f610h_ints[diff][car]` + `___3f670h_ints[diff][armour]` | **armour / hit points** - the damage taken is `(0x400 - armour)*...`, capped at 900 | base **+15..+30**, per armour level **+50..+60** |
+| `+0xc` | `___3f3d0h_floats[diff][car][engine]` | the cornering/slide factor (`__bc`), unchanged on purpose | = petrol |
+| `+4` (again) | `race___4c21ch.c`, indexed `2*difficulty` | the **rubber band**: a catch-up boost when the AI is behind, a slow-down when it leads | boost 0.18/0.32 -> **0.20/0.36**, slow-down 0.03/0.06 -> 0.03/0.05 |
+| `+4` | `race___3f970h.c` adversary block | the SPECIAL's own top speed, per difficulty | 4.5/4.7 -> **4.6/4.8** |
+
+The player's own car always uses the `MY_DIFFICULTY` row plus its `+0x64` (100) armour bonus, so nothing
+above touches him.  Everything else that reads `___196a94h_difficulty` is bookkeeping (config, hall of
+fame, savegames) - the difficulty has no other effect on the race.
+
 **Tuning** is one table row in `race___3f970h.c`: `___3f1f0h_floats` (top speed), `___3f5b0h_floats`
-(acceleration, smaller is quicker), `___3f610h_ints` (target speed) and `___3f670h_ints` (per
-lap-position offset); the cornering table `___3f3d0h_floats` deliberately keeps the "petrol" values.
-Renaming means the string in `___3ab5ch.c` (twice - the dialog and its repaint) and `menu_data.c`.
+(steering rate, smaller is sharper), `___3f610h_ints` (armour) and `___3f670h_ints` (armour per upgrade
+level); the cornering table `___3f3d0h_floats` deliberately keeps the "petrol" values.  Renaming means
+the string in `___3ab5ch.c` (twice - the dialog and its repaint) and `menu_data.c`.
 
 Because it is engine code, the level is there in every build of this branch, not only on the 3DS.
 
