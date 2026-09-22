@@ -44,6 +44,27 @@ void old_bpa_read(const char * bpa_fname, __POINTER__ dst, const char * bpa_entr
     bpa = bpa_open(u_bpa_fname);
     bpa_search(bpa, bpa_entry);
 
+#if defined(__3DS__) && defined(DR3_CHAOS)
+    /*
+     * A BPA that comes up empty here ends the game (___42944h below), and the chaos test build hit that
+     * on the way into the second race - the read of the header had not delivered, once.  One fresh
+     * attempt is logged and keeps the run going; if it fails too, the error path is still taken.
+     */
+    if(bpa_entry_size(bpa) == 0){
+
+        dr3_log("[dr3] chaos: BPA read of %s from %s came up empty - retrying", bpa_entry, bpa_fname);
+        dr3_log_flush();
+
+        bpa_close(bpa);
+        bpa = bpa_open(u_bpa_fname);
+        bpa_search(bpa, bpa_entry);
+
+        dr3_log("[dr3] chaos: retry gave %s (%u bytes)", (bpa_entry_size(bpa) != 0) ? "the entry" : "nothing",
+                (unsigned)bpa_entry_size(bpa));
+        dr3_log_flush();
+    }
+#endif
+
     if(bpa_entry_size(bpa) != 0){
         
         bpa_read(bpa, dst);

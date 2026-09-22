@@ -1,5 +1,9 @@
 #include "bpa.h"
 
+#if defined(__3DS__) && defined(DR3_CHAOS)
+#include "platform_3ds/dr3_log.h"
+#endif
+
 #pragma pack(1)
 typedef struct bpa_entry_s {
     __BYTE__        name[0xd];
@@ -146,7 +150,7 @@ static int bpa_sanity(BPA * bpa){
 
 BPA * bpa_open(const char * bpa_fname){
 
-    int     n;
+    int     n, sane;
     BPA *   bpa;
 
     bpa = &BPAContext;
@@ -165,11 +169,30 @@ BPA * bpa_open(const char * bpa_fname){
         }
     }
     
-    if(bpa_sanity(bpa) == BPA_FAILED){
+    sane = bpa_sanity(bpa);
+
+    if(sane == BPA_FAILED){
 
         bpa_close(bpa);
         return (BPA *)0;
     }
+
+#if defined(__3DS__) && defined(DR3_CHAOS)
+    /*
+     * The chaos test build has to say *why* a read came up empty: this is the check that ends the game
+     * with "Problems with [...] file!" after a race (the palette is black by then, so it looks like a
+     * hang first).  A header with no entries in a file that has data means the header read did not
+     * deliver.
+     */
+    if(sane != BPA_OK){
+
+        dr3_log("[dr3] chaos: BPA %s: fd=%p, entries=%d, first bytes %02x %02x %02x %02x",
+                bpa->file, bpa->fd, (int)bpa->header.n,
+                bpa->header.fat[0].name[0], bpa->header.fat[0].name[1],
+                bpa->header.fat[0].name[2], bpa->header.fat[0].name[3]);
+        dr3_log_flush();
+    }
+#endif
 
     n = -1;
     while(++n < bpa->header.n) BPA_decodeEntryName(bpa->header.fat[n].name);
