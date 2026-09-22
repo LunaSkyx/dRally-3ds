@@ -95,6 +95,7 @@ void dr3_chaos_trace(const char *what, int n)
     if (shown >= 4000) return;
 
     dr3_log("[dr3] chaos step %-12s %d", what, n);
+    dr3_log_flush();            /* few calls only - the tail of the log has to be the last step */
     ++shown;
 }
 #endif
