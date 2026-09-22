@@ -329,7 +329,14 @@ void race___4c434h(void){
 				}
 
 #if defined(DR3_CHAOS)
-				if(++dr3_chaos_spins > 2000){
+				/*
+				 * Search attempts per frame (see dr3_chaos.h): every attempt scans the whole 40x40 sprite
+				 * against the track mask, so this loop is by far the most expensive thing a car does -
+				 * with twelve cars on a track full of soft ground (Rock Zone: 60% soft) the frame was
+				 * spent here (measured: 630 ms of every second in the per car loops).  A car that gives up
+				 * here simply tries again on the next frame, so a low bound costs nothing but a moment.
+				 */
+				if(++dr3_chaos_spins > 16){
 
 					s_35e[D(___243c60h)].__14 = 0;
 					break;
