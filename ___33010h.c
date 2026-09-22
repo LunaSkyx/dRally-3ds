@@ -590,7 +590,9 @@ void ___33010h_cdecl(int NumCars){
 		}
 		else {
 		
-			D(___1de7d0h+0x54*n+0x44) = 3;
+			/* 4 = MY_DIFFICULTY: the row of the parameter tables in race___3f970h.c that belongs to the
+			   player's own car - the four selectable difficulties are rows 0..3 there */
+			D(___1de7d0h+0x54*n+0x44) = 4;
 		}
 
 		D(___1de7d0h+0x54*n+0x2c) = D(___185a14h_UseWeapons);

@@ -1,8 +1,11 @@
 #include "drally.h"
 #include "drally_structs_free.h"
 
-	const float ___3f6ech[6] = { 0.07f, 0.12f, 0.11f, 0.20f, 0.18f, 0.32f };
- 	const float ___3f704h[6] = { 0.12f, 0.19f, 0.06f, 0.12f, 0.03f, 0.06f };
+	/* Two values per difficulty (2*difficulty = catch-up boost, 2*difficulty+1 = extra boost when the
+	   car is a whole lap behind).  The fourth level this port adds sits at 6/7, a little stronger than
+	   "petrol in my veins". */
+	const float ___3f6ech[8] = { 0.07f, 0.12f, 0.11f, 0.20f, 0.18f, 0.32f, 0.20f, 0.36f };
+ 	const float ___3f704h[8] = { 0.12f, 0.19f, 0.06f, 0.12f, 0.03f, 0.06f, 0.03f, 0.05f };
 
 	extern __BYTE__ ___243cech[];
 	extern __DWORD__ MY_CAR_IDX;

@@ -67,10 +67,15 @@ typedef union struct_54_s {
 	};
 } struct_54_t;
 
-enum e_difficulty { SPEED_MAKES_ME_DIZZY, I_LIVE_TO_RIDE, PETROL_IN_MY_VEINS, MY_DIFFICULTY };
+/*
+ * Rows 0..3 are the four selectable difficulties (the fourth one this port adds), row 4 is
+ * MY_DIFFICULTY: the row that belongs to the player's own car.  ___33010h.c hands his car that row and
+ * the opponents the selected level, so the player keeps his own parameters whatever he picks.
+ */
+enum e_difficulty { SPEED_MAKES_ME_DIZZY, I_LIVE_TO_RIDE, PETROL_IN_MY_VEINS, PEDAL_TO_THE_METAL, MY_DIFFICULTY };
 enum e_car { VAGABOND, DERVISH, SENTINEL, SHRIEKER, WRAITH, DELIVERATOR, DELIVERATOR_ADVERSARY };
 
-	static const float ___3f1f0h_floats[4][6][5] = {
+	static const float ___3f1f0h_floats[5][6][5] = {	/* top speed: one row per difficulty + the player's own */
 		[SPEED_MAKES_ME_DIZZY] = {	
 			[   VAGABOND] = { 2.55f, 2.60f, 1.00f, 1.00f, 1.00f },
 			[    DERVISH] = { 2.70f, 2.75f, 2.80f, 1.00f, 1.00f },
@@ -95,6 +100,14 @@ enum e_car { VAGABOND, DERVISH, SENTINEL, SHRIEKER, WRAITH, DELIVERATOR, DELIVER
 			[     WRAITH] = { 3.80f, 3.90f, 4.00f, 4.10f, 1.00f },
 			[DELIVERATOR] = { 4.20f, 4.30f, 4.40f, 4.50f, 4.60f }
 		},
+		[PEDAL_TO_THE_METAL] = {	/* the hardest level: a little faster than petrol in my veins */
+			[   VAGABOND] = { 2.95f, 3.00f, 1.00f, 1.00f, 1.00f },
+			[    DERVISH] = { 3.10f, 3.15f, 3.20f, 1.00f, 1.00f },
+			[   SENTINEL] = { 3.30f, 3.40f, 3.50f, 1.00f, 1.00f },
+			[   SHRIEKER] = { 3.70f, 3.80f, 3.90f, 3.95f, 1.00f },
+			[     WRAITH] = { 3.95f, 4.05f, 4.15f, 4.25f, 1.00f },
+			[DELIVERATOR] = { 4.35f, 4.45f, 4.55f, 4.65f, 4.75f }
+		},
 		[MY_DIFFICULTY] = {
 			[   VAGABOND] = { 2.50f, 2.55f, 1.00f, 1.00f, 1.00f },
 			[    DERVISH] = { 2.65f, 2.70f, 2.75f, 1.00f, 1.00f },
@@ -105,7 +118,7 @@ enum e_car { VAGABOND, DERVISH, SENTINEL, SHRIEKER, WRAITH, DELIVERATOR, DELIVER
 		}
 	};
 
-	static const float ___3f3d0h_floats[4][6][5] = {
+	static const float ___3f3d0h_floats[5][6][5] = {	/* cornering/aggression */
 		[SPEED_MAKES_ME_DIZZY] = {
 			[   VAGABOND] = { 0.50f, 0.30f, 0.10f, 1.00f, 1.00f },
 			[    DERVISH] = { 0.50f, 0.30f, 0.10f, 1.00f, 1.00f },
@@ -130,6 +143,14 @@ enum e_car { VAGABOND, DERVISH, SENTINEL, SHRIEKER, WRAITH, DELIVERATOR, DELIVER
 			[     WRAITH] = { 0.80f, 0.60f, 0.40f, 0.20f, 0.00f },
 			[DELIVERATOR] = { 0.80f, 0.60f, 0.40f, 0.20f, 0.00f }
 		},
+		[PEDAL_TO_THE_METAL] = {	/* same cornering as petrol in my veins, the speeds above do the work */
+			[   VAGABOND] = { 0.50f, 0.30f, 0.10f, 1.00f, 1.00f },
+			[    DERVISH] = { 0.50f, 0.30f, 0.10f, 1.00f, 1.00f },
+			[   SENTINEL] = { 0.80f, 0.60f, 0.40f, 0.20f, 1.00f },
+			[   SHRIEKER] = { 0.80f, 0.60f, 0.40f, 0.20f, 1.00f },
+			[     WRAITH] = { 0.80f, 0.60f, 0.40f, 0.20f, 0.00f },
+			[DELIVERATOR] = { 0.80f, 0.60f, 0.40f, 0.20f, 0.00f }
+		},
 		[MY_DIFFICULTY] = {
 			[   VAGABOND] = { 0.50f, 0.30f, 0.10f, 1.00f, 1.00f },
 			[    DERVISH] = { 0.55f, 0.30f, 0.10f, 1.00f, 1.00f },
@@ -140,7 +161,7 @@ enum e_car { VAGABOND, DERVISH, SENTINEL, SHRIEKER, WRAITH, DELIVERATOR, DELIVER
 		}
 	};
 
-	static const float ___3f5b0h_floats[4][6] = {
+	static const float ___3f5b0h_floats[5][6] = {	/* acceleration (smaller = quicker) */
 		[SPEED_MAKES_ME_DIZZY] = {
 			[   VAGABOND] = 1.80f,
 			[    DERVISH] = 1.70f,
@@ -165,6 +186,14 @@ enum e_car { VAGABOND, DERVISH, SENTINEL, SHRIEKER, WRAITH, DELIVERATOR, DELIVER
 			[     WRAITH] = 1.25f,
 			[DELIVERATOR] = 1.20f
 		},
+		[PEDAL_TO_THE_METAL] = {
+			[   VAGABOND] = 1.50f,
+			[    DERVISH] = 1.40f,
+			[   SENTINEL] = 1.30f,
+			[   SHRIEKER] = 1.20f,
+			[     WRAITH] = 1.15f,
+			[DELIVERATOR] = 1.10f
+		},
 		[MY_DIFFICULTY] = {
 			[   VAGABOND] = 1.75f,
 			[    DERVISH] = 1.65f,
@@ -175,7 +204,7 @@ enum e_car { VAGABOND, DERVISH, SENTINEL, SHRIEKER, WRAITH, DELIVERATOR, DELIVER
 		}
 	};
 
-	static const int ___3f610h_ints[4][6] = {
+	static const int ___3f610h_ints[5][6] = {	/* target speed base */
 		[SPEED_MAKES_ME_DIZZY] = {
 			[   VAGABOND] = 120,
 			[    DERVISH] = 130,
@@ -200,6 +229,14 @@ enum e_car { VAGABOND, DERVISH, SENTINEL, SHRIEKER, WRAITH, DELIVERATOR, DELIVER
 			[     WRAITH] = 300,
 			[DELIVERATOR] = 350
 		},
+		[PEDAL_TO_THE_METAL] = {
+			[   VAGABOND] = 165,
+			[    DERVISH] = 175,
+			[   SENTINEL] = 185,
+			[   SHRIEKER] = 250,
+			[     WRAITH] = 320,
+			[DELIVERATOR] = 380
+		},
 		[MY_DIFFICULTY] = {
 			[   VAGABOND] = 150,
 			[    DERVISH] = 190,
@@ -210,7 +247,7 @@ enum e_car { VAGABOND, DERVISH, SENTINEL, SHRIEKER, WRAITH, DELIVERATOR, DELIVER
 		}
 	};
 
-	static const int ___3f670h_ints[4][5] = {
+	static const int ___3f670h_ints[5][5] = {	/* per lap-position offset */
 		[SPEED_MAKES_ME_DIZZY] = {
 			360,
 			370,
@@ -231,6 +268,13 @@ enum e_car { VAGABOND, DERVISH, SENTINEL, SHRIEKER, WRAITH, DELIVERATOR, DELIVER
 			530,
 			580,
 			600
+		},
+		[PEDAL_TO_THE_METAL] = {
+			560,
+			570,
+			580,
+			630,
+			660
 		},
 		[MY_DIFFICULTY] = {
 			240,
@@ -362,12 +406,14 @@ void race___3f970h(void){
 				if(___1de7d0h[0].dfclty == SPEED_MAKES_ME_DIZZY)	F32(___1de580h[0].raw+4) = 4.3f;
 				if(___1de7d0h[0].dfclty == I_LIVE_TO_RIDE)			F32(___1de580h[0].raw+4) = 4.4f;
 				if(___1de7d0h[0].dfclty == PETROL_IN_MY_VEINS)		F32(___1de580h[0].raw+4) = 4.5f;
+				if(___1de7d0h[0].dfclty == PEDAL_TO_THE_METAL)		F32(___1de580h[0].raw+4) = 4.6f;
 			}
 			else {
 
 				if(___1de7d0h[0].dfclty == SPEED_MAKES_ME_DIZZY)	F32(___1de580h[0].raw+4) = 4.5f;
 				if(___1de7d0h[0].dfclty == I_LIVE_TO_RIDE)			F32(___1de580h[0].raw+4) = 4.6f;
 				if(___1de7d0h[0].dfclty == PETROL_IN_MY_VEINS)		F32(___1de580h[0].raw+4) = 4.7f;
+				if(___1de7d0h[0].dfclty == PEDAL_TO_THE_METAL)		F32(___1de580h[0].raw+4) = 4.8f;
 			}
 
 			F32(___1de580h[0].raw+0x14) = (float)(3.75/((double)___3f5b0h_floats[___1de7d0h[1].dfclty][1]-0.05*(double)D(___1de7d0h[1].raw+0x14)));

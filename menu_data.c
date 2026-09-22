@@ -150,7 +150,8 @@ const __DWORD__ ___1865fch[] = {    // CONTINUE ANIMATION
 const char ___18768ah[][0x18] = {
     [0] = "speed makes me dizzy",
     [1] = "i live to ride",
-    [2] = "petrol in my veins"
+    [2] = "petrol in my veins",
+    [3] = "pedal to the metal"     /* the fourth difficulty this port adds, see doc/3ds.md */
 };
 
 const char ___18d492h[][0xf] = {

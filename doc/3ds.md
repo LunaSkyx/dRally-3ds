@@ -238,6 +238,31 @@ Consequences that shape this port:
 | `events.c` | engine patch 1: `while(dr3_poll_event(&e))` under `#if defined(__3DS__)` |
 | `drally_linux_c.c` | engine patch 2 (display): window created as the fixed 400x240 top screen, **no SDL renderer**, `__PRESENTSCREEN__` converts the 8-bit screen with the palette LUT straight into the window surface and calls `SDL_UpdateWindowSurface`; `SDL_SetWindowSize` calls are skipped |
 
+### A fourth difficulty: "pedal to the metal"
+
+The original ships three levels (the quirky names live in `___18768ah`, the hall of fame shows them);
+this branch adds a fourth one, one step above "petrol in my veins", for when even that gets too easy.
+
+| Where | What changed |
+|---|---|
+| `___3ab5ch.c` | the "Select difficulty:" dialog: a fourth row at `y+0x9e`, the down key stops at `NUM_OF_DIFFICULTIES-1`, the frame grew from `0xba` to `0xd6` (so the highlight cannot run into the bottom border) and the repaint block covers `0x70` rows instead of `0x54` |
+| `race___3f970h.c` | the AI parameter tables grew from 4 to 5 rows: rows 0..3 are the four levels, row 4 stays `MY_DIFFICULTY` - the row of the **player's own car**.  The new row is the "petrol" row with more top speed (+0.15), quicker acceleration and a higher target speed |
+| `___33010h.c` | the player's car still gets `MY_DIFFICULTY` - now 4, it was a hardcoded 3.  **This has to follow the enum**, otherwise his car would silently use the new AI row and every difficulty would feel different |
+| `race___4c21ch.c` | the rubber band tables are indexed by `2*difficulty`, so they grew from 6 to 8 values |
+| `menu_data.c` | the name for the hall of fame (`___18768ah[3]`) - without it that screen would read past the table |
+| `config_c.c` | the enum, so both ends of the config agree |
+
+Everything else works unchanged: the level is picked and saved like the other three (`dr.cfg` gets
+`difficulty = 3`), and the hall of fame, savegames and quicksaves all store it as a plain number that
+nobody validates.  It has no jingle of its own in the game data, so it plays `SFX_LETS_ROCK`.
+
+**Tuning** is one table row in `race___3f970h.c`: `___3f1f0h_floats` (top speed), `___3f5b0h_floats`
+(acceleration, smaller is quicker), `___3f610h_ints` (target speed) and `___3f670h_ints` (per
+lap-position offset); the cornering table `___3f3d0h_floats` deliberately keeps the "petrol" values.
+Renaming means the string in `___3ab5ch.c` (twice - the dialog and its repaint) and `menu_data.c`.
+
+Because it is engine code, the level is there in every build of this branch, not only on the 3DS.
+
 ### Why the multiplayer code stays in
 
 Removing the multiplayer objects was tried and **fails to link**: menus, race code and the chat box

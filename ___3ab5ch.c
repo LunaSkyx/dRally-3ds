@@ -40,8 +40,11 @@
 enum e_difficulty {
     SPEED_MAKES_ME_DIZZY,
     I_LIVE_TO_RIDE,
-    PETROL_IN_MY_VEINS
+    PETROL_IN_MY_VEINS,
+    PEDAL_TO_THE_METAL         /* the fourth level this port adds - keep in step with race___3f970h.c */
 };
+
+#define NUM_OF_DIFFICULTIES 4  /* the rows of the dialog below, and the last selectable index + 1 */
 
 void old_bpa_read(const char *, __POINTER__, const char *);
 void bpk_decode2(__POINTER__, __POINTER__);
@@ -309,7 +312,7 @@ __DWORD__ ___3ab5ch_cdecl(__DWORD__ A1){
 				D(esp+0x44) += 0x1e;
 				memcpy(___1a112ch__VESA101_ACTIVESCREEN_PTR+0x280*84, ___1a1138h__VESA101_BACKGROUND+0x280*84, 0x2c380);
 				___13710h(0, 0);
-				___13248h_cdecl(ebp, D(esp+0x44), 0x1b8, 0x0ba, 1);
+				___13248h_cdecl(ebp, D(esp+0x44), 0x1b8, 0x0d6, 1);	/* 0xd6 (not 0xba): the fourth row needs room */
 				___12e78h_v3(___1a10cch___185ba9h, "Select difficulty:", ebp+0x50, D(esp+0x44)+0x12);
 				___13bd4h_cdecl(ebp+0x16, D(esp+0x44)+0x4f+0x1c*___196a94h_difficulty);
 
@@ -318,6 +321,7 @@ __DWORD__ ___3ab5ch_cdecl(__DWORD__ A1){
 				___12e78h_v3((edi != 0)?___1a10e0h___185ba9h:___1a10cch___185ba9h, "speed makes me dizzy", ebp+0x2e, D(esp+0x44)+0x4a);
 				___12e78h_v3((edi != 1)?___1a10e0h___185ba9h:___1a10cch___185ba9h, "i live to ride",       ebp+0x2e, D(esp+0x44)+0x66);
 				___12e78h_v3((edi != 2)?___1a10e0h___185ba9h:___1a10cch___185ba9h, "petrol in my veins",   ebp+0x2e, D(esp+0x44)+0x82);
+				___12e78h_v3((edi != 3)?___1a10e0h___185ba9h:___1a10cch___185ba9h, "pedal to the metal",   ebp+0x2e, D(esp+0x44)+0x9e);
 
 				___12cb8h__VESA101_PRESENTSCREEN();
 				D(esp+0x28) = D(esp+0x44)+0x4a;
@@ -342,7 +346,7 @@ __DWORD__ ___3ab5ch_cdecl(__DWORD__ A1){
 						edi--;
 					}
 
-					if(((int)edi < 2)&&((B(esp+0x58) == DR_SCAN_DOWN)||(B(esp+0x58) == DR_SCAN_KP_2))){
+					if(((int)edi < (NUM_OF_DIFFICULTIES-1))&&((B(esp+0x58) == DR_SCAN_DOWN)||(B(esp+0x58) == DR_SCAN_KP_2))){
 
 						L(eax) = 1;
 						edi++;
@@ -351,13 +355,14 @@ __DWORD__ ___3ab5ch_cdecl(__DWORD__ A1){
 					if(L(eax) != 0){
 
 						n = -1;
-						while(++n < 84) memset(___1a112ch__VESA101_ACTIVESCREEN_PTR+0x280*(n+D(esp+0x28))+ebp+0x16, 0xc4, 0x163);
+						while(++n < 0x70) memset(___1a112ch__VESA101_ACTIVESCREEN_PTR+0x280*(n+D(esp+0x28))+ebp+0x16, 0xc4, 0x163);
 
 						___12e78h_v3((edi != 0)?___1a10e0h___185ba9h:___1a10cch___185ba9h, "speed makes me dizzy", ebp+0x2e, D(esp+0x28));
 						___12e78h_v3((edi != 1)?___1a10e0h___185ba9h:___1a10cch___185ba9h, "i live to ride",       ebp+0x2e, D(esp+0x38));
 						___12e78h_v3((edi != 2)?___1a10e0h___185ba9h:___1a10cch___185ba9h, "petrol in my veins",   ebp+0x2e, D(esp+0x30));
+						___12e78h_v3((edi != 3)?___1a10e0h___185ba9h:___1a10cch___185ba9h, "pedal to the metal",   ebp+0x2e, D(esp+0x30)+0x1c);
 
-						___1398ch__VESA101_PRESENTRECTANGLE(D(esp+0x34), ___1a112ch__VESA101_ACTIVESCREEN_PTR+D(esp+0x24)+ebp+0x16, 0x190, 0x54);
+						___1398ch__VESA101_PRESENTRECTANGLE(D(esp+0x34), ___1a112ch__VESA101_ACTIVESCREEN_PTR+D(esp+0x24)+ebp+0x16, 0x190, 0x70);
 						dRally_Sound_pushEffect(1, SFX_CLICK_2, 0, ___24cc54h_sfx_volume, 0x28000, 0x8000);
 					}
 
@@ -374,6 +379,10 @@ __DWORD__ ___3ab5ch_cdecl(__DWORD__ A1){
 							break;
 						case PETROL_IN_MY_VEINS:
 							dRally_Sound_pushEffect(5, SFX_PETROL_IN_MY_VEINS, 0, ___24cc54h_sfx_volume, 0x24000, 0x8000);
+							break;
+						case PEDAL_TO_THE_METAL:
+							/* the game has no jingle of its own for the fourth level - "let's rock" fits */
+							dRally_Sound_pushEffect(5, SFX_LETS_ROCK, 0, ___24cc54h_sfx_volume, 0x24000, 0x8000);
 							break;
 						default:
 							break;

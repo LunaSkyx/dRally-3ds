@@ -9,6 +9,8 @@ libctru and SDL2 (using SDL2's own n3ds backend).
 ## What works
 
 * the full game: menus, name entry (3DS software keyboard), shop, races, damage/wrecking
+* the game's difficulty screen has a **fourth** level in this branch ("pedal to the metal", one step
+  above "petrol in my veins") - see `doc/3ds.md` for what it changes and how to tune or rename it
 * sound and music (DSP at the DAC's native rate, no resampling)
 * the bottom screen shows the controls and the current driver standings; during a race a tap switches
   to a minimap of the track (header: the map's name, all cars, the player in his own car colour) and a
