@@ -1,6 +1,7 @@
 #include "drally.h"
 #include "drally_fonts.h"
 #include "drally_structs_fixed.h"
+#include "drally_structs_free.h"
 
 	extern __BYTE__ ___1a1f64h[];
 	extern __BYTE__ ___1a1ef8h[];
@@ -15,6 +16,45 @@ void ___12cb8h__VESA101_PRESENTSCREEN(void);
 char * itoa_watcom106(int value, char * buffer, int radix);
 int rand_watcom106(void);
 
+extern cardata_t ___18e298h[7];
+
+/*
+ * The adversary ("pedal to the metal", see doc/3ds.md): one of the AI seats belongs to him - his own
+ * name, his own car (the SPECIAL), full equipment and a head start in points, so he leads the
+ * championship and is the one to beat.
+ *
+ * This is done here, when a race event is signed up for, and not when the roster is created: the
+ * difficulty is picked in the licence screen, i.e. *after* the roster exists.  His car is the marker,
+ * so the check survives the roster being sorted by points - and it makes the seeding a one-off, his
+ * points then move like everybody else's.
+ */
+static void dr3_adversary_seed(void){
+
+	racer_t * s_6c = (racer_t *)___1a01e0h;
+	const int me  = (int)D(___1a1ef8h);
+	int       i, best = 0;
+
+	if(!dr3_adversary_active()) return;
+
+	for(i = 0; i < 0x14; ++i){
+		if((int)s_6c[i].car == DR3_ADVERSARY_CAR) return;           /* he is already in the game */
+	}
+
+	for(i = 0; i < 0x14; ++i){
+		if((i != me) && (i != DR3_ADVERSARY_RACER) && ((int)s_6c[i].points > best)) best = (int)s_6c[i].points;
+	}
+
+	strcpy(s_6c[DR3_ADVERSARY_RACER].name, "ADVERSARY");
+	s_6c[DR3_ADVERSARY_RACER].car    = DR3_ADVERSARY_CAR;
+	s_6c[DR3_ADVERSARY_RACER].damage = 0;
+	s_6c[DR3_ADVERSARY_RACER].engine = ___18e298h[DR3_ADVERSARY_CAR].n_engine_upgrades - 1;
+	s_6c[DR3_ADVERSARY_RACER].tires  = ___18e298h[DR3_ADVERSARY_CAR].n_tire_upgrades - 1;
+	s_6c[DR3_ADVERSARY_RACER].armor  = ___18e298h[DR3_ADVERSARY_CAR].n_armor_upgrades - 1;
+	s_6c[DR3_ADVERSARY_RACER].points = best + DR3_ADVERSARY_LEAD;
+	s_6c[DR3_ADVERSARY_RACER].rank   = 1;
+	s_6c[DR3_ADVERSARY_RACER].refund = ___18e298h[DR3_ADVERSARY_CAR].price;
+}
+
 // RACE SIGNUP RANDOMIZATION
 void ___3079ch_cdecl(__DWORD__ A1){
 
@@ -25,6 +65,8 @@ void ___3079ch_cdecl(__DWORD__ A1){
 
 
 	s_6c = (racer_t *)___1a01e0h;
+
+	dr3_adversary_seed();
 
 	if((rand_watcom106()%A1) == 0){
 	
@@ -39,22 +81,22 @@ void ___3079ch_cdecl(__DWORD__ A1){
 
 			while(1){
 
-				/*
-				 * The adversary rides along: on the fourth difficulty the first slot of every race is
-				 * his ("pedal to the metal", see doc/3ds.md).  The pick below would never choose him
-				 * (his car is outside every class range), so he is placed here - and the break keeps
-				 * the retry loop from spinning around his already-set "picked" flag.
-				 */
-				if(dr3_adversary_active() && (ebp == 0)){
-
-					r = DR3_ADVERSARY_RACER;
-					break;
-				}
-
 				if(ebp == 0){
 
 					n = -1;
 					while(++n < 0x64){
+
+						/*
+						 * The adversary takes part like every other racer: he is one candidate for this
+						 * slot, and the "picked" flag below makes sure that happens once per event (see
+						 * doc/3ds.md).  His car is outside every class range tested here, so without
+						 * this he would never be picked at all.
+						 */
+						if(dr3_adversary_active() && (B(___1a0f04h+DR3_ADVERSARY_RACER) != 1)){
+
+							r = DR3_ADVERSARY_RACER;
+							break;
+						}
 
 						r = rand_watcom106()%0x14;
 						if((s_6c[r].car >= 0)&&(s_6c[r].car <= 2)) break;
