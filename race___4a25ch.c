@@ -1,4 +1,5 @@
 #include "drally.h"
+#include "platform_3ds/dr3_chaos.h"
 #include "drally_structs_free.h"
 
 	extern __BYTE__ ___243c60h[];
@@ -22,7 +23,15 @@ void race___4a25ch(void){
 	s_54 = (struct_54_t *)___1de7d0h;
 
 	n = -1;
-	while(++n < 4){
+	/*
+	 * This is where a car of the running race gets its whole state: the position history (__14e/__152),
+	 * the facing (Direction, from the start slot's rotation), the sprite (ImgOffset = one 0x25800 byte
+	 * stripe per car), lap, position, controls, the tyre smoke rings, everything.  Four cars in the
+	 * original - the chaos test build (-DDR3_CHAOS, doc/3ds.md) has more, and the ones behind the
+	 * fourth have to be set up here as well: half initialised cars do not drive, do not draw and send
+	 * the collision code into its "wiggle free" loop.
+	 */
+	while(++n < DR3_MAX_CARS){
 
 		s_35e[n].__14e = s_35e[n].XLocation;
 		s_35e[n].__152 = s_35e[n].YLocation;
@@ -95,5 +104,5 @@ void race___4a25ch(void){
 		D(___243d08h) = 0xf;
 	}
 
-	D(___243c60h) = 4;
+	D(___243c60h) = DR3_MAX_CARS;
 }

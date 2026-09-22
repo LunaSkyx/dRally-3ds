@@ -195,7 +195,33 @@ static __WORD__ helper33(void){
 	return ecx;
 }
 
+#if defined(DR3_CHAOS)
+/*
+ * Chaos test build (-DDR3_CHAOS, doc/3ds.md): the race steps go into the log once the traffic light is
+ * about to turn green (counter 1 reaches 0xbe = the release), so if a race hangs the log shows the
+ * step and the car it stopped on.  Capped, so the log cannot grow without bound.
+ */
+#define DR3_CHAOS_STEP_LOG 2500
+
+static void dr3_chaos_step(const char *what, int car){
+
+	static int shown;
+
+	if((int)getCounter(1) < 0xa0) return;
+	if(shown >= DR3_CHAOS_STEP_LOG) return;
+
+	if(shown == 0) dr3_log("[dr3] chaos trace on (light counter %d)", (int)getCounter(1));
+
+	dr3_log("[dr3] chaos step %-8s car %d", what, car);
+	++shown;
+}
+#else
+#define dr3_chaos_step(what, car) ((void)0)
+#endif
+
 static void race___4b62ch_helper(int n){
+
+	dr3_chaos_step("4b62ch", n);
 
 	//D(___243c60h) = n;
 
@@ -214,11 +240,11 @@ static void race___4b62ch_helper(int n){
 	}
 }
 
-static void race___4c434h_helper(int n){ D(___243c60h) = n; race___4c434h(); }
-static void race___514d8h_helper(int n){ D(___243c60h) = n; race___514d8h(); }
-static void race___52ac4h_helper(int n){ D(___243c60h) = n; race___52ac4h(); }
-static void race___526ach_helper(int n){ D(___243c60h) = n; race___526ach(); }
-static void race___4ff50h_helper(int n){ D(___243c60h) = n; race___4ff50h(); }
+static void race___4c434h_helper(int n){ dr3_chaos_step("4c434h", n); D(___243c60h) = n; race___4c434h(); }
+static void race___514d8h_helper(int n){ dr3_chaos_step("514d8h", n); D(___243c60h) = n; race___514d8h(); }
+static void race___52ac4h_helper(int n){ dr3_chaos_step("52ac4h", n); D(___243c60h) = n; race___52ac4h(); }
+static void race___526ach_helper(int n){ dr3_chaos_step("526ach", n); D(___243c60h) = n; race___526ach(); }
+static void race___4ff50h_helper(int n){ dr3_chaos_step("4ff50h", n); D(___243c60h) = n; race___4ff50h(); }
 
 // ___56774h
 void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racers
@@ -672,18 +698,24 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 		}
 #endif // DR_MULTIPLAYER
 		D(___243c60h) = -1;
-		while(++D(___243c60h) < NUM_OF_CARS) race___50ef4h();
+		while(++D(___243c60h) < NUM_OF_CARS){ dr3_chaos_step("50ef4h", (int)D(___243c60h)); race___50ef4h(); }
+		dr3_chaos_step("4f300h", -1);
 		race___4f300h();	// RENDER CARS
+		dr3_chaos_step("51ce0h", -1);
 		race___51ce0h();
+		dr3_chaos_step("4f170h", -1);
 		if(dRally_Race_getSettings(RACE_SHADOWS)) race___4f170h();
 		D(___243c60h) = -1;
-		while(++D(___243c60h) < NUM_OF_CARS) race___50a48h();
+		while(++D(___243c60h) < NUM_OF_CARS){ dr3_chaos_step("50a48h", (int)D(___243c60h)); race___50a48h(); }
 		D(___243c60h) = -1;
-		while(++D(___243c60h) < NUM_OF_CARS) race___51204h();
+		while(++D(___243c60h) < NUM_OF_CARS){ dr3_chaos_step("51204h", (int)D(___243c60h)); race___51204h(); }
+		dr3_chaos_step("53310h", -1);
 		race___53310h();	// SORT OBJECTS
+		dr3_chaos_step("53464h", -1);
 		race___53464h();	// OBJECTS
 		D(___243c60h) = -1;
-		while(++D(___243c60h) < NUM_OF_CARS) race___50ba4h();
+		while(++D(___243c60h) < NUM_OF_CARS){ dr3_chaos_step("50ba4h", (int)D(___243c60h)); race___50ba4h(); }
+		dr3_chaos_step("51eb4h", -1);
 		race___51eb4h();
 #if defined(DR_MULTIPLAYER)
 		if(___19bd60h == 0){
@@ -693,6 +725,7 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 		}
 #endif // DR_MULTIPLAYER
 		if((int)getCounter(1) < 0x122) race___42218h();
+		dr3_chaos_step("hud", -1);
 		(CURRENT_VIEWPORT_W != 0x140) ? race___40f48h() : race___40db4h();
 
 		D(___243c60h) = -1;

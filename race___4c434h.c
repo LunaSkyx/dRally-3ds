@@ -17,6 +17,12 @@
 	extern __BYTE__ ___243cb0h[];
 	extern __BYTE__ ___243cb4h[];
 
+#if defined(DR3_CHAOS)
+/* the chaos test build bounds the "wiggle free" loop below: a car that the pile at the start pushed
+   off the track must not spin there forever (see dr3_chaos.h) */
+static int dr3_chaos_spins;
+#endif
+
 #define A_PI 	3.14159265359
 #define L0_83 	0.833333
 
@@ -311,6 +317,9 @@ void race___4c434h(void){
 			s_35e[D(___243c60h)].__16a = 1;
 			s_35e[D(___243c60h)].__16e = 0;
 
+#if defined(DR3_CHAOS)
+			dr3_chaos_spins = 0;
+#endif
 			while(1){
 
 				if((int)s_35e[D(___243c60h)].__14 >= 4){
@@ -318,6 +327,14 @@ void race___4c434h(void){
 					s_35e[D(___243c60h)].__14 = 0;
 					break;
 				}
+
+#if defined(DR3_CHAOS)
+				if(++dr3_chaos_spins > 2000){
+
+					s_35e[D(___243c60h)].__14 = 0;
+					break;
+				}
+#endif
 
 				eax = rand_watcom106();
 				ebx = 2*s_35e[D(___243c60h)].__16a+1;
