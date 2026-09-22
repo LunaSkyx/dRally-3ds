@@ -1,4 +1,5 @@
 #include "drally.h"
+#include "platform_3ds/dr3_chaos.h"
 #include "drally_structs_free.h"
 
 #pragma pack(1)
@@ -205,6 +206,7 @@ void race___42824h(void){
 			 * (see doc/3ds.md)
 			 */
 			if((((int)D(___1de7d0h+0x54*n+0x30) != DR3_ADVERSARY_CAR) || (n == D(MY_CAR_IDX))) &&
+			   DR3_PALETTE_CAR_SLOT(n) &&
 			   (CarSpinsStripe[i] >= 0xf)&&(CarSpinsStripe[i] <= 0x18)) CarSpinsStripe[i] += 0xa*n;
 		}
 	}

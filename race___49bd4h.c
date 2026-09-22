@@ -1,5 +1,6 @@
 #include "drally.h"
 #include "platform_3ds/dr3_chaos.h"
+#include "drmath.h"
 #include "drally_structs_free.h"
 
 #pragma pack(1)
@@ -96,20 +97,27 @@ void race___49bd4h(void){
 
 #if defined(DR3_CHAOS)
 	/*
-	 * The track file carries four start slots.  The chaos test build (-DDR3_CHAOS, doc/3ds.md) puts the
-	 * extra cars on those slots too, a few pixels apart, so they are on the start line as well - the car
-	 * to car collision sorts the pile out.  Without DR3_CHAOS the original loop below runs, so this file
-	 * generates the same code as before.
+	 * The track file only carries four start slots, so the extra cars go into the grid rows behind them
+	 * and stand there from the start (they used to share the four slots, which looked like four cars
+	 * until the race released and the pile came apart).
+	 *
+	 * "Behind" is +(sin, cos) of the facing: the AI of race___4b62ch.c looks (and shoots) 35 pixels
+	 * ahead at (Direction + 180), so (Direction) points the other way.  Direction is the same value
+	 * race___4a25ch.c will set from the start slot's rotation.
+	 *
+	 * Without DR3_CHAOS the original loop below runs, so this file generates the same code as before.
 	 */
 	n = -1;
 	while(++n < DR3_MAX_CARS){
 
-		const int slot = (n < 4) ? n : (n & 3);
-		const int off  = (n < 4) ? 0 : ((n >> 2) * 3);
+		const int    slot = (n < 4) ? n : (n & 3);
+		const int    row  = (n < 4) ? 0 : (n >> 2);
+		const double rad  = 3.75 * (double)TrxInf->startups[slot].rot * (dR_PI / 180.0);
+		const double back = 22.0 * (double)row;         /* one grid row further back */
 
-		s_35e[n].ImgIndex = TrxInf->startups[slot].rot;
-		s_35e[n].XLocation = (float)(TrxInf->startups[slot].x + off);
-		s_35e[n].YLocation = (float)(TrxInf->startups[slot].y - off);
+		s_35e[n].ImgIndex  = TrxInf->startups[slot].rot;
+		s_35e[n].XLocation = (float)(int)((double)TrxInf->startups[slot].x + back * dRMath_sin(rad));
+		s_35e[n].YLocation = (float)(int)((double)TrxInf->startups[slot].y + back * dRMath_cos(rad));
 	}
 #else
 	n = -1;

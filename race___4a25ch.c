@@ -44,6 +44,10 @@ void race___4a25ch(void){
 
 		if((n > 0)||(s_94[0].__0 != 6)){
 
+#if defined(DR3_CHAOS)
+			/* only the first four cars own a palette ramp - DR3_PALETTE_CAR_SLOT, dr3_chaos.h */
+			if(DR3_PALETTE_CAR_SLOT(n))
+#endif
 			___4a064h_cdecl(10*n+15, (float)(int)s_94[n].__38, (float)(int)s_94[n].__3c, (float)(int)s_94[n].__40);
 		}
 

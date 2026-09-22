@@ -27,6 +27,13 @@
 #if defined(DR3_CHAOS)
 #define DR3_MAX_CARS    (DR3_HUD_CARS + DR3_CHAOS_EXTRA)
 /*
+ * The palette has four car colour ramps: 10 entries each, starting at index 0x0f (see
+ * ___4a064h.c).  A race with more cars must not give the ones behind the fourth their own ramp -
+ * that would overwrite the track colours - they keep the first ramp, and their sprites are not
+ * shifted either (race___42824h.c).
+ */
+#define DR3_PALETTE_CAR_SLOT(n)     ((n) < DR3_HUD_CARS)
+/*
  * The in-race car list stops where the list ends (its rows start at 0x20*n and the fourth row already
  * ends at row 177 of the 200).  A race with fewer cars keeps drawing exactly as many rows as it has,
  * so a two car duel still shows two - this only cuts down the chaos grid.
@@ -36,6 +43,7 @@
 #define DR3_MAX_CARS    DR3_HUD_CARS
 /* the release build keeps the original expression, so the generated code does not change at all */
 #define DR3_HUD_LOOP_LIMIT(cars) (cars)
+#define DR3_PALETTE_CAR_SLOT(n)  1
 #endif
 
 #endif /* DR3_CHAOS_H */
