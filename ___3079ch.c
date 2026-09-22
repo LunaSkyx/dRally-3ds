@@ -125,6 +125,14 @@ static void dr3_adversary_draw(int tier, int slot, int rank, const char * name){
 }
 
 /*
+ * Set while the adversary has a place in the event that is currently being set up.  It is cleared in
+ * dr3_adversary_enter() (i.e. when a signup starts and the event's field is cleared), so it is a
+ * per-event state and not a guess: scanning the field instead looked safe but a stale field (from the
+ * race he just took part in) made this code believe he was entered already - and he never joined again.
+ */
+static int dr3_adversary_placed;
+
+/*
  * Make sure he exists before the signup lists are filled: the picker offers him as a candidate, and the
  * seeding is a one-off (his car is the marker).  This runs right after the event's field was cleared -
  * the lists themselves are drawn by the picker, so nothing is drawn here (the screen paints its
@@ -132,28 +140,17 @@ static void dr3_adversary_draw(int tier, int slot, int rank, const char * name){
  */
 void dr3_adversary_enter(void){
 
+	dr3_adversary_placed = 0;              /* a new event: he has no race yet */
+
 	dr3_adversary_seed();
 }
 
 /*
- * Is the adversary still to be placed in the event that is being set up?  Two things make this
- * reliable: the event's field array is cleared whenever a signup starts, and the field itself is the
- * marker - so "he is not in any of the three races yet" is what keeps him to one race per event.
- * The engine's own "picked" flag (___1a0f04h) is not used for him: it is only cleared when the signup
- * screen is entered, which is not where an event begins for us.
+ * Is the adversary still to be placed in the event that is being set up?
  */
 static int dr3_adversary_pending(void){
 
-	const int seat = dr3_adversary_seat();
-	int       i;
-
-	if(seat < 0) return 0;
-
-	for(i = 0; i < 0xc; ++i){
-		if(B(___1a0ef8h+i) == seat) return 0;
-	}
-
-	return 1;
+	return dr3_adversary_placed ? 0 : (dr3_adversary_seat() >= 0);
 }
 
 /*
@@ -173,11 +170,7 @@ void dr3_adversary_ensure(void){
 	const int me   = (int)D(___1a1ef8h);
 	int       i, pass;
 
-	if(seat < 0) return;
-
-	for(i = 0; i < 0xc; ++i){
-		if(B(___1a0ef8h+i) == seat) return;                     /* he has a race already */
-	}
+	if((seat < 0) || dr3_adversary_placed) return;
 
 	for(pass = 0; pass < 2; ++pass){
 
@@ -187,6 +180,7 @@ void dr3_adversary_ensure(void){
 			if((pass == 0) && ((i/4) == (int)D(___185a50h))) continue;   /* first the other races */
 
 			B(___1a0ef8h+i) = seat;
+			dr3_adversary_placed = 1;
 
 			/* the lists were drawn while they filled up, so he has to be drawn here too */
 			dr3_adversary_draw(i/4, i%4, (int)s_6c[seat].rank, s_6c[seat].name);
@@ -241,6 +235,7 @@ void ___3079ch_cdecl(__DWORD__ A1){
 				if(dr3_adversary_pending()){
 
 					r = dr3_adversary_seat();
+					dr3_adversary_placed = 1;
 					dr3_log("[dr3] adversary: placed in tier %d as slot %d", ebp, B(___1a1f64h+ebp+3));
 					break;
 				}
