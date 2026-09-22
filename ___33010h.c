@@ -1,4 +1,5 @@
 #include "drally.h"
+#include "platform_3ds/dr3_chaos.h"
 #include "drmemory.h"
 #include "drally_structs_fixed.h"
 
@@ -643,6 +644,58 @@ void ___33010h_cdecl(int NumCars){
 		}
 #endif // DR_MULTIPLAYER
 	}//w
+
+#if defined(DR3_CHAOS)
+	/*
+	 * Chaos test build (-DDR3_CHAOS, see doc/3ds.md): the eight extra grid slots.  The front end only
+	 * sets up NumCars entries and its screens draw four of them, so the extra cars take racers that
+	 * are not in the race yet and everything else from an existing entry - the parameter tables in
+	 * race___3f970h.c are indexed with the difficulty row and the car id, and both stay valid this way.
+	 *
+	 * The four startername bytes at esp+0xcc are deliberately left alone: the screen code reads them
+	 * with NumCars entries, and the counters it keeps at esp+0xd0/esp+0xd4 sit right behind them.
+	 */
+	{
+		__BYTE__ dr3_extra[DR3_MAX_CARS];
+		int      dr3_taken[0x14];
+		int      dr3_m, dr3_r, dr3_e, dr3_n;
+
+		for (dr3_m = 0; dr3_m < 0x14; ++dr3_m) dr3_taken[dr3_m] = 0;
+		for (dr3_m = 0; dr3_m < NumCars; ++dr3_m) dr3_taken[B(esp + dr3_m + 0xcc)] = 1;
+		dr3_taken[(int)D(___1a1ef8h)] = 1;
+
+		dr3_e = 0;
+		for (dr3_r = 0; (dr3_r < 0x14) && (dr3_e < (DR3_MAX_CARS - NumCars)); ++dr3_r) {
+
+			if (dr3_taken[dr3_r]) continue;
+			dr3_extra[dr3_e++] = (__BYTE__)dr3_r;
+		}
+
+		for (dr3_n = NumCars; (dr3_n < DR3_MAX_CARS) && (dr3_n - NumCars < dr3_e); ++dr3_n) {
+
+			const int dr3_racer = dr3_extra[dr3_n - NumCars];
+
+			/* a whole entry first, so fields this block does not know about are set as well */
+			memcpy(___1de7d0h + 0x54 * dr3_n, ___1de7d0h + 0x54 * (dr3_n % NumCars), 0x54);
+
+			strcpy(___1de7d0h + 0x54 * dr3_n, s_6c[dr3_racer].name);
+			strupr_watcom106(___1de7d0h + 0x54 * dr3_n);
+
+			D(___1de7d0h + 0x54 * dr3_n + 0x10) = s_6c[dr3_racer].damage;
+			D(___1de7d0h + 0x54 * dr3_n + 0x14) = s_6c[dr3_racer].engine;
+			D(___1de7d0h + 0x54 * dr3_n + 0x18) = s_6c[dr3_racer].tires;
+			D(___1de7d0h + 0x54 * dr3_n + 0x1c) = s_6c[dr3_racer].armor;
+			D(___1de7d0h + 0x54 * dr3_n + 0x20) = s_6c[dr3_racer].rocket_fuel;
+			D(___1de7d0h + 0x54 * dr3_n + 0x24) = s_6c[dr3_racer].spikes;
+			D(___1de7d0h + 0x54 * dr3_n + 0x28) = s_6c[dr3_racer].mines;
+			D(___1de7d0h + 0x54 * dr3_n + 0x30) = s_6c[dr3_racer].car;
+			D(___1de7d0h + 0x54 * dr3_n + 0x34) = B(___1a0fe0h + 3 * s_6c[dr3_racer].color);
+			D(___1de7d0h + 0x54 * dr3_n + 0x38) = B(___1a0fe0h + 3 * s_6c[dr3_racer].color + 1);
+			D(___1de7d0h + 0x54 * dr3_n + 0x3c) = B(___1a0fe0h + 3 * s_6c[dr3_racer].color + 2);
+			D(___1de7d0h + 0x54 * dr3_n + 0x44) = ___196a94h_difficulty;
+		}
+	}
+#endif
 
 #if defined(DR_MULTIPLAYER)
 	if(___19bd60h != 0){

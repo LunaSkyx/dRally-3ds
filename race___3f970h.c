@@ -1,4 +1,5 @@
 #include "drally.h"
+#include "platform_3ds/dr3_chaos.h"
 
 #pragma pack(1)
 typedef union struct_94_s {
@@ -299,8 +300,8 @@ enum e_car { VAGABOND, DERVISH, SENTINEL, SHRIEKER, WRAITH, DELIVERATOR, DELIVER
 
 	extern __BYTE__ NUM_OF_CARS[];
 	extern __BYTE__ ___196dach[];
-	extern struct_94_t ___1de580h[4];
-	extern struct_54_t ___1de7d0h[4];
+	extern struct_94_t ___1de580h[DR3_MAX_CARS];
+	extern struct_54_t ___1de7d0h[DR3_MAX_CARS];
 	extern __BYTE__ MY_CAR_IDX[];
 	extern __BYTE__ ___24389ch[];
 
@@ -492,6 +493,18 @@ void race___3f970h(void){
 	___1de580h[3].r = ___1de7d0h[3].r;
 	___1de580h[3].g = ___1de7d0h[3].g;
 	___1de580h[3].b = ___1de7d0h[3].b;
+
+#if defined(DR3_CHAOS)
+	/* the chaos test build (-DDR3_CHAOS) has more than four cars here, so the cars above 3 need the
+	   same colour copy - the four blocks above stay as they are, this only adds to them */
+	n = 3;
+	while(++n < DR3_MAX_CARS){
+
+		___1de580h[n].r = ___1de7d0h[n].r;
+		___1de580h[n].g = ___1de7d0h[n].g;
+		___1de580h[n].b = ___1de7d0h[n].b;
+	}
+#endif
 
 	strcpy(___1de580h[0].name, ___1de7d0h[0].name);
 	strcpy(___1de580h[1].name, ___1de7d0h[1].name);

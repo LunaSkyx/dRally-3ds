@@ -1,4 +1,5 @@
 #include "drally.h"
+#include "platform_3ds/dr3_chaos.h"
 #include "platform_3ds/dr3_bottom.h"
 #include "platform_3ds/dr3_prof.h"
 #include "drally_keyboard.h"
@@ -239,6 +240,15 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 	s_35e = (struct_35e_t *)___1e6ed0h;
 	MY_CAR_IDX = MyIndex;
 	NUM_OF_CARS = NumCars;
+#if defined(DR3_CHAOS)
+	/*
+	 * Chaos test build (-DDR3_CHAOS, see doc/3ds.md): eight more cars than the race asked for.  Every
+	 * per car array is sized with DR3_MAX_CARS (bss.c), the extra grid entries are set up in
+	 * ___33010h.c and the in-race car list stops at DR3_HUD_LOOP_LIMIT rows, so only the race grows.
+	 */
+	NUM_OF_CARS = (NumCars + DR3_CHAOS_EXTRA <= DR3_MAX_CARS) ? (NumCars + DR3_CHAOS_EXTRA) : DR3_MAX_CARS;
+	dr3_log("[dr3] CHAOS build: %d cars on the grid (the race asked for %d)", NUM_OF_CARS, NumCars);
+#endif
 	race___3f970h();
 	race___49a34h();
 

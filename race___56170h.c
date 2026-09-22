@@ -1,11 +1,12 @@
 #include "drally.h"
+#include "platform_3ds/dr3_chaos.h"
 #include "drally_structs_free.h"
 
 	extern __BYTE__ NUM_OF_CARS[];
 	extern __BYTE__ ___1e6ed0h[];
 	extern __BYTE__ ___1de580h[];
 	extern __BYTE__ ___243ce4h[];
-	extern int ___243178h[4];
+	extern int ___243178h[DR3_MAX_CARS];
 	extern __BYTE__ ___243c60h[];
 
 // UPDATE POSITION AFTER KILL

@@ -15,6 +15,7 @@
 #   export DEVKITPRO=/opt/devkitpro
 #   make -f Makefile.3ds -j4                       # -> build/3ds/dRally_3ds.3dsx
 #   make -f Makefile.3ds -j4 DR3_DEBUG=1           # -> build/3ds_debug/dRally_3ds_debug.3dsx (profiler)
+#   make -f Makefile.3ds -j4 DR3_CHAOS=1           # -> build/3ds_chaos/dRally_3ds_chaos.3dsx (test build)
 #
 # Notes
 #   * only SDL2's software renderer exists on the 3DS (framebuffer driver)
@@ -58,6 +59,16 @@ BUILD    := build/3ds_debug
 TARGET   := dRally_3ds_debug
 DEFINES  += -DDR3_PROFILE
 APP_TITLE := dRally 3DS (profile)
+endif
+
+# Chaos test build (drally.h, doc/3ds.md): eight extra cars on the grid.  Its own object tree as well,
+# so a check of the normal build never recompiles everything and the two can sit next to each other.
+DR3_CHAOS ?= 0
+ifeq ($(DR3_CHAOS),1)
+BUILD    := build/3ds_chaos
+TARGET   := dRally_3ds_chaos
+DEFINES  += -DDR3_CHAOS
+APP_TITLE := dRally 3DS (chaos)
 endif
 
 OUTPUT   := $(BUILD)/$(TARGET)

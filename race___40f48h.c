@@ -1,4 +1,5 @@
 #include "drally.h"
+#include "platform_3ds/dr3_chaos.h"
 #include "drmath.h"
 #include "sfx.h"
 #include "drally_structs_free.h"
@@ -128,8 +129,13 @@ void race___40f48h(void){
     } while (--j);
 
     // FINISH FLAGS
+    /*
+     * The in-race car list has four rows; its rows start at 0x20*n and the fourth one already ends at
+     * row 177 of the 200.  DR3_HUD_LOOP_LIMIT is NumCars itself in a normal build (so nothing changes,
+     * not even in the two car duel) and caps it at four in the chaos test build.
+     */
     n = -1;
-    while(++n < NUM_OF_CARS){
+    while(++n < DR3_HUD_LOOP_LIMIT(NUM_OF_CARS)){
 
         if(s_35e[D(___243854h+4*n)].Finished != 0){
 
@@ -147,7 +153,7 @@ void race___40f48h(void){
         }
     }
 
-    n = NUM_OF_CARS-2;
+    n = DR3_HUD_LOOP_LIMIT(NUM_OF_CARS)-2;
     while(++n < 3){
 
         __BYTE__* d = BACKBUFFER + 0x200 * (0x20 * n + 104) + 0x20 + CURRENT_VIEWPORT_X;
@@ -164,7 +170,7 @@ void race___40f48h(void){
 
 // RACE NUMBER OF LAPS
     n = -1;
-    while(++n < NUM_OF_CARS){
+    while(++n < DR3_HUD_LOOP_LIMIT(NUM_OF_CARS)){
 
         __BYTE__* s = ___1de210h + 0x50 * NUM_OF_LAPS;
         __BYTE__* d = BACKBUFFER + 0x200 * (0x20 * n + 90) + CURRENT_VIEWPORT_X + 0x3a - 5 * !n;
@@ -181,7 +187,7 @@ void race___40f48h(void){
 
 // TOTAL NUMBER OF LAPS
     n = -1;
-    while(++n < NUM_OF_CARS){
+    while(++n < DR3_HUD_LOOP_LIMIT(NUM_OF_CARS)){
 
         __BYTE__* s = ___1de210h + 0x50 * s_35e[D(___243854h + 4 * n)].Lap;
         __BYTE__* d = BACKBUFFER + 0x200 * (0x20 * n + 90) + CURRENT_VIEWPORT_X + 0x24 - 2 * !n;
@@ -267,7 +273,7 @@ void race___40f48h(void){
 
 // DRIVER'S NAMES
     n = -1;
-    while(++n < NUM_OF_CARS){
+    while(++n < DR3_HUD_LOOP_LIMIT(NUM_OF_CARS)){
 
         ___424c8h_v2(___1de580h+0x94*D(___243854h+4*n)+0x44, CURRENT_VIEWPORT_X+0x23, 32*n+74-72*!n);
     }
@@ -517,7 +523,7 @@ void race___40f48h(void){
 
 // DEATH CROSS
     n = -1;
-    while(++n < NUM_OF_CARS){
+    while(++n < DR3_HUD_LOOP_LIMIT(NUM_OF_CARS)){
 
         if((int)D(___1de580h+0x94*D(___243854h+4*n)+0x18) <= 0){
 

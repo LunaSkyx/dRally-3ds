@@ -1,4 +1,5 @@
 #include "drally.h"
+#include "platform_3ds/dr3_chaos.h"
 
 	extern __BYTE__ ___243d14h[];
 	extern int TRX_VIEWPORT_TL_X;
@@ -19,7 +20,7 @@
 	extern int CURRENT_VIEWPORT_X;
 	extern __BYTE__ ___243cf0h[];
 	extern __BYTE__ ___1df520h[];
-	extern int ___243178h[4];
+	extern int ___243178h[DR3_MAX_CARS];
 	extern __BYTE__ ___243ce4h[];
 	extern __BYTE__ ___243d08h[];
 	extern __BYTE__ ___196df4h[];

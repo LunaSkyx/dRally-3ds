@@ -5,6 +5,7 @@ Branch `3ds`, based on upstream `920d85a`.  Windows and Linux are untouched.
     bash scripts/3ds/build_sdl2_3ds.sh     # once: builds SDL2 into third_party/SDL2-3ds-install
     bash scripts/3ds/build_3ds.sh          # release  -> build/3ds/dRally_3ds.3dsx
     bash scripts/3ds/build_3ds.sh debug    # profiler -> build/3ds_debug/dRally_3ds_debug.3dsx
+    make -f Makefile.3ds DR3_CHAOS=1 -j4   # test     -> build/3ds_chaos/dRally_3ds_chaos.3dsx
 
 `scripts/3ds/gen_makefile_3ds.ps1` generates `Makefile.3ds` from the upstream object lists.
 `scripts/3ds/deploy_emulator.ps1` copies a build plus test saves to the emulator's SD card.
@@ -30,6 +31,11 @@ meets the engine, the things worth knowing:
   ZL/ZR do not exist in the controller API
 * `main()` checks the game files before the engine boots (`dr3_files.c`): missing ones are listed on the
   bottom screen and a button press is waited for, because the engine would dereference a failed `fopen`
+* the chaos test build (`-DDR3_CHAOS`) puts eight extra cars on the grid - for testing, not for playing.
+  Four cars per race are baked into the BSS layout, so `bss.c` sizes `s_94`, `s_54`, `s_35e` and the car
+  index tables with `DR3_MAX_CARS`; the extra grid entries in `___33010h.c` come from racers that are not
+  in the race yet, the start slots of the track are shared (`race___49bd4h.c`), and the in-race car list
+  stops at `DR3_HUD_CARS` rows because its fourth row already ends at row 177 of the 200
 
 Profiler build (`debug`): `-DDR3_PROFILE` measures the frame budget on the console and writes `STAT`
 and `SUMMARY` lines to the log; `scripts/analyze_3ds_profile.ps1` turns them into a table.

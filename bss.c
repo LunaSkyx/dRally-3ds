@@ -1,4 +1,5 @@
 #include "drally.h"
+#include "platform_3ds/dr3_chaos.h"
 #include "drally_structs_free.h"
 
 //#if !defined(_WIN32)
@@ -221,15 +222,15 @@ __BYTE__ ___1a33c0h[0xc00];
 __BYTE__ ___1a3fc0h[0x300];
 __BYTE__ ___1a42c0h[0xc00];
 __BYTE__ ___1a4ec0h[0x300];
-__BYTE__ ___1a51c0h[0x10];
+__BYTE__ ___1a51c0h[DR3_MAX_CARS*4];
 __BYTE__ ___1a51d0h[0x300];
 __BYTE__ ___1a54d0h[0x4b000];
 
-__BYTE__ ___1c9ec0h[0x10];
-__BYTE__ ___1c9ed0h[0x10];
-__BYTE__ ___1c9ee0h[0x10];
-__BYTE__ ___1c9ef0h[0x10];
-__BYTE__ ___1c9f00h[0x10];
+__BYTE__ ___1c9ec0h[DR3_MAX_CARS*4];
+__BYTE__ ___1c9ed0h[DR3_MAX_CARS*4];
+__BYTE__ ___1c9ee0h[DR3_MAX_CARS*4];
+__BYTE__ ___1c9ef0h[DR3_MAX_CARS*4];
+__BYTE__ ___1c9f00h[DR3_MAX_CARS*4];
 
 __BYTE__ ___1c9f10h[0x3200];
 
@@ -241,15 +242,15 @@ __BYTE__ ___1d8910h[0x100];
 __BYTE__ ___1d8a10h[0x5800];
 __BYTE__ ___1de210h[0x320];
 __BYTE__ ___1de530h[0x50];
-__BYTE__ ___1de580h[4*0x94];
-__BYTE__ ___1de7d0h[4*0x54];
+__BYTE__ ___1de580h[DR3_MAX_CARS*0x94];
+__BYTE__ ___1de7d0h[DR3_MAX_CARS*0x54];
 int X___1de920h[0x100];
 int Y___1ded20h[0x100];
 __BYTE__ ___1df120h[0x400];
 __BYTE__ ___1df520h[0x200];
 __BYTE__ ___1df720h[0x280];
 __DWORD__ ___1df9a0h[100][75];
-struct_35e_t ___1e6ed0h[4];
+struct_35e_t ___1e6ed0h[DR3_MAX_CARS];
 int ___1e7c48h[0x100];
 int ___1e8048h[0x100];
 int ___1e8448h[0x100];
@@ -259,7 +260,7 @@ __BYTE__ ___1f3b08h[0x4cf40];
 __BYTE__ ___240b48h[100*0x2c];
 int TRX_OHI_DAT[0x100];
 float TRX_DRV_DAT[0x200];
-int ___243178h[4];
+int ___243178h[DR3_MAX_CARS];
 __POINTER__ RACE_SPLATX_BPK[2];
 __POINTER__ RACE_ROCKETX_BPK[2];
 __POINTER__ RACE_FLAMEX_BPK[6];
@@ -298,7 +299,8 @@ __BYTE__ ___243330h[4];
 __BYTE__ ___243334h[4];
 __BYTE__ ___243338h[0x28c];
 __BYTE__ ___2435c4h[0x290];
-__BYTE__ ___243854h[0x20];
+/* the original layout gives this table eight dwords (four are ever written, see race___405bch.c) */
+__BYTE__ ___243854h[(DR3_MAX_CARS > 8 ? DR3_MAX_CARS : 8)*4];
 __BYTE__ ___243874h[4];
 __BYTE__ ___243878h[4];
 

@@ -1,4 +1,5 @@
 #include "drally.h"
+#include "platform_3ds/dr3_chaos.h"
 #include "drally_structs_free.h"
 
 #pragma pack(1)
@@ -93,6 +94,24 @@ void race___49bd4h(void){
 	TRX_HEIGHT = TrxInf->h;
 	D(___243cech) = TrxInf->unk0;
 
+#if defined(DR3_CHAOS)
+	/*
+	 * The track file carries four start slots.  The chaos test build (-DDR3_CHAOS, doc/3ds.md) puts the
+	 * extra cars on those slots too, a few pixels apart, so they are on the start line as well - the car
+	 * to car collision sorts the pile out.  Without DR3_CHAOS the original loop below runs, so this file
+	 * generates the same code as before.
+	 */
+	n = -1;
+	while(++n < DR3_MAX_CARS){
+
+		const int slot = (n < 4) ? n : (n & 3);
+		const int off  = (n < 4) ? 0 : ((n >> 2) * 3);
+
+		s_35e[n].ImgIndex = TrxInf->startups[slot].rot;
+		s_35e[n].XLocation = (float)(TrxInf->startups[slot].x + off);
+		s_35e[n].YLocation = (float)(TrxInf->startups[slot].y - off);
+	}
+#else
 	n = -1;
 	while(++n < 4){
 
@@ -100,6 +119,7 @@ void race___49bd4h(void){
 		s_35e[n].XLocation = (float)TrxInf->startups[n].x;
 		s_35e[n].YLocation = (float)TrxInf->startups[n].y;
 	}
+#endif
 
 	n = -1;
 	while(++n < 0x10){
