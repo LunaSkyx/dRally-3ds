@@ -85,11 +85,54 @@ static int dr3_adversary_seat(void){
 
 	if(!dr3_adversary_active()) return -1;
 
+	/*
+	 * His car is the marker - and the name is the fallback, so a roster that was rebuilt (or a car that
+	 * was reset) does not lose him: the car is simply put back.
+	 */
 	for(i = 0; i < 0x14; ++i){
 		if((int)s_6c[i].car == DR3_ADVERSARY_CAR) return i;
 	}
 
+	for(i = 0; i < 0x14; ++i){
+
+		if(i == (int)D(___1a1ef8h)) continue;          /* not the player, whatever he calls himself */
+
+		if(strcmp(s_6c[i].name, "ADVERSARY") == 0){
+			s_6c[i].car = DR3_ADVERSARY_CAR;
+			return i;
+		}
+	}
+
 	return -1;
+}
+
+/*
+ * Draw one entry of a signup list - the very call the picker makes for every opponent it picks, so an
+ * entry added from here looks like all the others.  The list rows are indexed by the slot counter *after*
+ * the increment, exactly like in the picker.
+ */
+static void dr3_adversary_draw(int tier, int slot, int rank, const char * name){
+
+	char esp[0x64];
+
+	itoa_watcom106(rank, esp+0x50, 0xa);
+	strcpy(esp, "");
+	if(strlen(esp+0x50) < 2) strcat(esp, " ");
+	strcat(strcat(strcat(esp, esp+0x50), "."), name);
+	___12e78h_cdecl(___1a10b8h, (font_props_t *)___185c7ah, esp,
+	                0x280*(0x12*(slot+1)+0x100)+0xa0*tier+0x22);
+	___12cb8h__VESA101_PRESENTSCREEN();
+}
+
+/*
+ * Make sure he exists before the signup lists are filled: the picker offers him as a candidate, and the
+ * seeding is a one-off (his car is the marker).  This runs right after the event's field was cleared -
+ * the lists themselves are drawn by the picker, so nothing is drawn here (the screen paints its
+ * background right after this point anyway).
+ */
+void dr3_adversary_enter(void){
+
+	dr3_adversary_seed();
 }
 
 /*
@@ -125,6 +168,7 @@ static int dr3_adversary_pending(void){
  */
 void dr3_adversary_ensure(void){
 
+	racer_t * s_6c = (racer_t *)___1a01e0h;
 	const int seat = dr3_adversary_seat();
 	const int me   = (int)D(___1a1ef8h);
 	int       i, pass;
@@ -143,6 +187,10 @@ void dr3_adversary_ensure(void){
 			if((pass == 0) && ((i/4) == (int)D(___185a50h))) continue;   /* first the other races */
 
 			B(___1a0ef8h+i) = seat;
+
+			/* the lists were drawn while they filled up, so he has to be drawn here too */
+			dr3_adversary_draw(i/4, i%4, (int)s_6c[seat].rank, s_6c[seat].name);
+
 			dr3_log("[dr3] adversary: entered in tier %d as slot %d (pass %d)", i/4, i%4, pass);
 			return;
 		}

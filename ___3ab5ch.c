@@ -370,6 +370,11 @@ __DWORD__ ___3ab5ch_cdecl(__DWORD__ A1){
 
 						___196a94h_difficulty = edi;
 
+						/* remember it for the whole session: the config can be re-read or defaulted, and
+						   then the engine value alone would silently switch the adversary off - and he
+						   would stop joining races (see doc/3ds.md) */
+						dr3_adversary_wanted = (edi == PEDAL_TO_THE_METAL);
+
 						switch(___196a94h_difficulty&3){
 						case SPEED_MAKES_ME_DIZZY:
 							dRally_Sound_pushEffect(5, SFX_SPEED_MAKES_ME_DIZZY, 0, ___24cc54h_sfx_volume, 0x24000, 0x8000);

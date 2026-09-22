@@ -10,6 +10,8 @@
 	extern __BYTE__ ___196b18h[];
 	extern __BYTE__ ___196b1ch[];
 
+	void dr3_adversary_enter(void);
+
 int rand_watcom106(void);
 
 void ___31588h(void){
@@ -37,6 +39,12 @@ void ___31588h(void){
 	B(D(___1a1ef8h)+___1a0f04h) = 1;
 	memset(___1a1f64h+3, 0, 3);
 	memset(___1a0ef8h, 0, 0xc);
+
+	/*
+	 * "pedal to the metal": the adversary is entered in one of the three races right away, so that he is
+	 * in the lists the player sees (the lists are only drawn when a racer is picked) - see doc/3ds.md
+	 */
+	dr3_adversary_enter();
 
 	while(1){
 

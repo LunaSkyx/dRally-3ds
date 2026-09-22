@@ -301,6 +301,13 @@ __BYTE__ ___2435c4h[0x290];
 __BYTE__ ___243854h[0x20];
 __BYTE__ ___243874h[4];
 __BYTE__ ___243878h[4];
+
+/*
+ * "pedal to the metal" (see doc/3ds.md): set when the player picks that difficulty in the licence
+ * screen.  The engine's own ___196a94h_difficulty is enough to know the level, but only while the
+ * config is not re-read or defaulted - this flag keeps the feature alive for the whole session.
+ */
+int dr3_adversary_wanted;
 __BYTE__ ___24387ch[4];
 __BYTE__ ___243880h[4];
 __BYTE__ ___243884h[4];

@@ -52,8 +52,9 @@ typedef void (*void_cb)(void);
 #define DR3_ADVERSARY_START_RANK    3      /* he starts third in points and works his way up */
 
 extern __DWORD__ ___196a94h_difficulty;
+extern int       dr3_adversary_wanted;
 
-#define dr3_adversary_active()      (___196a94h_difficulty == DR3_DIFFICULTY_ADVERSARY)
+#define dr3_adversary_active()      (dr3_adversary_wanted || (___196a94h_difficulty == DR3_DIFFICULTY_ADVERSARY))
 
 #define S(s, type, offset)     (*(type *)((__POINTER__)(s)+(offset)))
 
