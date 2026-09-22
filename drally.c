@@ -2,6 +2,7 @@
 #include "drally_display.h"
 
 #if defined(__3DS__)
+#include "platform_3ds/dr3_files.h"
 #include "platform_3ds/dr3_log.h"
 #include "platform_3ds/dr3_paths.h"
 #include "platform_3ds/dr3_prof.h"
@@ -50,8 +51,17 @@ int main(int argc, char * argv[]){
 #else
 	dRally_Display_init(W_SHRINK);
 #endif // DR_LETTERBOX
-#if defined(__3DS__)
+#if defined(__3DS__) && defined(DR3_USE_GFX)
 	dr3_log("[dr3] display init returned");
+
+	/* the engine dereferences a failed fopen, so list what is missing instead of crashing.
+	   DR3_USE_GFX keeps this out of the MSVC check build, which has no libctru (same as the
+	   dr3_bottom hooks in drally_linux_c.c) */
+	if (!dr3_files_ok_or_wait()) {
+		dRally_Display_clean();
+		dRally_System_clean();
+		return 1;
+	}
 #endif
 	___10060h();
 	___60466h(70, 1);

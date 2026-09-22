@@ -28,6 +28,8 @@ meets the engine, the things worth knowing:
   engine keeps only the last key of a frame, so typed characters go in one per frame
 * the n3ds backend provides a gamepad mapping, so `dr3_input_init` opens the raw joystick as well -
   ZL/ZR do not exist in the controller API
+* `main()` checks the game files before the engine boots (`dr3_files.c`): missing ones are listed on the
+  bottom screen and a button press is waited for, because the engine would dereference a failed `fopen`
 
 Profiler build (`debug`): `-DDR3_PROFILE` measures the frame budget on the console and writes `STAT`
 and `SUMMARY` lines to the log; `scripts/analyze_3ds_profile.ps1` turns them into a table.
