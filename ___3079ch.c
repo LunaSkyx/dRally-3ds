@@ -8,6 +8,7 @@
 	extern __BYTE__ ___1a0f04h[];
 	extern __BYTE__ ___1a0ef8h[];
 	extern __BYTE__ ___1a01e0h[];
+	extern __BYTE__ ___185a50h[];
 	extern __POINTER__ ___1a10b8h;
 	extern __BYTE__ ___185c7ah[];
 
@@ -55,6 +56,26 @@ static void dr3_adversary_seed(void){
 	s_6c[DR3_ADVERSARY_RACER].refund = ___18e298h[DR3_ADVERSARY_CAR].price;
 }
 
+/*
+ * Is the adversary still to be placed in the event that is being set up?  Two things make this
+ * reliable: the event's field array is cleared whenever a signup starts, and the field itself is the
+ * marker - so "he is not in any of the three races yet" is what keeps him to one race per event.
+ * The engine's own "picked" flag (___1a0f04h) is not used for him: it is only cleared when the signup
+ * screen is entered, which is not where an event begins for us.
+ */
+static int dr3_adversary_pending(void){
+
+	int i;
+
+	if(!dr3_adversary_active()) return 0;
+
+	for(i = 0; i < 0xc; ++i){
+		if(B(___1a0ef8h+i) == DR3_ADVERSARY_RACER) return 0;
+	}
+
+	return 1;
+}
+
 // RACE SIGNUP RANDOMIZATION
 void ___3079ch_cdecl(__DWORD__ A1){
 
@@ -81,22 +102,24 @@ void ___3079ch_cdecl(__DWORD__ A1){
 
 			while(1){
 
+				/*
+				 * The adversary takes part in the race the player is signing up for: D(___185a50h) is
+				 * the tier he is looking at, and dr3_adversary_pending() keeps this to one race per
+				 * event (see doc/3ds.md).  If that tier is already full he takes one of the other two,
+				 * so he is always in one of the three races.  He goes through the same bookkeeping as
+				 * any other candidate.
+				 */
+				if(dr3_adversary_pending() && ((ebp == (int)D(___185a50h)) || ((int)D(___185a50h) > 2) ||
+				   ((int)D(___185a50h) <= 2 && (B(___1a1f64h+(int)D(___185a50h)+3) > 3)))){
+
+					r = DR3_ADVERSARY_RACER;
+					break;
+				}
+
 				if(ebp == 0){
 
 					n = -1;
 					while(++n < 0x64){
-
-						/*
-						 * The adversary takes part like every other racer: he is one candidate for this
-						 * slot, and the "picked" flag below makes sure that happens once per event (see
-						 * doc/3ds.md).  His car is outside every class range tested here, so without
-						 * this he would never be picked at all.
-						 */
-						if(dr3_adversary_active() && (B(___1a0f04h+DR3_ADVERSARY_RACER) != 1)){
-
-							r = DR3_ADVERSARY_RACER;
-							break;
-						}
 
 						r = rand_watcom106()%0x14;
 						if((s_6c[r].car >= 0)&&(s_6c[r].car <= 2)) break;
