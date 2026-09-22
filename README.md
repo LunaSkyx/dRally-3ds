@@ -75,4 +75,8 @@ Only versions including the DR.IDF file are able to use the `FLAGS += -DDR_CDCHE
     [1] CDROM.INI contains relative location of CINEM directory (./CINEM)
 
 #### Work in progress
-*   Multiplayer not available 
+*   Multiplayer not available
+
+#### Legal Info
+This project contains __no game data__ and is __not affiliated with Remedy Entertainment__. It needs the data files of an original Death Rally copy that you own - exactly like the Linux port.
+
