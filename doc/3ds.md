@@ -78,8 +78,9 @@ show up as drivers.  It refreshes at most once per second and only when the text
   (`GAS = R, UP, STICK_UP, B`).  A function belongs to the front end, a race or both, so the same
   button can confirm a menu entry and honk the horn (`platform_3ds/dr3_input_map.c`)
 * tapping the bottom screen switches the controls/standings (or the profiler statistics) off and on
-  again; the state is kept in `dr3_bottom_hidden`.  During a race a tap cycles **standings -> minimap
-  -> off** instead (see below)
+  again; the state is kept in `dr3_bottom_hidden`.  While a race is running the map is the only page
+  there, so a tap just switches between **minimap and dark** - the standings page is not reachable
+  during a race (see below)
 
 * the engine's own `printf()` output is sent to the log file (`#define printf(...) dr3_log(__VA_ARGS__)`
   in drally.h, __3DS__ only): libctru's console makes stdout draw onto the bottom screen, and the
@@ -95,7 +96,8 @@ show up as drivers.  It refreshes at most once per second and only when the text
 
 #### Minimap (bottom screen, race only)
 
-A race has a second page on that screen: the whole track with every car on it.
+A race uses that screen for something better: the whole track with every car on it.  It is the only
+page there, a tap switches between map and dark.
 
 * the map is built **once per race** from the engine's own track mask (`TRX_MAS`, one byte per track
   pixel, low nibble = surface) and cached as a small bitmap of at most 320x224:

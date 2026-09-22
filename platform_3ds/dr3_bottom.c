@@ -40,8 +40,10 @@ static int  dr3_bottom_ready;
 /*
  * Two pages share the bottom screen: the controls/standings block (text, printed by libctru's
  * console) and the minimap (pixels written straight into the framebuffer, see dr3_minimap.c).
- * Tapping cycles through text -> map -> off.  Without a loaded track - or in the profiler build,
- * which owns the screen itself - the map page is skipped.
+ * Outside a race a tap switches that block off and on again.  In a race the map is the *only* page:
+ * the tap there switches between the map and dark (the standings are front end information, what a
+ * race needs is the map).  Without a loaded track - or in the profiler build, which owns the screen
+ * itself - there is no map page at all.
  */
 #define DR3_VIEW_TEXT 0
 #define DR3_VIEW_MAP  1
@@ -72,7 +74,7 @@ static const char *const dr3_bottom_controls[] = {
     "SELECT    keyboard",
     "L+R+START quit",
     "(menu: A=ok B=next)",
-    "(tap: map / hide)"
+    "(tap: screen on/off)"
 };
 
 /* ---------------------------------------------------------------- standings --- */
@@ -167,28 +169,22 @@ int dr3_bottom_is_hidden(void) { return dr3_bottom_hidden; }
 void dr3_bottom_touch(void) { dr3_bottom_touch_ex(-1, -1); }
 
 #if !defined(DR3_PROFILE)
-/* Tapping the screen cycles standings -> minimap -> off.  Without a loaded track there is no map
-   page, so the plain on/off behaviour of the first release is kept. */
+/*
+ * A tap on the bottom screen: while a track is loaded (a race) it switches between the minimap and
+ * dark - nothing else, the standings page belongs to the front end.  Outside a race it switches the
+ * controls/standings block off and on again, as in the first release.
+ */
 static void dr3_bottom_cycle_view(void)
 {
-    const int map_available = dr3_minimap_ready();
+    const int in_race = dr3_minimap_ready();
 
     if (dr3_bottom_hidden) {
         dr3_bottom_hidden    = 0;
-        dr3_bottom_view      = map_available ? DR3_VIEW_MAP : DR3_VIEW_TEXT;
+        dr3_bottom_view      = in_race ? DR3_VIEW_MAP : DR3_VIEW_TEXT;
         dr3_bottom_map_dirty = 1;
         dr3_bottom_map_full  = 1;
 
-        dr3_log("[dr3] bottom screen: %s page", map_available ? "minimap" : "ranking");
-        return;
-    }
-
-    if (map_available && (dr3_bottom_view == DR3_VIEW_TEXT)) {
-        dr3_bottom_view      = DR3_VIEW_MAP;
-        dr3_bottom_map_dirty = 1;
-        dr3_bottom_map_full  = 1;
-
-        dr3_log("[dr3] bottom screen: minimap page");
+        dr3_log("[dr3] bottom screen: %s page", in_race ? "minimap" : "ranking");
         return;
     }
 
@@ -437,7 +433,7 @@ static void dr3_bottom_draw_map_page(void)
             snprintf(header, sizeof(header), "%*s%s", pad, "", title);
         }
 
-        snprintf(footer, sizeof(footer), "POS %d/%d  LAP %d/%d  tap: ranking",
+        snprintf(footer, sizeof(footer), "POS %d/%d  LAP %d/%d  tap: off",
                  pos, (NUM_OF_CARS > 0) ? NUM_OF_CARS : 0,
                  lap, (NUM_OF_LAPS > 0) ? NUM_OF_LAPS : 0);
 

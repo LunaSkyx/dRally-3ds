@@ -76,7 +76,8 @@ Race (320x240):
 | START | pause |
 
 Everywhere: **SELECT** opens the on-screen keyboard, **L + R + START** quits, a tap on the bottom
-screen cycles the information there: controls/standings -> track minimap (during a race) -> off.
+screen switches the information there off and on again - the controls/standings outside a race, the
+track minimap while racing.
 
 ## Own mapping - dr3_controls.txt
 

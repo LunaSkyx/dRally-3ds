@@ -4,9 +4,9 @@
  */
 /*
  * dr3_bottom.h - the bottom screen of the 3DS shows the controls (left) and the current driver
- * standings (right), in the style of the Death Rally front end.  During a race a second page with a
- * minimap of the current track can be selected (tap the screen to cycle: standings -> minimap ->
- * off), see dr3_minimap.c.
+ * standings (right), in the style of the Death Rally front end.  While a race is running that block
+ * gives way to a minimap of the current track, and there a tap only switches between the map and dark
+ * (no standings during a race) - see dr3_minimap.c.
  *
  * The game never draws to the bottom screen, so it is free for this.  The console needs the gfx state
  * that SDL's n3ds video driver creates with gfxInit(), so it is initialised lazily (doing it earlier
@@ -26,8 +26,8 @@ int  dr3_bottom_console_ensure(void);
 /* Fills "out" with the controls/standings block and returns the number of lines written. */
 int  dr3_bottom_build_lines(char out[DR3_BOTTOM_LINES][DR3_BOTTOM_LINE_LEN]);
 
-/* Tapping the bottom screen switches the information off and on again (and, during a race, cycles
-   through the minimap page).
+/* Tapping the bottom screen switches the information off and on again: while a track is loaded the
+   two states are the minimap and dark, outside a race the controls/standings block and dark.
    dr3_bottom_touch() reacts to every tap, dr3_bottom_touch_ex() ignores taps whose Y coordinate is
    inside [ignore_y0, ignore_y1) - the profiler build uses that for its audio rate buttons. */
 void dr3_bottom_touch(void);
