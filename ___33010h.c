@@ -807,7 +807,9 @@ void ___33010h_cdecl(int NumCars){
 	}
 #endif // DR_MULTIPLAYER
 
+	dr3_chaos_trace("race_main", NumCars);
 	race_main(D(___1a103ch), NumCars);
+	dr3_chaos_trace("race done", NumCars);
 
 #if defined(DR_MULTIPLAYER)	
 	if((___19bd60h != 0)&&(CONNECTION_TYPE == 2)) ___60705h(&___10754h);
@@ -1295,6 +1297,8 @@ void ___33010h_cdecl(int NumCars){
 						}
 						else {
 
+              dr3_chaos_trace("race over", 0);
+
 							___3892ch_cdecl(0);
 							D(___185a20h) = 1;
 						}
@@ -1304,6 +1308,7 @@ void ___33010h_cdecl(int NumCars){
 		}
 		else {
 
+			dr3_chaos_trace("standings", 0);
 			___3892ch_cdecl(0);
 		}
 #if defined(DR_MULTIPLAYER)

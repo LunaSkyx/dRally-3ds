@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT (see LICENSE and THIRD_PARTY.md)
  */
 #include "dr3_bottom.h"
+#include "dr3_chaos.h"
 #include "dr3_input_map.h"
 #include "dr3_laptime.h"
 #include "dr3_log.h"
@@ -27,7 +28,9 @@ extern __BYTE__  ___1a01e0h[];
 extern __BYTE__  ___1a1ef8h[];
 
 /* the cars of the running race: positions in track pixels, lap and position (bss.c) */
-extern struct_35e_t ___1e6ed0h[4];
+/* the cars of the running race and the race entries (s_54: the per car colours) */
+extern struct_35e_t ___1e6ed0h[DR3_MAX_CARS];
+extern __BYTE__     ___1de7d0h[];
 extern int       MY_CAR_IDX;
 extern int       NUM_OF_CARS;
 extern int       NUM_OF_LAPS;
@@ -361,24 +364,50 @@ static uint32_t dr3_bottom_player_rgb(void)
     return ((uint32_t)c[0] << 16) | ((uint32_t)c[1] << 8) | (uint32_t)c[2];
 }
 
+/* ------------------------------------------------------------------- cars --- */
+
+#if defined(DR3_CHAOS)
+/*
+ * The colour the race entry of car n drives in: s_54 keeps the r/g/b of every car of the running race
+ * at +0x34/+0x38/+0x3c (race___4a25ch.c sets them up for all of them).  Returns 0 when it is not set
+ * (or black) - the map then picks the default colour for the role.  Chaos build only: with 12 cars the
+ * default colour would leave eleven identical markers.
+ */
+static uint32_t dr3_bottom_car_rgb(int n)
+{
+    const unsigned char *c;
+
+    if ((n < 0) || (n >= DR3_MAX_CARS)) return 0u;
+
+    c = (const unsigned char *)___1de7d0h + (0x54 * n) + 0x34;
+    if ((c[0] | c[1] | c[2]) == 0) return 0u;
+
+    return ((uint32_t)c[0] << 16) | ((uint32_t)c[1] << 8) | (uint32_t)c[2];
+}
+#endif
+
 /* Reads the cars of the running race (positions in track pixels).  Returns how many were written. */
 static int dr3_bottom_read_cars(dr3_map_car_t *out, int max)
 {
     const struct_35e_t *s     = ___1e6ed0h;
-    const int           me    = ((MY_CAR_IDX >= 0) && (MY_CAR_IDX < 4)) ? MY_CAR_IDX : 0;
+    const int           me    = ((MY_CAR_IDX >= 0) && (MY_CAR_IDX < DR3_MAX_CARS)) ? MY_CAR_IDX : 0;
     const uint32_t      my_rgb = dr3_bottom_player_rgb();
     int                 n     = NUM_OF_CARS;
     int                 i;
 
     if (n < 0) n = 0;
-    if (n > 4) n = 4;
+    if (n > DR3_MAX_CARS) n = DR3_MAX_CARS;
     if (n > max) n = max;
 
     for (i = 0; i < n; ++i) {
         out[i].x         = s[i].XLocation;
         out[i].y         = s[i].YLocation;
         out[i].is_player = (i == me);
+#if defined(DR3_CHAOS)
+        out[i].color     = (i == me) ? my_rgb : dr3_bottom_car_rgb(i);
+#else
         out[i].color     = (i == me) ? my_rgb : 0u;   /* 0 = the default colour for the role */
+#endif
 
         /* before the first frame of a race the array holds zeros - nothing to draw then */
         out[i].valid     = (out[i].x >= 1.0f) && (out[i].y >= 1.0f);
@@ -409,7 +438,7 @@ static int dr3_bottom_pixel_size(GSPGPU_FramebufferFormat fmt, int *canvas_fmt)
 static void dr3_bottom_draw_map_page(void)
 {
     dr3_canvas_t  canvas;
-    dr3_map_car_t cars[4];
+    dr3_map_car_t cars[DR3_MAX_CARS];
     uint16_t      w = 0, h = 0;
     uint32_t *    fb = (uint32_t *)gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, &w, &h);
     int           n_cars, bpp = 4;
@@ -462,7 +491,7 @@ static void dr3_bottom_draw_map_page(void)
             dr3_bottom_map_dirty = 0;
         }
 
-        if ((MY_CAR_IDX >= 0) && (MY_CAR_IDX < 4)) {
+        if ((MY_CAR_IDX >= 0) && (MY_CAR_IDX < DR3_MAX_CARS)) {
             lap = (int)___1e6ed0h[MY_CAR_IDX].Lap;
             pos = (int)___1e6ed0h[MY_CAR_IDX].Position;
         }

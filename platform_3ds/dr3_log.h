@@ -17,4 +17,14 @@ void dr3_log(const char *fmt, ...);
 /* line counter so we can see how far the engine got even if the log is huge */
 int  dr3_log_lines(void);
 
+#if defined(__3DS__) && defined(DR3_CHAOS)
+/*
+ * Chaos test build (-DDR3_CHAOS, dr3_chaos.h): a capped step trace for the paths outside the race loop
+ * (the post race screens and the front end), so a hang or a crash shows how far the game got.
+ */
+void dr3_chaos_trace(const char *what, int n);
+#else
+#define dr3_chaos_trace(what, n) ((void)0)
+#endif
+
 #endif /* DR3_LOG_H */

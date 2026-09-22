@@ -46,3 +46,21 @@ int dr3_log_lines(void)
 {
     return dr3_log_count;
 }
+
+#if defined(DR3_CHAOS)
+/*
+ * The chaos test build's step trace (see dr3_chaos.h): logs what the game is doing on the paths outside
+ * the race loop and stops after a few thousand lines, so the tail of drally_3ds.log points at the step a
+ * hang or a crash happened in.
+ */
+void dr3_chaos_trace(const char *what, int n)
+{
+    static int shown;
+
+    if (shown >= 4000) return;
+
+    dr3_log("[dr3] chaos step %-12s %d", what, n);
+    ++shown;
+}
+#endif
+

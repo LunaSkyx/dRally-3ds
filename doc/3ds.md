@@ -34,8 +34,11 @@ meets the engine, the things worth knowing:
 * the chaos test build (`-DDR3_CHAOS`) puts eight extra cars on the grid - for testing, not for playing.
   Four cars per race are baked into the BSS layout, so `bss.c` sizes `s_94`, `s_54`, `s_35e` and the car
   index tables with `DR3_MAX_CARS`; the extra grid entries in `___33010h.c` come from racers that are not
-  in the race yet, the start slots of the track are shared (`race___49bd4h.c`), and the in-race car list
-  stops at `DR3_HUD_CARS` rows because its fourth row already ends at row 177 of the 200
+  in the race yet and stand in grid rows of their own behind the four start slots the track file provides
+  (`race___49bd4h.c`), the in-race car list stops at `DR3_HUD_CARS` rows because its fourth row already
+  ends at row 177 of the 200, and the bottom screen map draws every car of the race (`dr3_bottom.c`).
+  `dr3_log.c`/`dr3_log.h` carry the build's step trace (`[dr3] chaos step ...`), which is what makes a
+  hang outside the race loop (results, front end) readable from the log
 
 Profiler build (`debug`): `-DDR3_PROFILE` measures the frame budget on the console and writes `STAT`
 and `SUMMARY` lines to the log; `scripts/analyze_3ds_profile.ps1` turns them into a table.

@@ -113,7 +113,7 @@ void race___49bd4h(void){
 		const int    slot = (n < 4) ? n : (n & 3);
 		const int    row  = (n < 4) ? 0 : (n >> 2);
 		const double rad  = 3.75 * (double)TrxInf->startups[slot].rot * (dR_PI / 180.0);
-		const double back = 22.0 * (double)row;         /* one grid row further back */
+		const double back = 34.0 * (double)row;         /* one grid row further back */
 
 		s_35e[n].ImgIndex  = TrxInf->startups[slot].rot;
 		s_35e[n].XLocation = (float)(int)((double)TrxInf->startups[slot].x + back * dRMath_sin(rad));

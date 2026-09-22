@@ -279,6 +279,7 @@ void ___3892ch_cdecl(__DWORD__ A1, __DWORD__ A2){
 			eax &= 0xff;
 			D(___196ab4h) = eax;
 			___38708h();
+			dr3_chaos_trace("3892ch load", 0);
 			___12e78h_cdecl(___1a1108h, (font_props_t *)___185c0bh, "Please wait while loading...", ecx);
 			___12cb8h__VESA101_PRESENTSCREEN();
 			___1240ch();
