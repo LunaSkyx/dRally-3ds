@@ -1,4 +1,5 @@
 #include "drally.h"
+#include "platform_3ds/dr3_chaos.h"
 #include "drmemory.h"
 #include "drally_structs_free.h"
 #include "platform_3ds/dr3_bottom.h"
@@ -45,7 +46,13 @@ void race_alloc(void){
 	TRX_LR1 = ___3f71ch__allocateMemory(TRX_WIDTH_QTR*TRX_HEIGHT_QTR);
 	___243d5ch = ___3f71ch__allocateMemory(0x5f370);
 	BACKBUFFER = ___3f71ch__allocateMemory(0x19400)+0x200;
-	___243d74h = (car_spins_t *)___3f71ch__allocateMemory(4*sizeof(car_spins_t));
+	/*
+	 * One 40x40x96 stripe block per car (0x25800 bytes each).  The original has four - race___42824h.c
+	 * decodes one per car into ___243d74h[n], so a grid with more cars (chaos test build, -DDR3_CHAOS)
+	 * needs the room: with only four, cars 5 and up wrote 150 KB past the block and the game died in
+	 * dRMemory_free() with "ESP Fatal Error 14" right after the race setup.
+	 */
+	___243d74h = (car_spins_t *)___3f71ch__allocateMemory(DR3_MAX_CARS*sizeof(car_spins_t));
 	GEN_FLA_BPK = ___3f71ch__allocateMemory(0x4b000);
 	GEN_LAM_BPK = ___3f71ch__allocateMemory(0x3840);
 	SIDEBOM1_BPK = ___3f71ch__allocateMemory(0x30);

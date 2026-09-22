@@ -73,10 +73,10 @@ void race___49a34h(void){
 	}
 
 	D(___243ce4h) = 0;
-	___243178h[0] = -1;
-	___243178h[1] = -1;
-	___243178h[2] = -1;
-	___243178h[3] = -1;
+	/* the list of cars that already finished (race___56170h.c); four in the original, more in the
+	   chaos test build - the entries behind the counter have to be -1 there as well */
+	n = -1;
+	while(++n < DR3_MAX_CARS) ___243178h[n] = -1;
 	D(___196df4h) = 0;
 	D(___196dbch) = 0;
 	D(___196dc0h) = 0;
