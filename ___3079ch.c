@@ -114,41 +114,39 @@ static int dr3_adversary_pending(void){
 }
 
 /*
- * Put him into the grid of the tier the player is signing up for.  Called when the signup is confirmed,
- * which also covers the case that the field was filled without him (the picker has the last word on the
- * slot, and the tier can still be changed while the screen is open).
+ * Make sure he is registered in exactly one of the three races of this event - and once he is, he stays
+ * there: the race he was entered in is the one he drives, whether or not the player picks it.  Without a
+ * home in the event he would collect no points at all.
  *
- * He never appears twice: if he was in another grid, the racer he displaces takes that old slot - and a
- * racer is in at most one grid per event anyway (the "picked" flag).  The player's own slot is left
- * alone.  Without a free slot for him nothing happens (the grid is full of opponents and the player).
+ * Called when the player confirms a signup, i.e. after the field is complete.  The picker normally puts
+ * him somewhere while the lists are filling up; this only catches the case that it did not.  It then
+ * picks one of the *other* two races: meeting him is meant to be the hard race, and that should stay the
+ * player's own choice.  The player's slot in a grid is never touched.
  */
-void dr3_adversary_join(int tier){
+void dr3_adversary_ensure(void){
 
 	const int seat = dr3_adversary_seat();
-	int       slot, free_slot = -1, was = -1;
+	const int me   = (int)D(___1a1ef8h);
+	int       i, pass;
 
-	if((seat < 0) || (tier < 0) || (tier > 2)) return;
+	if(seat < 0) return;
 
-	for(slot = 0; slot < 4; ++slot){
-		if(B(___1a0ef8h+4*tier+slot) == seat) return;            /* he is in this grid already */
+	for(i = 0; i < 0xc; ++i){
+		if(B(___1a0ef8h+i) == seat) return;                     /* he has a race already */
 	}
 
-	for(slot = 0; slot < 0xc; ++slot){
-		if(B(___1a0ef8h+slot) == seat){ was = slot; break; }     /* his current grid slot, if any */
+	for(pass = 0; pass < 2; ++pass){
+
+		for(i = 0; i < 0xc; ++i){
+
+			if(B(___1a0ef8h+i) == me) continue;                 /* never the player's own slot */
+			if((pass == 0) && ((i/4) == (int)D(___185a50h))) continue;   /* first the other races */
+
+			B(___1a0ef8h+i) = seat;
+			dr3_log("[dr3] adversary: entered in tier %d as slot %d (pass %d)", i/4, i%4, pass);
+			return;
+		}
 	}
-
-	for(slot = 0; slot < 4; ++slot){
-		if(B(___1a0ef8h+4*tier+slot) != (int)D(___1a1ef8h)){ free_slot = 4*tier+slot; break; }
-	}
-
-	if(free_slot < 0) return;
-
-	if(was >= 0) B(___1a0ef8h+was) = B(___1a0ef8h+free_slot);    /* the displaced racer takes his old place */
-
-	B(___1a0ef8h+free_slot) = seat;
-
-	dr3_log("[dr3] adversary: joined tier %d as slot %d%s", tier, free_slot%4,
-	        (was >= 0) ? " (moved)" : "");
 }
 
 // RACE SIGNUP RANDOMIZATION
@@ -188,8 +186,9 @@ void ___3079ch_cdecl(__DWORD__ A1){
 				/*
 				 * The adversary rides along like any other candidate: the first free slot of the event is
 				 * his, and dr3_adversary_pending() keeps that to one race per event.  He goes through the
-				 * same bookkeeping as everybody else, so counters and flags stay consistent - and
-				 * dr3_adversary_join() then puts him into the race the player signs up for.
+				 * same bookkeeping as everybody else, so counters and flags stay consistent - and whichever
+				 * of the three races he lands in is the one he drives (dr3_adversary_ensure() only steps in
+				 * if the picker missed him completely).
 				 */
 				if(dr3_adversary_pending()){
 

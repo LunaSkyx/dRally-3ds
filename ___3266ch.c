@@ -54,7 +54,7 @@ void ___17324h(void);
 void ___12cb8h__VESA101_PRESENTSCREEN(void);
 void ___2ab50h(void);
 void ___3079ch_cdecl(__DWORD__);
-void dr3_adversary_join(int);
+void dr3_adversary_ensure(void);
 __BYTE__ ___5994ch(void);
 void dRally_Sound_pushEffect(__BYTE__ channel, __BYTE__ n, __DWORD__ unk, __DWORD__ a0, __DWORD__ a1, __DWORD__ a2);
 void ___281d0h_cdecl(__DWORD__, __DWORD__, __DWORD__, __DWORD__);
@@ -197,11 +197,12 @@ void ___3266ch(void){
 						}
 
 						/*
-						 * "pedal to the metal": make sure the adversary is one of the opponents in the race
-						 * the player just signed up for - the picker may have missed him, or the player may
-						 * have switched to another tier while the lists were filling up (see doc/3ds.md)
+						 * "pedal to the metal": he must be registered in one of the three races, otherwise
+						 * he cannot collect any points.  The picker usually did that already; this only
+						 * catches the case that it did not - and it keeps him out of the race the player
+						 * signed up for, unless there is no other choice (see doc/3ds.md)
 						 */
-						dr3_adversary_join((int)D(___185a50h));
+						dr3_adversary_ensure();
 
 						n2 = -1;
 						while(++n2 < 3){
