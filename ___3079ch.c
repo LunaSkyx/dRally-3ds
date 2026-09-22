@@ -57,6 +57,25 @@ static void dr3_adversary_seed(void){
 }
 
 /*
+ * The seat the adversary sits in - and it is *not* a constant: the roster is sorted by points after
+ * every race (___30a84h), so he moves up the table as he wins.  His car is the marker, and no race
+ * result ever changes it.  Returns -1 while he is not in the game.
+ */
+static int dr3_adversary_seat(void){
+
+	racer_t * s_6c = (racer_t *)___1a01e0h;
+	int       i;
+
+	if(!dr3_adversary_active()) return -1;
+
+	for(i = 0; i < 0x14; ++i){
+		if((int)s_6c[i].car == DR3_ADVERSARY_CAR) return i;
+	}
+
+	return -1;
+}
+
+/*
  * Is the adversary still to be placed in the event that is being set up?  Two things make this
  * reliable: the event's field array is cleared whenever a signup starts, and the field itself is the
  * marker - so "he is not in any of the three races yet" is what keeps him to one race per event.
@@ -65,12 +84,13 @@ static void dr3_adversary_seed(void){
  */
 static int dr3_adversary_pending(void){
 
-	int i;
+	const int seat = dr3_adversary_seat();
+	int       i;
 
-	if(!dr3_adversary_active()) return 0;
+	if(seat < 0) return 0;
 
 	for(i = 0; i < 0xc; ++i){
-		if(B(___1a0ef8h+i) == DR3_ADVERSARY_RACER) return 0;
+		if(B(___1a0ef8h+i) == seat) return 0;
 	}
 
 	return 1;
@@ -112,7 +132,7 @@ void ___3079ch_cdecl(__DWORD__ A1){
 				if(dr3_adversary_pending() && ((ebp == (int)D(___185a50h)) || ((int)D(___185a50h) > 2) ||
 				   ((int)D(___185a50h) <= 2 && (B(___1a1f64h+(int)D(___185a50h)+3) > 3)))){
 
-					r = DR3_ADVERSARY_RACER;
+					r = dr3_adversary_seat();
 					break;
 				}
 
