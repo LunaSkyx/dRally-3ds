@@ -22,8 +22,6 @@ What this branch adds on top of the plain engine:
 * **quick save / quick load** from the front end (`X` or `ZL` saves, `Y` or `ZR` loads - rebindable)
 * `SELECT` opens the 3DS software keyboard; typed names arrive reliably (the port delivers one
   character at a time and holds every key until the engine has read it) and umlauts are transliterated
-* an optional **profiler build** that measures the frame budget on the console itself, rotates
-  measurement variants automatically and writes everything to `sdmc:/drally_3ds.log`
 
 * **installation, controls and configuration: [INSTALL_3DS.md](INSTALL_3DS.md)**
 * technical notes, measurements and the profiler build: [doc/3ds.md](doc/3ds.md)
