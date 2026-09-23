@@ -27,6 +27,13 @@ void dr3_chaos_trace(const char *what, int n);
 /* flushes the log - used by the heap guard report in drmemory.c */
 void dr3_log_flush(void);
 
+/*
+ * Watchdog for the flickering lines above the car: the drawing helpers call this for every pixel they
+ * write, and it logs the ones that land in the rows just above the player's sprite (nothing legitimate
+ * draws there), with the helper's name and the value.  See gfx.c and race___4f300h.c.
+ */
+void dr3_chaos_watch(int slot, const char *who, int x, int y, int value);
+
 /* frame time breakdown (see dr3_log.c): tick() before the section, time(slot, tick) after it */
 unsigned long long dr3_chaos_tick(void);
 void               dr3_chaos_time(int slot, unsigned long long t0);
@@ -35,6 +42,7 @@ void               dr3_chaos_time(int slot, unsigned long long t0);
 #define dr3_log_flush()          ((void)0)
 #define dr3_chaos_tick()         (0ull)
 #define dr3_chaos_time(slot, t0) ((void)0)
+#define dr3_chaos_watch(slot, who, x, y, value) ((void)0)
 #endif
 
 #endif /* DR3_LOG_H */

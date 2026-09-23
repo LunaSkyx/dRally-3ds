@@ -142,6 +142,42 @@ void dr3_chaos_time(int slot, unsigned long long t0)
 
 #endif
 
+#if defined(__3DS__) && defined(DR3_CHAOS)
+/*
+ * The watchdog for the flickering lines above the car.  The drawing helpers hand every pixel they write
+ * to this, and it logs - a few lines per caller - whatever lands in the rows just above the player's
+ * sprite: nothing legitimate draws there, so the log names the layer that paints over the car.
+ *
+ * s_35e's screen position lives at +4 (x) and +8 (y) of each 0x35e byte entry (___1e6ed0h).
+ */
+void dr3_chaos_watch(int slot, const char *who, int x, int y, int value){
+
+    extern __BYTE__  ___1e6ed0h[];
+    extern unsigned  MY_CAR_IDX;
+
+    static int shown[8];
+
+    const unsigned char * car;
+    int                   cx, cy;
+
+    if ((slot < 0) || (slot >= 8)) return;
+    if (shown[slot] >= 6) return;
+
+    car = ___1e6ed0h + 0x35e * (int)MY_CAR_IDX;
+
+    cx =  (int)(unsigned)(car[4] | (car[5] << 8) | (car[6] << 16) | ((unsigned)car[7] << 24)) + 76;
+    cy = ((int)(unsigned)(car[8] | (car[9] << 8) | (car[10] << 16) | ((unsigned)car[11] << 24))) - 20;
+
+    if ((x < cx - 4) || (x > cx + 44)) return;      /* the car's width  */
+    if ((y < cy - 14) || (y >= cy)) return;         /* the rows above it */
+
+    ++shown[slot];
+    dr3_log("[dr3] chaos: WATCH %s wrote %02x at %d,%d (car sprite top left %d,%d)",
+            who, value & 0xff, x, y, cx, cy);
+    dr3_log_flush();
+}
+#endif
+
 #if defined(DR3_CHAOS)
 /*
  * The chaos test build's step trace (see dr3_chaos.h): logs what the game is doing on the paths outside

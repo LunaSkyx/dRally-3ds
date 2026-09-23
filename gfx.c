@@ -123,6 +123,9 @@ void ___5e3e8h(int Z3, int Y3, int X3, int Z2, int Y2, int X2, int Z1, int Y1, i
             while (TREE_XL < TREE_XR) {
 
                 dest[0x200 * Y1 + TREE_XL] = edx >> 0x10;
+#if defined(DR3_CHAOS)
+                dr3_chaos_watch(0, "tree", TREE_XL, Y1, edx >> 0x10);
+#endif
                 TREE_XL++;
                 edx += eax;
             }
@@ -159,6 +162,9 @@ void ___5e137h(__BYTE__ A0, int Y3, int X3, int Y2, int X2, int Y1, int X1){
             while (OBJ_XL < OBJ_XR) {
 
                 dest[0x200 * Y1 + OBJ_XL] = A0;
+#if defined(DR3_CHAOS)
+                dr3_chaos_watch(1, "object fill", OBJ_XL, Y1, A0);
+#endif
                 OBJ_XL++;
             }
 
@@ -206,6 +212,9 @@ void ___5e769h(__BYTE__ * A0, int Y3, int X3, int Y2, int X2, int Y1, int X1){
             while (SHD_XL < SHD_XR) {
 
                 dest[0x200 * Y1 + SHD_XL] = A0[dest[0x200 * Y1 + SHD_XL]];
+#if defined(DR3_CHAOS)
+                dr3_chaos_watch(2, "remap", SHD_XL, Y1, dest[0x200 * Y1 + SHD_XL]);
+#endif
                 SHD_XL++;
             }
 
