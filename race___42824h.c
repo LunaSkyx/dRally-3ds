@@ -344,6 +344,64 @@ void race___42824h(void){
 			strcpy(how, "KEPT THE GRID SLOT");
 
 			/*
+			 * The mask's own idea of a free spot: the spin recovery in race___4c434h.c takes a spot
+			 * where mask & 0xf < 4, and the logged mask values showed such cells do exist (0 and 1) -
+			 * they are just not where my direction walk looked (it started at the car in front and
+			 * walked straight, and the road there is narrow).  Scan the whole mask for a cell with a
+			 * small footprint (centre and four corners of 12x12) and 40 pixels clearance and take the
+			 * one nearest to the car in front.
+			 */
+			{
+				static const int dr3_fp[5][2] = { {0,0}, {-6,-6}, {6,-6}, {6,6}, {-6,6} };
+				int    gx, gy, fx = 0, fy = 0, found = 0;
+				double best_d = 1.0e30;
+
+				for(gy = 3; gy < TRX_HEIGHT - 3; gy += 3){
+
+					for(gx = 3; gx < TRX_WIDTH - 3; gx += 3){
+
+						int fi, ok = 1, k;
+
+						for(fi = 0; fi < 5; ++fi){
+
+							const int px = gx + dr3_fp[fi][0];
+							const int py = gy + dr3_fp[fi][1];
+
+							if((B(TRX_MAS + px + TRX_WIDTH*py) & 0xf) >= 4){ ok = 0; break; }
+						}
+
+						if(!ok) continue;
+
+						for(k = 0; k < dr3_n; ++k){
+
+							const double ex = (double)dr3_s35e[k].XLocation - (double)gx;
+							const double ey = (double)dr3_s35e[k].YLocation - (double)gy;
+
+							if((ex*ex + ey*ey) < (40.0*40.0)){ ok = 0; break; }
+						}
+
+						if(!ok) continue;
+
+						{
+							const double dx = (double)gx - x0, dy = (double)gy - y0;
+							const double d2 = dx*dx + dy*dy;
+
+							if(d2 < best_d){ best_d = d2; fx = gx; fy = gy; found = 1; }
+						}
+					}
+				}
+
+				if(found){
+
+					dr3_s35e[dr3_n].XLocation = (float)fx;
+					dr3_s35e[dr3_n].YLocation = (float)fy;
+					snprintf(how, sizeof(how), "mask cell at %d,%d, surface %d",
+					         fx, fy, (int)(B(TRX_MAS + fx + TRX_WIDTH*fy) & 0xf));
+					placed = 1;
+				}
+			}
+
+			/*
 			 * Only a short walk, and the whole line from the car in front to the candidate has to be
 			 * drivable, not just its end: testing the end alone let cars land 800 pixels away on a
 			 * different piece of road (or behind a wall), which is what "spawning in walls and outside
