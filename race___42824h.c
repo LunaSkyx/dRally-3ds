@@ -295,6 +295,31 @@ void race___42824h(void){
 	bpk_decode2(RACE_ROCKETX_BPK[0], ___1a54d0h);
 	old_bpa_read("ENGINE.BPA", ___1a54d0h, "ROCKET2.BPK");
 	bpk_decode2(RACE_ROCKETX_BPK[1], ___1a54d0h);
+#if defined(DR3_CHAOS)
+	/*
+	 * A checksum of every car's sprite stripe, so two runs can be compared byte for byte without shipping
+	 * megabytes: raising the extra car count from 0 to 1 must not change a single byte of the stripes that
+	 * were loaded before (the player's is loaded first!).  If a checksum moves, the extra car's load - or
+	 * something it starts - is writing into another car's sprite data, and that is what the grey lines over
+	 * the car are made of.
+	 */
+	{
+		int n;
+
+		for(n = 0; n < (int)D(NUM_OF_CARS); ++n){
+
+			const __BYTE__ * s = (const __BYTE__ *)___243d74h + sizeof(car_spins_t)*n;
+			unsigned         sum = 0u, xr = 0u;
+			int              k;
+
+			for(k = 0; k < (int)sizeof(car_spins_t); ++k){ sum += s[k]; xr = (xr << 1) ^ (unsigned)s[k]; }
+
+			dr3_log("[dr3] chaos: stripe %d checksum sum %08x xor %08x (base %p)",
+			        n, sum, xr, (const void *)s);
+		}
+	}
+#endif
+
 	old_bpa_read("ENGINE.BPA", ___1a54d0h, "BURN1A.BPK");
 	bpk_decode2(RACE_BURN1A_BPK, ___1a54d0h);
 	old_bpa_read("ENGINE.BPA", ___1a54d0h, "SMOKE.BPK");
