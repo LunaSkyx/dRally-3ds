@@ -34,6 +34,22 @@ void dr3_log_flush(void);
  */
 void dr3_chaos_watch(int slot, const char *who, int x, int y, int value);
 
+/*
+ * The remap filler (___5e769h, gfx.c) is called from the track shadows (race___4f170h.c), the object
+ * shadows (race___53464h.c) and the car lights (race___4f300h.c).  Each caller names itself here before
+ * the call, so the watchdog's "remap" line says which of them wrote over the car.
+ */
+void dr3_chaos_remap_who(const char *who);
+const char *dr3_chaos_remap_who_get(void);
+
+/*
+ * The band above the player's car: start() samples the rows above the sprite, mark() compares them again
+ * after one pass of the frame loop and logs what that pass wrote there - that names the layer the grey
+ * lines come from (see dr3_log.c).
+ */
+void dr3_chaos_band_start(void);
+void dr3_chaos_band_mark(const char *pass);
+
 /* frame time breakdown (see dr3_log.c): tick() before the section, time(slot, tick) after it */
 unsigned long long dr3_chaos_tick(void);
 void               dr3_chaos_time(int slot, unsigned long long t0);
@@ -43,6 +59,10 @@ void               dr3_chaos_time(int slot, unsigned long long t0);
 #define dr3_chaos_tick()         (0ull)
 #define dr3_chaos_time(slot, t0) ((void)0)
 #define dr3_chaos_watch(slot, who, x, y, value) ((void)0)
+#define dr3_chaos_remap_who(who) ((void)0)
+#define dr3_chaos_remap_who_get() ("")
+#define dr3_chaos_band_start()   ((void)0)
+#define dr3_chaos_band_mark(pass) ((void)0)
 #endif
 
 #endif /* DR3_LOG_H */

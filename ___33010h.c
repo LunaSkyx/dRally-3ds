@@ -645,15 +645,18 @@ void ___33010h_cdecl(int NumCars){
 #endif // DR_MULTIPLAYER
 	}//w
 
-#if defined(DR3_CHAOS)
+#if defined(DR3_CHAOS) && (DR3_CHAOS_EXTRA > 0)
 	/*
-	 * Chaos test build (-DDR3_CHAOS, see doc/3ds.md): the eight extra grid slots.  The front end only
+	 * Chaos test build (-DDR3_CHAOS, see doc/3ds.md): the extra grid slots.  The front end only
 	 * sets up NumCars entries and its screens draw four of them, so the extra cars take racers that
 	 * are not in the race yet and everything else from an existing entry - the parameter tables in
 	 * race___3f970h.c are indexed with the difficulty row and the car id, and both stay valid this way.
 	 *
 	 * The four startername bytes at esp+0xcc are deliberately left alone: the screen code reads them
 	 * with NumCars entries, and the counters it keeps at esp+0xd0/esp+0xd4 sit right behind them.
+	 *
+	 * DR3_CHAOS_EXTRA is 0 while the grey lines over the player car are hunted (dr3_chaos.h): the race
+	 * then has exactly the cars the front end set up, and the entries behind them stay untouched.
 	 */
 	{
 		__BYTE__ dr3_extra[DR3_MAX_CARS];

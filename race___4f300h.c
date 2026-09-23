@@ -70,6 +70,11 @@ static void helper00(int n){
 
 	s_35e = (struct_35e_t *)___1e6ed0h;
 
+#if defined(DR3_CHAOS)
+	/* names this pass for the watchdog (dr3_log.c) - the remap filler has three callers */
+	dr3_chaos_remap_who("car lights");
+#endif
+
 	___5e769h(
 		TRX_LIT_TAB,
 		s_35e[n].__8+(int)(40.0*dRMath_cos(((double)s_35e[n].Direction+170.0)*LOC_PI/180.0)*LOC_5OVER6),

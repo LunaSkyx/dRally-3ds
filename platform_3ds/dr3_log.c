@@ -10,6 +10,7 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 #define DR3_LOG_PATH "sdmc:/drally_3ds.log"
 #define DR3_LOG_MAX  200000    /* stop writing after ~200k lines, the SD card does not deserve this */
@@ -144,37 +145,198 @@ void dr3_chaos_time(int slot, unsigned long long t0)
 
 #if defined(__3DS__) && defined(DR3_CHAOS)
 /*
- * The watchdog for the flickering lines above the car.  The drawing helpers hand every pixel they write
- * to this, and it logs - a few lines per caller - whatever lands in the rows just above the player's
- * sprite: nothing legitimate draws there, so the log names the layer that paints over the car.
+ * The watchdog and the band measurement for the flickering lines above the car.
+ *
+ * The drawing helpers hand every pixel they write to the watchdog, which logs - a handful of lines per
+ * caller, refreshed every 64 frames - whatever lands in the rows just above the player's sprite: nothing
+ * legitimate draws there, so the log names the layer that paints over the car.
  *
  * s_35e's screen position lives at +4 (x) and +8 (y) of each 0x35e byte entry (___1e6ed0h).
  */
-void dr3_chaos_watch(int slot, const char *who, int x, int y, int value){
+#define DR3_CAR_BAND_X  (-4)        /* left edge relative to the sprite's own left edge */
+#define DR3_CAR_BAND_W  48          /* the sprite is 40 wide */
+#define DR3_CAR_BAND_H  20          /* rows above the sprite */
+#define DR3_CAR_BAND_IN 4           /*   and the sprite's own first rows */
+#define DR3_BAND_ROWS   (DR3_CAR_BAND_H + DR3_CAR_BAND_IN)
 
-    extern __BYTE__  ___1e6ed0h[];
+/*
+ * The three fillers in gfx.c paint into &BACKBUFFER[0x60] and take the viewport's own x, while the car
+ * sprite is drawn at BACKBUFFER + (__4 + 76) without that offset (race___4f300h.c).  A write the filler
+ * reports at x therefore lands at x + this in the back buffer - the offset has to be added before it is
+ * compared with the car, or the watchdog watches a window 96 pixels to the right of the car.
+ */
+#define DR3_CAR_BAND_VP 0x60
+
+static int         dr3_watch_hits[8];   /* lines per caller, reset every 64 frames */
+static int         dr3_watch_frames;
+
+static void dr3_car_screen(int *px, int *py)
+{
+    extern __BYTE__ ___1e6ed0h[];
     extern unsigned  MY_CAR_IDX;
 
-    static int shown[8];
+    const unsigned char *car = ___1e6ed0h + 0x35e * (int)MY_CAR_IDX;
 
-    const unsigned char * car;
-    int                   cx, cy;
+    /* both are back buffer pixels: +76 is the sprite's left edge, -20 its top edge (helper01) */
+    *px =  (int)(unsigned)(car[4] | (car[5] << 8) | (car[6] << 16) | ((unsigned)car[7] << 24)) + 76;
+    *py = ((int)(unsigned)(car[8] | (car[9] << 8) | (car[10] << 16) | ((unsigned)car[11] << 24))) - 20;
+}
+
+void dr3_chaos_watch(int slot, const char *who, int x, int y, int value){
+
+    int cx, cy, bx;
 
     if ((slot < 0) || (slot >= 8)) return;
-    if (shown[slot] >= 6) return;
+    if (dr3_watch_hits[slot] >= 4) return;
 
-    car = ___1e6ed0h + 0x35e * (int)MY_CAR_IDX;
+    dr3_car_screen(&cx, &cy);
 
-    cx =  (int)(unsigned)(car[4] | (car[5] << 8) | (car[6] << 16) | ((unsigned)car[7] << 24)) + 76;
-    cy = ((int)(unsigned)(car[8] | (car[9] << 8) | (car[10] << 16) | ((unsigned)car[11] << 24))) - 20;
+    bx = x + DR3_CAR_BAND_VP;       /* the fillers' viewport x -> back buffer x */
 
-    if ((x < cx - 4) || (x > cx + 44)) return;      /* the car's width  */
-    if ((y < cy - 14) || (y >= cy)) return;         /* the rows above it */
+    if ((bx < cx + DR3_CAR_BAND_X) || (bx >= cx + DR3_CAR_BAND_X + DR3_CAR_BAND_W)) return;
+    if ((y < cy - DR3_CAR_BAND_H) || (y >= cy)) return;
 
-    ++shown[slot];
+    ++dr3_watch_hits[slot];
     dr3_log("[dr3] chaos: WATCH %s wrote %02x at %d,%d (car sprite top left %d,%d)",
-            who, value & 0xff, x, y, cx, cy);
+            who, value & 0xff, bx, y, cx, cy);
     dr3_log_flush();
+}
+
+/*
+ * The remap filler (___5e769h, gfx.c) is called by the track shadows, the object shadows and the car
+ * lights; each of them names itself here first, so the watchdog's "remap" line says which one wrote.
+ */
+static const char *dr3_remap_who = "?";
+
+void dr3_chaos_remap_who(const char *who)
+{
+    dr3_remap_who = who;
+}
+
+const char *dr3_chaos_remap_who_get(void)
+{
+    return dr3_remap_who;
+}
+
+/*
+ * The band above the player's car.
+ *
+ * The grey lines sit in the rows just above the sprite, and the frame dump alone cannot say which pass
+ * of the frame loop put them there: by the end of the frame every pass has drawn over the road that was
+ * there before.  So the band is sampled once, right after the cars are drawn (their screen position is
+ * only final then - see race___4f300h.c), and compared again after every pass that follows: a pass that
+ * reports pixels has written into the band over the car, and the values it reports are the palette
+ * entries it put there.  The car pass itself is what the watchdog above watches.
+ *
+ * Three lines per pass and 32 frames are logged: the lines flicker with every frame, and a budget per
+ * window keeps the log readable while still covering the whole race instead of only its first seconds.
+ */
+static __BYTE__    dr3_band[DR3_BAND_ROWS * DR3_CAR_BAND_W];
+static int         dr3_band_x, dr3_band_y, dr3_band_on;
+
+#define DR3_BAND_TAGS   12
+static const char *dr3_band_tag[DR3_BAND_TAGS];
+static int          dr3_band_tag_n;
+static int          dr3_band_tag_hits[DR3_BAND_TAGS];
+static int          dr3_band_frames;
+
+void dr3_chaos_band_start(void)
+{
+    extern __POINTER__ BACKBUFFER;
+
+    const __BYTE__ *bb = (const __BYTE__ *)BACKBUFFER;
+    int             cx, cy, x, y;
+
+    /* the counter the watchdog uses: a handful of lines per caller, then a fresh start */
+    if (++dr3_watch_frames >= 64) {
+
+        int i;
+
+        dr3_watch_frames = 0;
+        for (i = 0; i < 8; ++i) dr3_watch_hits[i] = 0;
+    }
+
+    /* and a fresh line budget for every pass, so the log covers the whole race, not just its start */
+    if (++dr3_band_frames >= 32) {
+
+        int i;
+
+        dr3_band_frames = 0;
+        for (i = 0; i < DR3_BAND_TAGS; ++i) dr3_band_tag_hits[i] = 0;
+    }
+
+    dr3_band_on = 0;
+
+    dr3_car_screen(&cx, &cy);
+
+    dr3_band_x = cx + DR3_CAR_BAND_X;
+    dr3_band_y = cy - DR3_CAR_BAND_H;
+
+    if ((dr3_band_x < 0) || (dr3_band_y < 0)) return;
+    if ((dr3_band_x + DR3_CAR_BAND_W) > 320) return;
+    if ((dr3_band_y + DR3_BAND_ROWS) > 200) return;
+
+    for (y = 0; y < DR3_BAND_ROWS; ++y)
+        for (x = 0; x < DR3_CAR_BAND_W; ++x)
+            dr3_band[y * DR3_CAR_BAND_W + x] = bb[0x200 * (dr3_band_y + y) + dr3_band_x + x];
+
+    dr3_band_on = 1;
+}
+
+void dr3_chaos_band_mark(const char *pass)
+{
+    extern __POINTER__ BACKBUFFER;
+
+    const __BYTE__ *bb = (const __BYTE__ *)BACKBUFFER;
+    int             count[0x100];
+    int             hits = 0, x, y, i, slot = -1;
+    int             fx = 0, fy = 0, fnew = 0, fold = 0;
+    int             best = 0, bestval = 0;
+
+    if (!dr3_band_on) return;
+
+    for (i = 0; i < 0x100; ++i) count[i] = 0;
+
+    for (y = 0; y < DR3_BAND_ROWS; ++y) {
+
+        for (x = 0; x < DR3_CAR_BAND_W; ++x) {
+
+            const int at   = y * DR3_CAR_BAND_W + x;
+            const int oldv = dr3_band[at];
+            const int newv = bb[0x200 * (dr3_band_y + y) + dr3_band_x + x];
+
+            /* the pass that follows compares against what this pass left behind */
+            dr3_band[at] = (__BYTE__)newv;
+
+            if (newv == oldv) continue;
+
+            if (hits == 0) { fx = dr3_band_x + x; fy = dr3_band_y + y; fnew = newv; fold = oldv; }
+
+            ++hits;
+            if (++count[newv] > best) { best = count[newv]; bestval = newv; }
+        }
+    }
+
+    if (hits == 0) return;
+
+    /* the pass names are literals, so the first mark of each pass finds its slot once */
+    for (i = 0; (i < dr3_band_tag_n) && (slot < 0); ++i)
+        if ((dr3_band_tag[i] == pass) || (strcmp(dr3_band_tag[i], pass) == 0)) slot = i;
+
+    if ((slot < 0) && (dr3_band_tag_n < DR3_BAND_TAGS)) {
+
+        slot = dr3_band_tag_n++;
+        dr3_band_tag[slot] = pass;
+        dr3_band_tag_hits[slot] = 0;
+    }
+
+    if (slot < 0) return;
+
+    if (dr3_band_tag_hits[slot] >= 3) return;   /* three lines per pass and 32 frames */
+
+    ++dr3_band_tag_hits[slot];
+    dr3_log("[dr3] chaos: BAND %s wrote %d px over the car (most 0x%02x, first %d,%d = 0x%02x was 0x%02x)",
+            pass, hits, bestval, fx, fy, fnew, fold);
 }
 #endif
 

@@ -35,6 +35,10 @@ void race___4f170h(void){
 
 			if((a1 < CURRENT_VIEWPORT_CENTER_Y)||(a2 < CURRENT_VIEWPORT_CENTER_Y)||(a3 < CURRENT_VIEWPORT_CENTER_Y)){
 
+#if defined(DR3_CHAOS)
+				/* names this pass for the watchdog (dr3_log.c) - the remap filler has three callers */
+				dr3_chaos_remap_who("track shadow");
+#endif
 				___5e769h(
 					VARJO_TAB,
 					Y___1ded20h[___1e7c48h[n]]-TRX_VIEWPORT_TL_Y,

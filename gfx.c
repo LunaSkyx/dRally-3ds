@@ -213,7 +213,8 @@ void ___5e769h(__BYTE__ * A0, int Y3, int X3, int Y2, int X2, int Y1, int X1){
 
                 dest[0x200 * Y1 + SHD_XL] = A0[dest[0x200 * Y1 + SHD_XL]];
 #if defined(DR3_CHAOS)
-                dr3_chaos_watch(2, "remap", SHD_XL, Y1, dest[0x200 * Y1 + SHD_XL]);
+                /* the caller named itself (dr3_chaos_remap_who) - this filler has three of them */
+                dr3_chaos_watch(2, dr3_chaos_remap_who_get(), SHD_XL, Y1, dest[0x200 * Y1 + SHD_XL]);
 #endif
                 SHD_XL++;
             }

@@ -222,6 +222,16 @@ static void dr3_chaos_step(const char *what, int car){
 #define dr3_chaos_step(what, car) ((void)0)
 #endif
 
+/*
+ * The band measurement lives in platform_3ds/dr3_log.c and is only there with the test build: drally.h
+ * pulls dr3_log.h in on the 3DS (which itself turns these into no-ops without DR3_CHAOS), and this keeps
+ * the other targets, which do not see that header, compiling as well.
+ */
+#if !defined(DR3_CHAOS)
+#define dr3_chaos_band_start()    ((void)0)
+#define dr3_chaos_band_mark(pass) ((void)0)
+#endif
+
 static void race___4b62ch_helper(int n){
 
 	dr3_chaos_step("4b62ch", n);
@@ -271,12 +281,16 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 	NUM_OF_CARS = NumCars;
 #if defined(DR3_CHAOS)
 	/*
-	 * Chaos test build (-DDR3_CHAOS, see doc/3ds.md): eight more cars than the race asked for.  Every
+	 * Chaos test build (-DDR3_CHAOS, see doc/3ds.md): more cars than the race asked for.  Every
 	 * per car array is sized with DR3_MAX_CARS (bss.c), the extra grid entries are set up in
 	 * ___33010h.c and the in-race car list stops at DR3_HUD_LOOP_LIMIT rows, so only the race grows.
+	 *
+	 * DR3_CHAOS_EXTRA is 0 while the grey lines over the player car are hunted (dr3_chaos.h): the race
+	 * then is the race the game asked for, and no extra grid entry is filled in ___33010h.c either.
 	 */
 	NUM_OF_CARS = (NumCars + DR3_CHAOS_EXTRA <= DR3_MAX_CARS) ? (NumCars + DR3_CHAOS_EXTRA) : DR3_MAX_CARS;
-	dr3_log("[dr3] CHAOS build: %d cars on the grid (the race asked for %d)", NUM_OF_CARS, NumCars);
+	dr3_log("[dr3] CHAOS build: %d cars on the grid (the race asked for %d, the extras are %s)",
+	        NUM_OF_CARS, NumCars, (DR3_CHAOS_EXTRA > 0) ? "on" : "off");
 #endif
 	race___3f970h();
 	race___49a34h();
@@ -728,24 +742,37 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 			race___4f300h();	// RENDER CARS
 			dr3_chaos_time(2, t2);
 		}
+#if defined(DR3_CHAOS)
+		/*
+		 * From here on every pass is measured against what the cars left behind: the grey lines over
+		 * the car are put there by one of them (dr3_log.c, dr3_chaos_band_mark).
+		 */
+		dr3_chaos_band_start();
+#endif
 		dr3_chaos_step("51ce0h", -1);
 		race___51ce0h();
+		dr3_chaos_band_mark("51ce0h explosions");
 		dr3_chaos_step("4f170h", -1);
 #if !defined(DR3_CHAOS)
 		if(dRally_Race_getSettings(RACE_SHADOWS)) race___4f170h();
 #endif
 		D(___243c60h) = -1;
 		while(++D(___243c60h) < NUM_OF_CARS){ dr3_chaos_step("50a48h", (int)D(___243c60h)); race___50a48h(); }
+		dr3_chaos_band_mark("50a48h gun fire");
 		D(___243c60h) = -1;
 		while(++D(___243c60h) < NUM_OF_CARS){ dr3_chaos_step("51204h", (int)D(___243c60h)); race___51204h(); }
+		dr3_chaos_band_mark("51204h rocket fuel");
 		dr3_chaos_step("53310h", -1);
 		race___53310h();	// SORT OBJECTS
 		dr3_chaos_step("53464h", -1);
 		race___53464h();	// OBJECTS
+		dr3_chaos_band_mark("53464h objects");
 		D(___243c60h) = -1;
 		while(++D(___243c60h) < NUM_OF_CARS){ dr3_chaos_step("50ba4h", (int)D(___243c60h)); race___50ba4h(); }
+		dr3_chaos_band_mark("50ba4h shots");
 		dr3_chaos_step("51eb4h", -1);
 		race___51eb4h();
+		dr3_chaos_band_mark("51eb4h cash text");
 #if defined(DR_MULTIPLAYER)
 		if(___19bd60h == 0){
 #endif // DR_MULTIPLAYER
@@ -754,8 +781,10 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 		}
 #endif // DR_MULTIPLAYER
 		if((int)getCounter(1) < 0x122) race___42218h();
+		dr3_chaos_band_mark("42218h banner");
 		dr3_chaos_step("hud", -1);
 		(CURRENT_VIEWPORT_W != 0x140) ? race___40f48h() : race___40db4h();
+		dr3_chaos_band_mark("hud");
 
 #if defined(DR3_CHAOS)
 	/*

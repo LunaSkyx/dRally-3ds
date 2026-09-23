@@ -316,7 +316,7 @@ void race___42824h(void){
 		((int*)Y___1ded20h)[i] = SDL_SwapLE32(((int*)Y___1ded20h)[i]);
 		((int*)___1df120h)[i] = SDL_SwapLE32(((int*)___1df120h)[i]); // TODO unused?
 		((int*)___1e8448h)[i] = SDL_SwapLE32(((int*)___1e8448h)[i]);
-#if defined(DR3_CHAOS)
+#if defined(DR3_CHAOS) && (DR3_CHAOS_EXTRA > 0)
 	/*
 	 * Put the extra cars on the road.  The start slots of the track file face every direction, and the
 	 * rows "behind" them (race___49bd4h.c) ended up in walls or on soft ground.  X___1de920h/Y___1ded20h
@@ -325,6 +325,9 @@ void race___42824h(void){
 	 * slot's own car and take the first spot whose whole footprint is drivable (TRX_MAS & 0xf < 4) and
 	 * far enough from every car placed before it.  The mask is what the collision code uses, so a car
 	 * that passes this test stands on the road.
+	 *
+	 * DR3_CHAOS_EXTRA is 0 while the grey lines over the player car are hunted (dr3_chaos.h) - then
+	 * there are no extra cars and nothing to place.
 	 */
 	{
 		extern __BYTE__ ___1e6ed0h[];
@@ -332,7 +335,7 @@ void race___42824h(void){
 		const double    dr3_step = 10.0, dr3_clear = 48.0;
 		int             dr3_n;
 
-		for(dr3_n = 4; dr3_n < DR3_MAX_CARS; ++dr3_n){
+		for(dr3_n = DR3_HUD_CARS; dr3_n < DR3_MAX_CARS; ++dr3_n){
 
 			/* the car placed before this one is the centre of the search */
 			const int    from = dr3_n - 1;

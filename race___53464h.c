@@ -171,6 +171,10 @@ void race___53464h(void){
 								);
 								break;
 							case 1:	// SHADOW
+#if defined(DR3_CHAOS)
+								/* names this pass for the watchdog (dr3_log.c) */
+								dr3_chaos_remap_who("object shadow 1");
+#endif
 								___5e769h(
 									___243188h,
 									Y3___243c70h,
@@ -182,6 +186,9 @@ void race___53464h(void){
 								);
 								break;
 							case 2:	// SHADOW
+#if defined(DR3_CHAOS)
+								dr3_chaos_remap_who("object shadow 2");
+#endif
 								___5e769h(
 									___242f78h,
 									Y3___243c70h,
@@ -193,6 +200,9 @@ void race___53464h(void){
 								);
 								break;
 							case 3:	// SHADOW
+#if defined(DR3_CHAOS)
+								dr3_chaos_remap_who("object shadow 3");
+#endif
 								___5e769h(
 									___242e78h,
 									Y3___243c70h,

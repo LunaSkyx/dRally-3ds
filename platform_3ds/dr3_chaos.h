@@ -22,10 +22,22 @@
 #define DR3_CHAOS_H
 
 #define DR3_HUD_CARS    4                   /* rows the in-race car list has room for */
-#define DR3_CHAOS_EXTRA 8                   /* how many cars the test build adds on top */
+/*
+ * How many cars the test build adds on top of the race's own (race_main.c, ___33010h.c).  It is 0 right
+ * now: the grey lines over the player car are hunted with the race the game asked for - the original
+ * four - so the extra grid slots, which have a bug of their own (their spawn position), stay out of the
+ * picture.  Set it back to (DR3_CHAOS_RACERS - DR3_HUD_CARS) for the twelve car grid.
+ */
+#define DR3_CHAOS_EXTRA 0
+/*
+ * How many cars the per car arrays of the test build have room for (bss.c, race_memory.c).  This stays
+ * at the twelve car size while DR3_CHAOS_EXTRA is 0, so the memory layout does not move with the
+ * switch - switching the extras off only means that the entries behind the fourth never join a race.
+ */
+#define DR3_CHAOS_RACERS 12
 
 #if defined(DR3_CHAOS)
-#define DR3_MAX_CARS    (DR3_HUD_CARS + DR3_CHAOS_EXTRA)
+#define DR3_MAX_CARS    DR3_CHAOS_RACERS
 /*
  * The palette has four car colour ramps: 10 entries each, starting at index 0x0f (see
  * ___4a064h.c).  A race with more cars must not give the ones behind the fourth their own ramp -
