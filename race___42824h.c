@@ -275,75 +275,66 @@ void race___42824h(void){
 		((int*)___1e8448h)[i] = SDL_SwapLE32(((int*)___1e8448h)[i]);
 #if defined(DR3_CHAOS)
 	/*
-	 * Put the extra cars on the racing line.  X___1de920h/Y___1ded20h is the line the AI follows, so a
-	 * car standing on one of its points is on the road by definition - the start slots of the track file
-	 * face every direction and the rows "behind" them (race___49bd4h.c) ended up in walls or on soft
-	 * ground on tracks like Rock Zone.  The four cars the track file provides keep their slots, every
-	 * extra car goes to a path point before the start line, evenly spaced and clear of the others.
-	 *
-	 * They face forward along the path: the AI looks ahead at (Direction + 180), so the sprite index for
-	 * a given facing is that of the path direction (a 40x40 picture per sprite step, 96 steps).
+	 * Put the extra cars on the road.  The start slots of the track file face every direction, and the
+	 * rows "behind" them (race___49bd4h.c) ended up in walls or on soft ground.  X___1de920h/Y___1ded20h
+	 * looks like a racing line but is not (its points are not in track order - the AI steers by the
+	 * track borders, TRX_LR1/TRX_OHI_DAT), so this uses the track mask instead: walk back from the
+	 * slot's own car and take the first spot whose whole footprint is drivable (TRX_MAS & 0xf < 4) and
+	 * far enough from every car placed before it.  The mask is what the collision code uses, so a car
+	 * that passes this test stands on the road.
 	 */
 	{
 		extern __BYTE__ ___1e6ed0h[];
-		extern __BYTE__ X___1de920h[];
-		extern __BYTE__ Y___1ded20h[];
 		struct_35e_t *  dr3_s35e = (struct_35e_t *)___1e6ed0h;
-		const int       dr3_npath = (int)D(___243c5ch);
-		int             dr3_start = 0, dr3_best = 0x7fffffff, dr3_i, dr3_n;
+		const double    dr3_step = 10.0, dr3_clear = 48.0;
+		int             dr3_n;
 
-		if(dr3_npath > 8){
+		for(dr3_n = 4; dr3_n < DR3_MAX_CARS; ++dr3_n){
 
-			/* the path point nearest to the first grid slot is the start of the line */
-			for(dr3_i = 0; dr3_i < dr3_npath; ++dr3_i){
+			const int      slot  = dr3_n & 3;
+			const double   rad   = 3.75 * (double)dr3_s35e[slot].ImgIndex * (dR_PI / 180.0);
+			const double   bx    = dRMath_sin(rad);
+			const double   by    = dRMath_cos(rad);
+			int            tries = 0;
 
-				const int dx = ((int *)X___1de920h)[dr3_i] - (int)dr3_s35e[0].XLocation;
-				const int dy = ((int *)Y___1ded20h)[dr3_i] - (int)dr3_s35e[0].YLocation;
-				const int d2 = dx*dx + dy*dy;
+			for(;;){
 
-				if(d2 < dr3_best){ dr3_best = d2; dr3_start = dr3_i; }
-			}
+				const double x = (double)dr3_s35e[slot].XLocation + dr3_step * (double)tries * bx;
+				const double y = (double)dr3_s35e[slot].YLocation + dr3_step * (double)tries * by;
+				int          dx, dy, ok = 1, k;
 
-			for(dr3_n = 4; dr3_n < DR3_MAX_CARS; ++dr3_n){
+				/* the footprint: every 4th pixel of a 24x24 box has to be drivable */
+				for(dx = -12; (dx <= 12) && ok; dx += 4){
 
-				int back = dr3_n - 3;
+					for(dy = -12; dy <= 12; dy += 4){
 
-				for(dr3_i = 0; dr3_i < dr3_npath; ++dr3_i, ++back){
+						const int px = (int)x + dx;
+						const int py = (int)y + dy;
 
-					const int idx = ((dr3_start - back) % dr3_npath + dr3_npath) % dr3_npath;
-					const int nxt = (idx + 1) % dr3_npath;
-					const double x  = (double)((int *)X___1de920h)[idx];
-					const double y  = (double)((int *)Y___1ded20h)[idx];
-					const double dx = (double)(((int *)X___1de920h)[idx] - ((int *)X___1de920h)[nxt]);
-					const double dy = (double)(((int *)Y___1ded20h)[idx] - ((int *)Y___1ded20h)[nxt]);
-					int    k, hit = 0, bestk = 0;
-					double best = -2.0;
+						if((px < 1) || (py < 1) || (px >= TRX_WIDTH - 1) || (py >= TRX_HEIGHT - 1)){ ok = 0; break; }
+
+						if((B(TRX_MAS + px + TRX_WIDTH*py) & 0xf) >= 4){ ok = 0; break; }
+					}
+				}
+
+				if(ok){
 
 					for(k = 0; k < dr3_n; ++k){
 
 						const double ex = (double)dr3_s35e[k].XLocation - x;
 						const double ey = (double)dr3_s35e[k].YLocation - y;
 
-						if((ex*ex + ey*ey) < (64.0*64.0)){ hit = 1; break; }
+						if((ex*ex + ey*ey) < (dr3_clear * dr3_clear)){ ok = 0; break; }
 					}
+				}
 
-					if(hit) continue;
+				if(ok || (++tries > 80)){
 
-					/* the sprite step whose facing is closest to the path direction */
-					for(k = 0; k < 96; ++k){
-
-						const double a   = 3.75 * (double)k * (dR_PI / 180.0);
-						const double dot = dRMath_sin(a)*dx + dRMath_cos(a)*dy;
-
-						if(dot > best){ best = dot; bestk = k; }
-					}
-
-					dr3_s35e[dr3_n].ImgIndex  = bestk;
 					dr3_s35e[dr3_n].XLocation = (float)(int)x;
 					dr3_s35e[dr3_n].YLocation = (float)(int)y;
 
-					dr3_log("[dr3] chaos: grid car %d on the path: point %d of %d, facing %d, at %d,%d",
-					        dr3_n, idx, dr3_npath, bestk,
+					dr3_log("[dr3] chaos: grid car %d on the road: %d px back from the slot, %d tries (%s), at %d,%d",
+					        dr3_n, (int)(dr3_step * (double)tries), tries, ok ? "clear" : "no clear spot",
 					        (int)dr3_s35e[dr3_n].XLocation, (int)dr3_s35e[dr3_n].YLocation);
 					break;
 				}
