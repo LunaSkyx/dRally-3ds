@@ -30,6 +30,38 @@ __DWORD__ __GET_FRAME_COUNTER(void);
 #define LOC_5OVER6	0.833333
 
 
+#if defined(DR3_CHAOS)
+/*
+ * TEST BUILD: the grey "box" around the player's car is suspected to be the headlight beam (helper00
+ * clears pixels through TRX_LIT_TAB).  This switch turns the player's own beam off so the report can
+ * say whether the box is gone; the table's first bytes go to the log to see if it holds sane values.
+ */
+#define DR3_CHAOS_NO_PLAYER_LIGHTS 1
+
+/* logs what the track's light table holds - once, so the log stays short */
+static void dr3_log_once_light(void){
+
+	static int done;
+	int i;
+
+	if(done) return;
+	done = 1;
+
+	dr3_log("[dr3] chaos: TRX_LIT_TAB (lights):");
+	for(i = 0; i < 0x100; i += 0x20){
+
+		dr3_log("[dr3] chaos:   %02x..: %02x %02x %02x %02x %02x %02x %02x %02x  %02x %02x %02x %02x %02x %02x %02x %02x",
+		        i,
+		        TRX_LIT_TAB[i+0], TRX_LIT_TAB[i+1], TRX_LIT_TAB[i+2], TRX_LIT_TAB[i+3],
+		        TRX_LIT_TAB[i+4], TRX_LIT_TAB[i+5], TRX_LIT_TAB[i+6], TRX_LIT_TAB[i+7],
+		        TRX_LIT_TAB[i+8], TRX_LIT_TAB[i+9], TRX_LIT_TAB[i+10], TRX_LIT_TAB[i+11],
+		        TRX_LIT_TAB[i+12], TRX_LIT_TAB[i+13], TRX_LIT_TAB[i+14], TRX_LIT_TAB[i+15]);
+	}
+
+	dr3_log_flush();
+}
+#endif
+
 // LIGHTS
 static void helper00(int n){
 
@@ -171,7 +203,16 @@ void race___4f300h(void){
 	if(lqandlq_d(d00, d01, d02)) s_35e[D(MY_CAR_IDX)].__8 = CURRENT_VIEWPORT_CENTER_Y-Y___243c90h;
 
 
+#if defined(DR3_CHAOS)
+#if defined(DR3_CHAOS_NO_PLAYER_LIGHTS)
+	/* TEST: the player's own headlight beam off - does the grey box around the car go with it? */
+	dr3_log_once_light();
+#else
 	if(((int)D(___1de580h+0x94*D(MY_CAR_IDX)+0x18) > 0)&&(s_35e[D(MY_CAR_IDX)].Finished == 0)) helper00(D(MY_CAR_IDX));
+#endif
+#else
+	if(((int)D(___1de580h+0x94*D(MY_CAR_IDX)+0x18) > 0)&&(s_35e[D(MY_CAR_IDX)].Finished == 0)) helper00(D(MY_CAR_IDX));
+#endif
 
 	n = -1;
 	while(++n < (int)D(NUM_OF_CARS)){
