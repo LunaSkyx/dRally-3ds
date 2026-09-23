@@ -16,9 +16,45 @@
 #define DR3_LOG_PATH "sdmc:/drally_3ds.log"
 #define DR3_LOG_MAX  200000    /* stop writing after ~200k lines, the SD card does not deserve this */
 
+#if defined(DR3_CHAOS)
+/*
+ * The log switch (dr3_log.h): sdmc:/chaos_log.txt holds one number, 0 silences everything and 1 turns it
+ * back on.  It is 0 unless that file says otherwise, read before the first line is written and again at
+ * every race setup - so the full diagnostics (frame dumps, stripe checksums, band measurement, step trace)
+ * are one file edit away, no rebuild needed.
+ */
+#define DR3_LOG_SWITCH_PATH "sdmc:/chaos_log.txt"
+
+static int dr3_log_on;
+static int dr3_log_switch_read;
+#endif
+
 static FILE *dr3_log_file;
 static int   dr3_log_open_tried;
 static int   dr3_log_count;
+
+#if defined(DR3_CHAOS)
+void dr3_log_quiet_reload(void)
+{
+    FILE *f  = fopen(DR3_LOG_SWITCH_PATH, "r");
+    int   on = 0;
+
+    if (f) {
+        if (fscanf(f, "%d", &on) != 1) on = 0;      /* a missing or unreadable file means: silent */
+        fclose(f);
+    }
+
+    dr3_log_on           = (on != 0);
+    dr3_log_switch_read  = 1;
+}
+
+int dr3_log_enabled(void)
+{
+    if (!dr3_log_switch_read) dr3_log_quiet_reload();       /* so the very first line already obeys it */
+
+    return dr3_log_on;
+}
+#endif
 
 static FILE *dr3_log_handle(void)
 {
@@ -32,7 +68,13 @@ static FILE *dr3_log_handle(void)
 void dr3_log(const char *fmt, ...)
 {
     va_list ap;
-    FILE   *f = dr3_log_handle();
+    FILE   *f;
+
+#if defined(DR3_CHAOS)
+    if (!dr3_log_enabled()) return;     /* the switch: nothing is written and the file is not even opened */
+#endif
+
+    f = dr3_log_handle();
 
     ++dr3_log_count;
 
@@ -111,6 +153,7 @@ void dr3_chaos_time(int slot, unsigned long long t0)
     unsigned long long now = dr3_chaos_tick();
     int                i;
 
+    if (!dr3_log_enabled()) return;     /* the switch: no measuring, no line */
     if ((slot < 0) || (slot >= DR3_CT_COUNT)) return;
 
     dr3_ct_sum[slot] += now - t0;
@@ -187,6 +230,7 @@ void dr3_chaos_watch(int slot, const char *who, int x, int y, int value){
 
     int cx, cy, bx;
 
+    if (!dr3_log_enabled()) return;     /* the switch: the watchdog costs nothing while the log is off */
     if ((slot < 0) || (slot >= 8)) return;
     if (dr3_watch_hits[slot] >= 4) return;
 
@@ -438,6 +482,8 @@ void dr3_chaos_band_start(void)
     const __BYTE__ *bb = (const __BYTE__ *)BACKBUFFER;
     int             cx, cy, x, y;
 
+    if (!dr3_log_enabled()) { dr3_band_on = 0; return; }        /* the switch: no snapshot, no measuring */
+
     /* the counter the watchdog uses: a handful of lines per caller, then a fresh start */
     if (++dr3_watch_frames >= 64) {
 
@@ -484,6 +530,7 @@ void dr3_chaos_band_mark(const char *pass)
     int             fx = 0, fy = 0, fnew = 0, fold = 0;
     int             best = 0, bestval = 0;
 
+    if (!dr3_log_enabled()) return;     /* the switch: the band is not compared at all */
     if (!dr3_band_on) return;
 
     for (i = 0; i < 0x100; ++i) count[i] = 0;
@@ -540,6 +587,8 @@ void dr3_chaos_band_mark(const char *pass)
 void dr3_chaos_trace(const char *what, int n)
 {
     static int shown;
+
+    if (!dr3_log_enabled()) return;     /* the switch: no trace and no heap check while the log is off */
 
     /* a trace point is a cheap place to look at the engine's heap (see drmemory.c) */
     if (shown < 4000) dr3_drheap_guard(what);

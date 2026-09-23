@@ -210,6 +210,7 @@ static void dr3_chaos_step(const char *what, int car){
 
 	static int shown;
 
+	if(!dr3_log_enabled()) return;              /* the switch: no trace, no heap check */
 	if((int)getCounter(1) < 0xa0) return;
 	if(shown >= DR3_CHAOS_STEP_LOG) return;
 
@@ -251,6 +252,8 @@ static int dr3_chaos_dump_due(void)
 	static int dr3_dump_img = -99;
 
 	struct_35e_t * s_35e = (struct_35e_t *)___1e6ed0h;
+
+	if(!dr3_log_enabled()) return 0;            /* the switch: no frame dump at all */
 
 	/* once the car has turned by 30 degrees, so every angle gets captured */
 	if(((int)s_35e[D(MY_CAR_IDX)].ImgIndex - dr3_dump_img + 96) % 96 >= 8){
@@ -335,6 +338,8 @@ static void dr3_chaos_dump_frame(const char *when){
 	extern __POINTER__ ___243d74h;
 	int            px, py;
 	int            x, y, n;
+
+	if(!dr3_log_enabled()) return;              /* the switch: nothing is dumped, nothing is hashed */
 
 	dr3_chaos_player_pos(&px, &py);
 

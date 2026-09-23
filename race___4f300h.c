@@ -49,6 +49,8 @@ static void dr3_log_once_light(void){
 	if(done) return;
 	done = 1;
 
+	if(!dr3_log_enabled()) return;              /* the switch (dr3_log.h): no table dump while silent */
+
 	dr3_log("[dr3] chaos: TRX_LIT_TAB (lights):");
 	for(i = 0; i < 0x100; i += 0x20){
 

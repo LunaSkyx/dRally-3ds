@@ -28,6 +28,15 @@ void dr3_chaos_trace(const char *what, int n);
 void dr3_log_flush(void);
 
 /*
+ * The log switch: sdmc:/chaos_log.txt holds one number - 0 (the default) silences the whole log, 1 turns
+ * everything back on.  It is read before the first line and again at every race setup, so it can be flipped
+ * from the PC while the game runs.  While it is 0 the expensive diagnostics (the frame dumps, the stripe
+ * checksums, the band measurement, the step trace) are not even computed.
+ */
+int  dr3_log_enabled(void);
+void dr3_log_quiet_reload(void);
+
+/*
  * Watchdog for the flickering lines above the car: the drawing helpers call this for every pixel they
  * write, and it logs the ones that land in the rows just above the player's sprite (nothing legitimate
  * draws there), with the helper's name and the value.  See gfx.c and race___4f300h.c.
@@ -56,6 +65,8 @@ void               dr3_chaos_time(int slot, unsigned long long t0);
 #else
 #define dr3_chaos_trace(what, n) ((void)0)
 #define dr3_log_flush()          ((void)0)
+#define dr3_log_enabled()        (1)
+#define dr3_log_quiet_reload()   ((void)0)
 #define dr3_chaos_tick()         (0ull)
 #define dr3_chaos_time(slot, t0) ((void)0)
 #define dr3_chaos_watch(slot, who, x, y, value) ((void)0)

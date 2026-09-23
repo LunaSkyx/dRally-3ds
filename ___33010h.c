@@ -660,6 +660,7 @@ void ___33010h_cdecl(int NumCars){
 	 * it is 0.
 	 */
 	dr3_chaos_extra_cars_reload();      /* sdmc:/chaos_extras.txt, if there is one */
+	dr3_log_quiet_reload();             /* sdmc:/chaos_log.txt - 0 silences the whole log */
 	dr3_log("[dr3] chaos: race setup with %d extra car(s), ladder stage %d (L+R+X steps through the ladder)",
 	        dr3_chaos_extra_cars(), dr3_chaos_extra_stage());
 

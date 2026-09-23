@@ -40,6 +40,10 @@ meets the engine, the things worth knowing:
   drawn at all, 1 = + sprite, 2 = + lights, 3 = + weapon and tyre effects), which takes things apart piece
   by piece when a fault has to be pinned to one of them.  It takes effect with the next race, because that
   is when a race gets its size (`race_main.c`), the extra `s_54` entries and its grid.
+  The build's log is off unless `sdmc:/chaos_log.txt` says `1`: with `0` (the default) nothing is written at
+  all and the expensive diagnostics - the frame dumps, the stripe checksums, the band measurement and the
+  step trace - are not even computed.  The file is read at every race setup, so the full diagnostics can be
+  switched back on from the PC while the game runs (`platform_3ds/dr3_log.c`).
   Four cars per race are baked into the BSS layout, so `bss.c` sizes `s_94`, `s_54`, `s_35e` and the car
   index tables with `DR3_MAX_CARS`; the extra grid entries in `___33010h.c` come from racers that are not
   in the race yet and stand in grid rows of their own behind the four start slots the track file provides
