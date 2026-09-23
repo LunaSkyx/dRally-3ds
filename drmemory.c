@@ -34,10 +34,11 @@ static int dr3_heap_guard_reported;
  * any more.  Parked blocks are filled with a pattern and watched, and the ring keeps the extra memory
  * bounded: the oldest parked block is freed for real once the ring wraps.
  */
-#define DR3_HEAP_QUARANTINE     32
+#define DR3_HEAP_QUARANTINE     512
+#define DR3_HEAP_QUAR_BUDGET    0x2000000u    /* at most 32 MB of parked blocks */
 #define DR3_HEAP_QUAR_FILL      0xdd
 #define DR3_HEAP_QUAR_FILL_MAX  0x10000       /* park big blocks, but only wipe their first 64 KB */
-#define DR3_HEAP_QUAR_CHECK     0x100         /* how much of a parked block the check looks at */
+#define DR3_HEAP_QUAR_CHECK     0x400         /* how much of a parked block the check looks at */
 
 typedef struct {
     __POINTER__ linear;
@@ -47,6 +48,7 @@ typedef struct {
 
 static dr3_quar_t dr3_quar[DR3_HEAP_QUARANTINE];
 static int        dr3_quar_next;
+static __DWORD__  dr3_quar_bytes;
 #endif
 
 typedef struct AllocBase {
@@ -80,11 +82,30 @@ static void dr3_drheap_park(__POINTER__ mem, __DWORD__ nbytes, __POINTER__ freed
     dr3_quar_t * slot = &dr3_quar[dr3_quar_next];
     __DWORD__    fill = (nbytes < DR3_HEAP_QUAR_FILL_MAX) ? nbytes : DR3_HEAP_QUAR_FILL_MAX;
 
-    if(slot->linear != (__POINTER__)0) free(slot->linear);      /* the oldest one goes for real */
+    /* keep the ring inside its budget: give up the oldest parked blocks for real */
+    while((slot->linear != (__POINTER__)0) && ((dr3_quar_bytes + nbytes) > DR3_HEAP_QUAR_BUDGET)){
+
+        dr3_quar_bytes -= slot->nbytes;
+        free(slot->linear);
+        slot->linear = (__POINTER__)0;
+        slot->nbytes = 0;
+
+        /* the oldest is the ring's *next* slot once it wraps - walk on until room is free */
+        dr3_quar_next = (dr3_quar_next + 1) % DR3_HEAP_QUARANTINE;
+        slot = &dr3_quar[dr3_quar_next];
+    }
+
+    if(slot->linear != (__POINTER__)0){                  /* the oldest one goes for real */
+
+        dr3_quar_bytes -= slot->nbytes;
+        free(slot->linear);
+    }
 
     slot->linear   = mem;
     slot->nbytes   = nbytes;
     slot->freed_by = freed_by;
+
+    dr3_quar_bytes += nbytes;
 
     dr3_quar_next = (dr3_quar_next + 1) % DR3_HEAP_QUARANTINE;
 
