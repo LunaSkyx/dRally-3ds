@@ -711,6 +711,18 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 			dr3_chaos_time(3, t3);
 		}
 		dr3_chaos_step("4f300h", -1);
+#if defined(DR3_CHAOS)
+		/*
+		 * The track's shadow polygons (race___4f170h, table VARJO_TAB) are drawn *before* the cars here.
+		 * They used to come after them, and since the shadow table remaps whatever pixel it finds - the
+		 * car's own pixels included - the edge of a nearby shadow brightened the car: light grey lines
+		 * over the car that flickered while turning.  The WATCH log named the layer ("remap" wrote
+		 * 98/9d/a0 into the rows above the sprite), and the report's "over the car, under the palm"
+		 * matches this layer's place between the cars and the objects.  On the 3DS the shadows are an
+		 * option; the DOS order is ground, shadows, cars, objects.
+		 */
+		if(dRally_Race_getSettings(RACE_SHADOWS)) race___4f170h();
+#endif
 		{
 			unsigned long long t2 = dr3_chaos_tick();
 			race___4f300h();	// RENDER CARS
@@ -719,7 +731,9 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 		dr3_chaos_step("51ce0h", -1);
 		race___51ce0h();
 		dr3_chaos_step("4f170h", -1);
+#if !defined(DR3_CHAOS)
 		if(dRally_Race_getSettings(RACE_SHADOWS)) race___4f170h();
+#endif
 		D(___243c60h) = -1;
 		while(++D(___243c60h) < NUM_OF_CARS){ dr3_chaos_step("50a48h", (int)D(___243c60h)); race___50a48h(); }
 		D(___243c60h) = -1;
