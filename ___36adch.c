@@ -140,6 +140,40 @@ void ___36adch(void){
 #endif // DR_MULTIPLAYER
 
 		___12e78h_v3(___1a1108h___185c0bh, "Your Statistics:", 416, 86);
+
+#if defined(DR3_CHAOS)
+		/*
+		 * The report says the same grey lines with white dots show up around this text.  Dumping the
+		 * palette indices of the area (every second pixel, two hex digits) says which entries draw them
+		 * - the DOS default palette's light grey (7), dark grey (8) and white (15) would mean the screen
+		 * paints with palette entries nobody set.
+		 */
+		{
+			int dy, dx;
+
+			dr3_log("[dr3] chaos: front end dump around 'Your Statistics:' (front end palette):");
+
+			for(dy = 78; dy < 118; dy += 2){
+
+				char row[240];
+				int  at = 0;
+
+				for(dx = 392; dx < 480; dx += 2){
+
+					const unsigned int off = 0x280u * (unsigned int)dy + (unsigned int)dx;
+					const int          v   = (int)B(___1a112ch__VESA101_ACTIVESCREEN_PTR + off);
+
+					row[at++] = "0123456789abcdef"[(v >> 4) & 0xf];
+					row[at++] = "0123456789abcdef"[v & 0xf];
+				}
+
+				row[at] = 0;
+				dr3_log("[dr3] chaos: |%s|", row);
+			}
+
+			dr3_log_flush();
+		}
+#endif
 		itoa_watcom106(s_6c[D(___1a1ef8h)].rank, esp+0x64, 0xa);
 		strcat(esp+0x64, ".");
 		strcpy(esp, "Position");
