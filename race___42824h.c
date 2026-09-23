@@ -292,58 +292,121 @@ void race___42824h(void){
 		for(dr3_n = 4; dr3_n < DR3_MAX_CARS; ++dr3_n){
 
 			/*
-			 * The chain: every car starts looking behind the car placed before it, so the extras form a
-			 * queue along the road instead of piling up on their (all different) slot facings - walking
-			 * back from its own slot ended up next to the others on short straights.
+			 * Behind the car placed before this one, so the extras form a queue along the road.  The
+			 * direction is tried both ways: on tracks whose start line sits near the map edge walking
+			 * "back" leaves the track altogether (Rock Zone: the log showed cars pushed 800 px off the
+			 * map), and the single direction used before found nothing there.
 			 */
-			const int      from  = dr3_n - 1;
-			const double   rad   = 3.75 * (double)dr3_s35e[from].ImgIndex * (dR_PI / 180.0);
-			const double   bx    = dRMath_sin(rad);
-			const double   by    = dRMath_cos(rad);
-			int            tries = 0;
+			const int    from = dr3_n - 1;
+			const double rad  = 3.75 * (double)dr3_s35e[from].ImgIndex * (dR_PI / 180.0);
+			const double bx   = dRMath_sin(rad);
+			const double by   = dRMath_cos(rad);
+			const double x0   = (double)dr3_s35e[from].XLocation;
+			const double y0   = (double)dr3_s35e[from].YLocation;
+			int          phase, placed = 0;
+			char         how[24];
 
-			for(;;){
+			strcpy(how, "nowhere");
 
-				const double x = (double)dr3_s35e[from].XLocation + dr3_step * (double)tries * bx;
-				const double y = (double)dr3_s35e[from].YLocation + dr3_step * (double)tries * by;
-				int          dx, dy, ok = 1, k;
+			for(phase = 0; (phase < 3) && !placed; ++phase){
 
-				/* the footprint: every 4th pixel of a 24x24 box has to be drivable */
-				for(dx = -12; (dx <= 12) && ok; dx += 4){
+				if(phase < 2){                              /* 0: back along the facing, 1: forward */
 
-					for(dy = -12; dy <= 12; dy += 4){
+					const double sgn = (phase == 0) ? 1.0 : -1.0;
+					int          tries;
 
-						const int px = (int)x + dx;
-						const int py = (int)y + dy;
+					for(tries = 1; (tries <= 150) && !placed; ++tries){
 
-						if((px < 1) || (py < 1) || (px >= TRX_WIDTH - 1) || (py >= TRX_HEIGHT - 1)){ ok = 0; break; }
+						const double x = x0 + sgn * dr3_step * (double)tries * bx;
+						const double y = y0 + sgn * dr3_step * (double)tries * by;
+						int          dx, dy, ok = 1, k;
 
-						if((B(TRX_MAS + px + TRX_WIDTH*py) & 0xf) >= 4){ ok = 0; break; }
+						for(dx = -12; (dx <= 12) && ok; dx += 4){
+
+							for(dy = -12; dy <= 12; dy += 4){
+
+								const int px = (int)x + dx, py = (int)y + dy;
+
+								if((px < 1) || (py < 1) || (px >= TRX_WIDTH - 1) || (py >= TRX_HEIGHT - 1)){ ok = 0; break; }
+								if((B(TRX_MAS + px + TRX_WIDTH*py) & 0xf) >= 4){ ok = 0; break; }
+							}
+						}
+
+						if(ok){
+
+							for(k = 0; k < dr3_n; ++k){
+
+								const double ex = (double)dr3_s35e[k].XLocation - x;
+								const double ey = (double)dr3_s35e[k].YLocation - y;
+
+								if((ex*ex + ey*ey) < (dr3_clear * dr3_clear)){ ok = 0; break; }
+							}
+						}
+
+						if(ok){
+
+							dr3_s35e[dr3_n].XLocation = (float)(int)x;
+							dr3_s35e[dr3_n].YLocation = (float)(int)y;
+							snprintf(how, sizeof(how), "%d px %s", (int)(dr3_step*(double)tries),
+							         (phase == 0) ? "back" : "ahead");
+							placed = 1;
+						}
 					}
 				}
+				else {                          /* 2: walk the whole mask, take the road nearest to the start */
 
-				if(ok){
+					int    gx, gy, best_x = 0, best_y = 0, any = 0;
+					double best_d = 1.0e30;
 
-					for(k = 0; k < dr3_n; ++k){
+					for(gy = 12; gy < TRX_HEIGHT - 12; gy += 6){
 
-						const double ex = (double)dr3_s35e[k].XLocation - x;
-						const double ey = (double)dr3_s35e[k].YLocation - y;
+						for(gx = 12; gx < TRX_WIDTH - 12; gx += 6){
 
-						if((ex*ex + ey*ey) < (dr3_clear * dr3_clear)){ ok = 0; break; }
+							int dx, dy, ok = 1, k;
+
+							for(dx = -12; (dx <= 12) && ok; dx += 4){
+
+								for(dy = -12; dy <= 12; dy += 4){
+
+									if((B(TRX_MAS + (gx+dx) + TRX_WIDTH*(gy+dy)) & 0xf) >= 4){ ok = 0; break; }
+								}
+							}
+
+							if(!ok) continue;
+
+							for(k = 0; k < dr3_n; ++k){
+
+								const double ex = (double)dr3_s35e[k].XLocation - (double)gx;
+								const double ey = (double)dr3_s35e[k].YLocation - (double)gy;
+
+								if((ex*ex + ey*ey) < (dr3_clear * dr3_clear)){ ok = 0; break; }
+							}
+
+							if(!ok) continue;
+
+							{
+								const double dx2 = (double)gx - x0, dy2 = (double)gy - y0;
+								const double d2  = dx2*dx2 + dy2*dy2;
+
+								if(d2 < best_d){ best_d = d2; best_x = gx; best_y = gy; any = 1; }
+							}
+						}
 					}
-				}
 
-				if(ok || (++tries > 150)){
+					if(any){
 
-					dr3_s35e[dr3_n].XLocation = (float)(int)x;
-					dr3_s35e[dr3_n].YLocation = (float)(int)y;
-
-					dr3_log("[dr3] chaos: grid car %d on the road: %d px behind car %d, %d tries (%s), at %d,%d",
-					        dr3_n, (int)(dr3_step * (double)tries), from, tries, ok ? "clear" : "no clear spot",
-					        (int)dr3_s35e[dr3_n].XLocation, (int)dr3_s35e[dr3_n].YLocation);
-					break;
+						dr3_s35e[dr3_n].XLocation = (float)best_x;
+						dr3_s35e[dr3_n].YLocation = (float)best_y;
+						snprintf(how, sizeof(how), "mask scan");
+						placed = 1;
+					}
 				}
 			}
+
+			if(!placed) strcpy(how, "KEPT THE GRID SLOT");
+
+			dr3_log("[dr3] chaos: grid car %d on the road: %s, at %d,%d",
+			        dr3_n, how, (int)dr3_s35e[dr3_n].XLocation, (int)dr3_s35e[dr3_n].YLocation);
 		}
 	}
 #endif
