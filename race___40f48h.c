@@ -53,6 +53,30 @@ void race___40864h(void);
 __DWORD__ ___4256ch_cdecl(__POINTER__ A1, __DWORD__ A2, __DWORD__ A3, __DWORD__ A4, __DWORD__ A5, __DWORD__ A6, __DWORD__ A7, __DWORD__ A8);
 void dRally_Sound_pushEffect(__BYTE__ channel, __BYTE__ n, __DWORD__ unk, __DWORD__ a0, __DWORD__ a1, __DWORD__ a2);
 void ___424c8h_v2(const char *, int x, int y);
+
+#if defined(DR3_CHAOS)
+/*
+ * The rank as text, for the positions the graphics do not cover: the sheets stop at 4th, so 5th and up get
+ * "5TH", "6TH" ... "100TH" (proper English ordinals, so 21ST/22ND/23RD as well).  Drawn with the game's own
+ * 6x6 font - the same one the driver names and the cash pickups use, which is light on the dark box -
+ * centred in the grey box.
+ */
+static void dr3_hud_rank_text(int rank, int x, int y, int box){
+
+	char txt[12];
+	int  last = rank % 10;
+	int  len;
+
+	snprintf(txt, sizeof(txt), "%d%s", rank,
+	         ((last == 1) && (rank != 11)) ? "ST" :
+	         ((last == 2) && (rank != 12)) ? "ND" :
+	         ((last == 3) && (rank != 13)) ? "RD" : "TH");
+
+	len = (int)strlen(txt);
+
+	___424c8h_v2(txt, x + (box - 6*len)/2, y + (box - 6)/2);
+}
+#endif
 void DamageWarning(void);
 
 static void helper00(int A0){
@@ -350,6 +374,9 @@ void race___40f48h(void){
             } while (--i);
             d += 0x200 - 32;
         } while (--j);
+
+        /* and the rank written into it - the box is at row 72, x 0x40 of the back buffer */
+        dr3_hud_rank_text((int)D(___1c9ee0h), 0x40 + CURRENT_VIEWPORT_X, 72, 32);
     }
     else
 #endif
@@ -397,6 +424,10 @@ void race___40f48h(void){
                     } while (--i);
                     d += 0x200 - 24;
                 } while (--j);
+
+                /* and this row's rank written into it (the box sits at x 0x48 of its row) */
+                dr3_hud_rank_text((int)D(___1c9ee0h+edi), 0x48 + CURRENT_VIEWPORT_X,
+                                  (int)D(esp+0x18)/0x200, 24);
             }
             else
 #endif
