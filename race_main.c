@@ -751,8 +751,16 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 	 */
 	{
 		static int dr3_dump_n;
+		static int dr3_dump_img = -99;
 
-		if((++dr3_dump_n % 60) == 0){
+		/* dump whenever the car has turned by 30 degrees, so every angle gets captured once */
+		if(((int)s_35e[D(MY_CAR_IDX)].ImgIndex - dr3_dump_img + 96) % 96 >= 8){
+
+			dr3_dump_img = (int)s_35e[D(MY_CAR_IDX)].ImgIndex;
+			dr3_dump_n = 0;
+		}
+
+		if(dr3_dump_n < 3){
 
 			const int px = (int)s_35e[D(MY_CAR_IDX)].__4 + 76;      /* the sprite's left edge */
 			const int py = (int)s_35e[D(MY_CAR_IDX)].__8 - 20;      /*       and top edge     */
@@ -768,14 +776,18 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 
 				for(x = px - 10; x < px + 50; ++x){
 
-					if((x < 0) || (y < 0) || (x >= 320) || (y >= 200)) row[at++] = '?';
+					if((x < 0) || (y < 0) || (x >= 320) || (y >= 200)){
+
+						row[at++] = '?';
+						row[at++] = '?';
+					}
 					else {
 
+						/* the exact palette index, two hex digits, so the box cannot hide */
 						const int v = BACKBUFFER[0x200*y + x];
 
-						row[at++] = (v < 10) ? (char)('0' + v)
-						          : (v < 36) ? (char)('a' + v - 10)
-						          : (v < 62) ? (char)('A' + v - 36) : '#';
+						row[at++] = "0123456789abcdef"[(v >> 4) & 0xf];
+						row[at++] = "0123456789abcdef"[v & 0xf];
 					}
 				}
 
@@ -784,6 +796,7 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 			}
 
 			dr3_log_flush();
+			++dr3_dump_n;
 		}
 	}
 #endif

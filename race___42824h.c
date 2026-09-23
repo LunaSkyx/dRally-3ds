@@ -180,6 +180,25 @@ void race___42824h(void){
 	old_bpa_read(TRX_BPA, ___1a54d0h, fname);
 	bpk_decode4(TRX_WIDTH*TRX_HEIGHT, 0x30a, TRX_MAS, ___1a54d0h);
 
+#if defined(DR3_CHAOS)
+	/* what the mask actually holds: the spawn test below needs the real "drivable" values */
+	{
+		int cnt[16];
+		int mx, my, i;
+
+		for(i = 0; i < 16; ++i) cnt[i] = 0;
+
+		for(my = 0; my < TRX_HEIGHT; my += 8){
+
+			for(mx = 0; mx < TRX_WIDTH; mx += 8) ++cnt[B(TRX_MAS + mx + TRX_WIDTH*my) & 0xf];
+		}
+
+		dr3_log("[dr3] chaos: mask values: 0:%d 1:%d 2:%d 3:%d 4:%d 5:%d 6:%d 7:%d 8:%d 9:%d a:%d b:%d c:%d d:%d e:%d f:%d",
+		        cnt[0], cnt[1], cnt[2], cnt[3], cnt[4], cnt[5], cnt[6], cnt[7],
+		        cnt[8], cnt[9], cnt[10], cnt[11], cnt[12], cnt[13], cnt[14], cnt[15]);
+	}
+#endif
+
 	strcat(strcpy(fname, ___19bd64h), "-VAI.BPK");
 	old_bpa_read(TRX_BPA, ___1a54d0h, fname);
 	bpk_decode4(TRX_WIDTH_QTR*TRX_HEIGHT_QTR, 0x30a, TRX_VAI, ___1a54d0h);
@@ -353,19 +372,23 @@ void race___42824h(void){
 					const double y = y0 + dr3_step * (double)tries * by;
 					int          dx, dy, ok = 1, k;
 
-					for(dx = -12; (dx <= 12) && ok; dx += 4){
+					/* centre and four corners of a 20x20 footprint have to be drivable */
+					{
+						static const int dr3_fp[5][2] = { {0,0}, {-10,-10}, {10,-10}, {10,10}, {-10,10} };
+						int fi;
 
-						for(dy = -12; dy <= 12; dy += 4){
+						for(fi = 0; fi < 5; ++fi){
 
-							const int px = (int)x + dx, py = (int)y + dy;
+							const int px = (int)x + dr3_fp[fi][0];
+							const int py = (int)y + dr3_fp[fi][1];
 
 							if((px < 1) || (py < 1) || (px >= TRX_WIDTH - 1) || (py >= TRX_HEIGHT - 1)){ ok = 0; break; }
 							if((B(TRX_MAS + px + TRX_WIDTH*py) & 0xf) >= 4){ ok = 0; break; }
 						}
 					}
 
-					/* the way there: every 8th pixel on the line has to be drivable too */
-					for(k = 1; ok && (k < tries*10); k += 8){
+					/* the way there: every 16th pixel on the line has to be drivable too */
+					for(k = 1; ok && (k < tries*10); k += 16){
 
 						const double t  = (double)k / ((double)tries * dr3_step);
 						const int    px = (int)(x0 + (x - x0) * t);
