@@ -370,7 +370,7 @@ void race___40f48h(void){
         do {
             i = 32;
             do {
-                *d++ = 0x0a;            /* entry 10 of the grey ramp */
+                *d++ = 0x0c;            /* entry 12 of the grey ramp: RGB 30 30 30 (#303030) */
             } while (--i);
             d += 0x200 - 32;
         } while (--j);
@@ -420,7 +420,7 @@ void race___40f48h(void){
                 do {
                     i = 24;
                     do {
-                        *d++ = 0x0a;
+                        *d++ = 0x0c;    /* the same #303030 as the player's box */
                     } while (--i);
                     d += 0x200 - 24;
                 } while (--j);
