@@ -766,10 +766,10 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 			const int py = (int)s_35e[D(MY_CAR_IDX)].__8 - 20;      /*       and top edge     */
 			int x, y;
 
-			dr3_log("[dr3] chaos: frame dump around the car at %d,%d (direction %d, img %d)",
+			dr3_log("[dr3] chaos: frame dump around the car at %d,%d (direction %d, img %d) - 40 px above included",
 			        px, py, (int)s_35e[D(MY_CAR_IDX)].Direction, (int)s_35e[D(MY_CAR_IDX)].ImgIndex);
 
-			for(y = py - 6; y < py + 46; ++y){
+			for(y = py - 40; y < py + 46; y += 2){
 
 				char row[128];
 				int  at = 0;
