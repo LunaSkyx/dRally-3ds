@@ -285,12 +285,18 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 	 * per car array is sized with DR3_MAX_CARS (bss.c), the extra grid entries are set up in
 	 * ___33010h.c and the in-race car list stops at DR3_HUD_LOOP_LIMIT rows, so only the race grows.
 	 *
-	 * DR3_CHAOS_EXTRA is 0 while the grey lines over the player car are hunted (dr3_chaos.h): the race
-	 * then is the race the game asked for, and no extra grid entry is filled in ___33010h.c either.
+	 * How many that are is the switch dr3_chaos_extra_cars() - a variable, so it can be flipped while
+	 * the game runs (SELECT + RIGHT, or sdmc:/chaos_extras.txt, see dr3_chaos.h).  It is read here, in
+	 * ___33010h.c and in race___42824h.c, all of which run when a race starts - so the switch always
+	 * takes effect with the next race.
 	 */
-	NUM_OF_CARS = (NumCars + DR3_CHAOS_EXTRA <= DR3_MAX_CARS) ? (NumCars + DR3_CHAOS_EXTRA) : DR3_MAX_CARS;
-	dr3_log("[dr3] CHAOS build: %d cars on the grid (the race asked for %d, the extras are %s)",
-	        NUM_OF_CARS, NumCars, (DR3_CHAOS_EXTRA > 0) ? "on" : "off");
+	{
+		const int dr3_extra = dr3_chaos_extra_cars();
+
+		NUM_OF_CARS = (NumCars + dr3_extra <= DR3_MAX_CARS) ? (NumCars + dr3_extra) : DR3_MAX_CARS;
+		dr3_log("[dr3] CHAOS build: %d cars on the grid (the race asked for %d, the extras are %s (%d))",
+		        NUM_OF_CARS, NumCars, dr3_extra ? "on" : "off", dr3_extra);
+	}
 #endif
 	race___3f970h();
 	race___49a34h();

@@ -8,6 +8,9 @@
 #include "dr3_input.h"
 #include "dr3_input_map.h"
 #include "dr3_log.h"
+#if defined(DR3_CHAOS)
+#include "dr3_chaos.h"      /* dr3_chaos_extra_cars_toggle() - the chaos build's extra car switch */
+#endif
 
 /*
  * Raw joystick button indices as exposed by SDL's n3ds backend: it passes the hid bits of libctru
@@ -377,11 +380,23 @@ int dr3_poll_event(SDL_Event *e)
         dr3_pad_state_t st;
         dr3_build_state(&st);
 
-        /* SELECT opens the 3DS software keyboard so player names / save slots can be typed */
+        /*
+         * SELECT opens the 3DS software keyboard so player names / save slots can be typed - except with
+         * RIGHT held: that is the chaos test build's switch for the extra cars (dr3_chaos.h), and it
+         * takes effect with the next race.  Checked before the keyboard, so the combo does not open it.
+         */
         if ((st.held & DR3_PAD_SELECT) && !(dr3_prev_held & DR3_PAD_SELECT)) {
-            dr3_log("[dr3] SELECT: opening the 3DS software keyboard");
-            SDL_StartTextInput();          /* blocks until the player is done typing */
-            dr3_build_state(&st);          /* refresh: the pad state is stale after the modal */
+#if defined(DR3_CHAOS)
+            if (st.held & DR3_PAD_RIGHT) {
+                dr3_chaos_extra_cars_toggle();
+            }
+            else
+#endif
+            {
+                dr3_log("[dr3] SELECT: opening the 3DS software keyboard");
+                SDL_StartTextInput();          /* blocks until the player is done typing */
+                dr3_build_state(&st);          /* refresh: the pad state is stale after the modal */
+            }
         }
         dr3_prev_held = st.held;
 

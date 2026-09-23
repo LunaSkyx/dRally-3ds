@@ -6,6 +6,7 @@
 
 #if defined(DR3_CHAOS)
 #include "drmemory.h"       /* dr3_drheap_guard() - the heap check that runs with the trace */
+#include "dr3_chaos.h"      /* DR3_CHAOS_EXTRA, DR3_CHAOS_EXTRA_DEFAULT - the extra car switch */
 #endif
 
 #include <stdarg.h>
@@ -216,6 +217,88 @@ void dr3_chaos_remap_who(const char *who)
 const char *dr3_chaos_remap_who_get(void)
 {
     return dr3_remap_who;
+}
+
+/*
+ * The extra car switch (dr3_chaos.h).  It lives with the chaos build's other runtime helpers - the
+ * platform_3ds/dr3_log.c object is linked into every 3DS build, so no new file (and no Makefile entry)
+ * is needed, and the release build never references any of it.
+ *
+ * The dark side of the switch: it says how many cars the *next* race adds on top of the ones the game
+ * asked for.  The grid is placed when a race starts (___33010h.c fills the entries, race___42824h.c
+ * puts them on the road, race_main.c sizes the race), so the running race keeps its cars.
+ */
+static int dr3_extra_cars = DR3_CHAOS_EXTRA_DEFAULT;
+
+/* the switch also lives in a file, so it can be flipped from the PC (DR3_EXTRA_CARS_PATH) */
+#define DR3_EXTRA_CARS_PATH "sdmc:/chaos_extras.txt"
+
+static void dr3_extra_cars_put(void);
+
+int dr3_chaos_extra_cars(void)
+{
+    return dr3_extra_cars;
+}
+
+void dr3_chaos_extra_cars_set(int cars)
+{
+    if (cars < 0) cars = 0;
+    if (cars > DR3_CHAOS_EXTRA) cars = DR3_CHAOS_EXTRA;
+
+    dr3_extra_cars = cars;
+}
+
+int dr3_chaos_extra_cars_toggle(void)
+{
+    dr3_chaos_extra_cars_set(dr3_extra_cars ? 0 : DR3_CHAOS_EXTRA);
+
+    dr3_log("[dr3] chaos: EXTRA CARS %s (%d) - takes effect with the next race",
+            dr3_extra_cars ? "ON" : "OFF", dr3_extra_cars);
+
+    /* keep the file in step, so its content is what the game is set to (see reload below) */
+    dr3_extra_cars_put();
+
+    return dr3_extra_cars;
+}
+
+static void dr3_extra_cars_put(void)
+{
+    FILE *f = fopen(DR3_EXTRA_CARS_PATH, "w");
+
+    if (!f) return;
+
+    fprintf(f, "%d\n", dr3_extra_cars);
+    fclose(f);
+}
+
+/*
+ * The same switch from outside the emulator: sdmc:/chaos_extras.txt holds one number (0 = the race the
+ * game asked for, 8 = the twelve car grid).  It is read at every race setup, so the file can be edited
+ * on the PC while the emulator runs - the sdmc folder is a normal folder there.
+ */
+void dr3_chaos_extra_cars_reload(void)
+{
+    FILE *f = fopen(DR3_EXTRA_CARS_PATH, "r");
+    int   cars;
+
+    if (!f) return;
+
+    if (fscanf(f, "%d", &cars) == 1) {
+
+        const int before = dr3_extra_cars;
+
+        dr3_chaos_extra_cars_set(cars);
+
+        if (dr3_extra_cars != before)
+            dr3_log("[dr3] chaos: %s says %d extra car(s), was %d",
+                    DR3_EXTRA_CARS_PATH, dr3_extra_cars, before);
+    }
+    else {
+        dr3_log("[dr3] chaos: %s has no number in it - the switch stays at %d",
+                DR3_EXTRA_CARS_PATH, dr3_extra_cars);
+    }
+
+    fclose(f);
 }
 
 /*

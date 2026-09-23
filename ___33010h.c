@@ -645,7 +645,7 @@ void ___33010h_cdecl(int NumCars){
 #endif // DR_MULTIPLAYER
 	}//w
 
-#if defined(DR3_CHAOS) && (DR3_CHAOS_EXTRA > 0)
+#if defined(DR3_CHAOS)
 	/*
 	 * Chaos test build (-DDR3_CHAOS, see doc/3ds.md): the extra grid slots.  The front end only
 	 * sets up NumCars entries and its screens draw four of them, so the extra cars take racers that
@@ -655,10 +655,15 @@ void ___33010h_cdecl(int NumCars){
 	 * The four startername bytes at esp+0xcc are deliberately left alone: the screen code reads them
 	 * with NumCars entries, and the counters it keeps at esp+0xd0/esp+0xd4 sit right behind them.
 	 *
-	 * DR3_CHAOS_EXTRA is 0 while the grey lines over the player car are hunted (dr3_chaos.h): the race
-	 * then has exactly the cars the front end set up, and the entries behind them stay untouched.
+	 * How many cars join is the switch (dr3_chaos_extra_cars, dr3_chaos.h): it is read here, so the
+	 * value a race was set up with is in the log, and the entries behind the race stay untouched while
+	 * it is 0.
 	 */
-	{
+	dr3_chaos_extra_cars_reload();      /* sdmc:/chaos_extras.txt, if there is one */
+	dr3_log("[dr3] chaos: race setup, the extra cars are %s (%d)",
+	        dr3_chaos_extra_cars() ? "ON" : "OFF", dr3_chaos_extra_cars());
+
+	if (dr3_chaos_extra_cars() > 0) {
 		__BYTE__ dr3_extra[DR3_MAX_CARS];
 		int      dr3_taken[0x14];
 		int      dr3_m, dr3_r, dr3_e, dr3_n;
