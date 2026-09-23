@@ -381,22 +381,25 @@ int dr3_poll_event(SDL_Event *e)
         dr3_build_state(&st);
 
         /*
-         * SELECT opens the 3DS software keyboard so player names / save slots can be typed - except with
-         * RIGHT held: that is the chaos test build's switch for the extra cars (dr3_chaos.h), and it
-         * takes effect with the next race.  Checked before the keyboard, so the combo does not open it.
+         * The chaos test build's extra car switch: L + R + X flips it (dr3_chaos.h), it takes effect
+         * with the next race.  In the front end L, R and X are unbound (they are race context: brake,
+         * gas and mine), so this is free - and unlike SELECT, which opens the 3DS software keyboard on
+         * the press, it cannot be mistyped.
          */
-        if ((st.held & DR3_PAD_SELECT) && !(dr3_prev_held & DR3_PAD_SELECT)) {
 #if defined(DR3_CHAOS)
-            if (st.held & DR3_PAD_RIGHT) {
+        {
+            const uint32_t dr3_combo = DR3_PAD_L | DR3_PAD_R | DR3_PAD_X;
+
+            if (((st.held & dr3_combo) == dr3_combo) && ((dr3_prev_held & dr3_combo) != dr3_combo))
                 dr3_chaos_extra_cars_toggle();
-            }
-            else
+        }
 #endif
-            {
-                dr3_log("[dr3] SELECT: opening the 3DS software keyboard");
-                SDL_StartTextInput();          /* blocks until the player is done typing */
-                dr3_build_state(&st);          /* refresh: the pad state is stale after the modal */
-            }
+
+        /* SELECT opens the 3DS software keyboard so player names / save slots can be typed */
+        if ((st.held & DR3_PAD_SELECT) && !(dr3_prev_held & DR3_PAD_SELECT)) {
+            dr3_log("[dr3] SELECT: opening the 3DS software keyboard");
+            SDL_StartTextInput();          /* blocks until the player is done typing */
+            dr3_build_state(&st);          /* refresh: the pad state is stale after the modal */
         }
         dr3_prev_held = st.held;
 

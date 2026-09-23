@@ -31,9 +31,11 @@
  *     dr3_chaos_extra_cars_toggle()   flips between 0 and DR3_CHAOS_EXTRA, returns the new value
  *     dr3_chaos_extra_cars_reload()   reads sdmc:/chaos_extras.txt (one number), done per race setup
  *
- * In game it is SELECT + RIGHT (platform_3ds/dr3_input.c).  The switch takes effect with the next race
- * - the grid is placed when a race starts, so the cars of the race that is running cannot change - and
- * every race logs the value it started with.
+ * In game it is L + R + X (platform_3ds/dr3_input.c): in the front end those three are unbound, in a
+ * race they are brake, gas and mine, and - unlike SELECT, which opens the software keyboard - the combo
+ * cannot be mistyped.  The switch takes effect with the next race - the grid is placed when a race
+ * starts, so the cars of the race that is running cannot change - and every race logs the value it
+ * started with.
  *
  * The build starts with the extras off (DR3_CHAOS_EXTRA_DEFAULT): with them off the grey lines over the
  * player car are gone, and switching them back on is what tells whether they really are the cause.
