@@ -250,10 +250,17 @@ void dr3_chaos_extra_cars_set(int cars)
 
 int dr3_chaos_extra_cars_toggle(void)
 {
-    dr3_chaos_extra_cars_set(dr3_extra_cars ? 0 : DR3_CHAOS_EXTRA);
+    /*
+     * One more each time it is pressed, wrapping around at DR3_CHAOS_EXTRA: 0 -> 1 -> 2 ... -> 8 -> 0.
+     * That is the bisect: press once, race, see whether the fault is there, press again.  The log says
+     * what the next press gives and where the file is, so the count never has to be guessed.
+     */
+    dr3_chaos_extra_cars_set((dr3_extra_cars >= DR3_CHAOS_EXTRA) ? 0 : (dr3_extra_cars + 1));
 
-    dr3_log("[dr3] chaos: EXTRA CARS %s (%d) - takes effect with the next race",
-            dr3_extra_cars ? "ON" : "OFF", dr3_extra_cars);
+    dr3_log("[dr3] chaos: EXTRA CARS %d (the next press gives %d, or put that number into %s)"
+            " - takes effect with the next race",
+            dr3_extra_cars, (dr3_extra_cars >= DR3_CHAOS_EXTRA) ? 0 : (dr3_extra_cars + 1),
+            DR3_EXTRA_CARS_PATH);
 
     /* keep the file in step, so its content is what the game is set to (see reload below) */
     dr3_extra_cars_put();

@@ -660,10 +660,12 @@ void ___33010h_cdecl(int NumCars){
 	 * it is 0.
 	 */
 	dr3_chaos_extra_cars_reload();      /* sdmc:/chaos_extras.txt, if there is one */
-	dr3_log("[dr3] chaos: race setup, the extra cars are %s (%d)",
-	        dr3_chaos_extra_cars() ? "ON" : "OFF", dr3_chaos_extra_cars());
+	dr3_log("[dr3] chaos: race setup with %d extra car(s) (press L+R+X for one more, or write the number into %s)",
+	        dr3_chaos_extra_cars(), "sdmc:/chaos_extras.txt");
 
 	if (dr3_chaos_extra_cars() > 0) {
+
+		const int dr3_want  = dr3_chaos_extra_cars();          /* the switch, one car at a time */
 		__BYTE__ dr3_extra[DR3_MAX_CARS];
 		int      dr3_taken[0x14];
 		int      dr3_m, dr3_r, dr3_e, dr3_n;
@@ -673,7 +675,7 @@ void ___33010h_cdecl(int NumCars){
 		dr3_taken[(int)D(___1a1ef8h)] = 1;
 
 		dr3_e = 0;
-		for (dr3_r = 0; (dr3_r < 0x14) && (dr3_e < (DR3_MAX_CARS - NumCars)); ++dr3_r) {
+		for (dr3_r = 0; (dr3_r < 0x14) && (dr3_e < dr3_want) && (dr3_e < (DR3_MAX_CARS - NumCars)); ++dr3_r) {
 
 			if (dr3_taken[dr3_r]) continue;
 			dr3_extra[dr3_e++] = (__BYTE__)dr3_r;
