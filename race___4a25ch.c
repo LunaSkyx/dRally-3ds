@@ -11,6 +11,11 @@
 
 void ___4a064h_cdecl(int, float, float, float);
 
+#if defined(DR3_CHAOS)
+/* the palette/stripe dump below (defined at the end of this file) */
+static void dr3_chaos_dump_palette(void);
+#endif
+
 void race___4a25ch(void){
 
 	int 	i, n;
@@ -109,4 +114,46 @@ void race___4a25ch(void){
 	}
 
 	D(___243c60h) = DR3_MAX_CARS;
+
+#if defined(DR3_CHAOS)
+	dr3_chaos_dump_palette();
+#endif
 }
+
+#if defined(DR3_CHAOS)
+/*
+ * What the car colour ramps and the car's sprite actually contain.  ___4a064h_cdecl() builds each ramp
+ * from 2x5 entries and the upper half is lightened with 12.6*n towards grey, so a car whose colour
+ * arrives as (r,0,0) gets grey rows in its shading.  Logging the ramps and the pixel values of the
+ * player's stripe says which of the two is wrong.
+ */
+static void dr3_chaos_dump_palette(void){
+
+	extern __BYTE__ ___1a51d0h[];
+	extern __POINTER__ ___243d74h;
+	extern __DWORD__ MY_CAR_IDX;
+	extern __BYTE__ ___1e6ed0h[];
+	const struct_35e_t * s_35e = (const struct_35e_t *)___1e6ed0h;
+	const __BYTE__ * stripe = (const __BYTE__ *)___243d74h + sizeof(car_spins_t)*(int)MY_CAR_IDX;
+	int i, n, lo = 255, hi = 0, in_ramp = 0;
+
+	for(i = 0; i < 4; ++i){
+
+		dr3_log("[dr3] chaos: ramp %d: %02x%02x%02x .. %02x%02x%02x (colour %d,%d,%d)", i,
+		        B(___1a51d0h + 3*(10*i+15)), B(___1a51d0h + 3*(10*i+15) + 1), B(___1a51d0h + 3*(10*i+15) + 2),
+		        B(___1a51d0h + 3*(10*i+24)), B(___1a51d0h + 3*(10*i+24) + 1), B(___1a51d0h + 3*(10*i+24) + 2));
+	}
+
+	for(n = 0; n < 0x640; ++n){
+
+		const int v = B(stripe + n);
+
+		if(v < lo) lo = v;
+		if(v > hi) hi = v;
+		if((v >= 0x0f) && (v <= 0x18)) ++in_ramp;
+	}
+
+	dr3_log("[dr3] chaos: player car %d stripe: pixel values %02x..%02x, %d of %d in the ramp range",
+	        (int)MY_CAR_IDX, lo, hi, in_ramp, 0x640);
+}
+#endif

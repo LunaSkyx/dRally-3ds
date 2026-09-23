@@ -291,16 +291,21 @@ void race___42824h(void){
 
 		for(dr3_n = 4; dr3_n < DR3_MAX_CARS; ++dr3_n){
 
-			const int      slot  = dr3_n & 3;
-			const double   rad   = 3.75 * (double)dr3_s35e[slot].ImgIndex * (dR_PI / 180.0);
+			/*
+			 * The chain: every car starts looking behind the car placed before it, so the extras form a
+			 * queue along the road instead of piling up on their (all different) slot facings - walking
+			 * back from its own slot ended up next to the others on short straights.
+			 */
+			const int      from  = dr3_n - 1;
+			const double   rad   = 3.75 * (double)dr3_s35e[from].ImgIndex * (dR_PI / 180.0);
 			const double   bx    = dRMath_sin(rad);
 			const double   by    = dRMath_cos(rad);
 			int            tries = 0;
 
 			for(;;){
 
-				const double x = (double)dr3_s35e[slot].XLocation + dr3_step * (double)tries * bx;
-				const double y = (double)dr3_s35e[slot].YLocation + dr3_step * (double)tries * by;
+				const double x = (double)dr3_s35e[from].XLocation + dr3_step * (double)tries * bx;
+				const double y = (double)dr3_s35e[from].YLocation + dr3_step * (double)tries * by;
 				int          dx, dy, ok = 1, k;
 
 				/* the footprint: every 4th pixel of a 24x24 box has to be drivable */
@@ -328,13 +333,13 @@ void race___42824h(void){
 					}
 				}
 
-				if(ok || (++tries > 80)){
+				if(ok || (++tries > 150)){
 
 					dr3_s35e[dr3_n].XLocation = (float)(int)x;
 					dr3_s35e[dr3_n].YLocation = (float)(int)y;
 
-					dr3_log("[dr3] chaos: grid car %d on the road: %d px back from the slot, %d tries (%s), at %d,%d",
-					        dr3_n, (int)(dr3_step * (double)tries), tries, ok ? "clear" : "no clear spot",
+					dr3_log("[dr3] chaos: grid car %d on the road: %d px behind car %d, %d tries (%s), at %d,%d",
+					        dr3_n, (int)(dr3_step * (double)tries), from, tries, ok ? "clear" : "no clear spot",
 					        (int)dr3_s35e[dr3_n].XLocation, (int)dr3_s35e[dr3_n].YLocation);
 					break;
 				}
