@@ -367,12 +367,11 @@ void dr3_chaos_extra_cars_reload(void)
 /*
  * The band above the player's car.
  *
- * The grey lines sit in the rows just above the sprite, and the frame dump alone cannot say which pass
- * of the frame loop put them there: by the end of the frame every pass has drawn over the road that was
- * there before.  So the band is sampled once, right after the cars are drawn (their screen position is
- * only final then - see race___4f300h.c), and compared again after every pass that follows: a pass that
- * reports pixels has written into the band over the car, and the values it reports are the palette
- * entries it put there.  The car pass itself is what the watchdog above watches.
+ * There are two of them per frame now.  The first one is taken right after the track background is copied
+ * (that is the road the pre car passes start from - spectators, tyre dust and the track shadows all paint
+ * into those rows), the second one right after the cars are drawn, which is where the post car passes are
+ * measured from.  A pass that reports pixels wrote into the band over the car, and the values it reports
+ * are the palette entries it put there.  The car pass itself is what the watchdog above watches.
  *
  * Three lines per pass and 32 frames are logged: the lines flicker with every frame, and a budget per
  * window keeps the log readable while still covering the whole race instead of only its first seconds.
@@ -380,7 +379,7 @@ void dr3_chaos_extra_cars_reload(void)
 static __BYTE__    dr3_band[DR3_BAND_ROWS * DR3_CAR_BAND_W];
 static int         dr3_band_x, dr3_band_y, dr3_band_on;
 
-#define DR3_BAND_TAGS   12
+#define DR3_BAND_TAGS   16
 static const char *dr3_band_tag[DR3_BAND_TAGS];
 static int          dr3_band_tag_n;
 static int          dr3_band_tag_hits[DR3_BAND_TAGS];

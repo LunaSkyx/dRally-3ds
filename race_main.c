@@ -300,8 +300,36 @@ static void dr3_chaos_player_pos(int *px, int *py)
 	*py = y - 20;                           /*       and top edge     */
 }
 
-static void dr3_chaos_dump_frame(const char *when)
+/*
+ * sdmc:/chaos_track.txt forces the track of the next race ("TR0".."TR9").  The tracks the game picks are
+ * random, and without the same track twice nothing can be compared: a four car race and a five car race
+ * have to run over the same road, with the same camera, for the dumps and the band measurements to line up.
+ * The file is read here, before the track is loaded (race___49bd4h/race___42824h), and the log says which
+ * track each race used.
+ */
+static void dr3_chaos_track_override(void)
 {
+	extern char ___19bd64h[16];
+
+	FILE *f = fopen("sdmc:/chaos_track.txt", "r");
+	char  id[16];
+
+	if(!f) return;
+
+	if((fscanf(f, "%15s", id) == 1) && (strlen(id) >= 3) && (strlen(id) <= 6) && (strncmp(id, "TR", 2) == 0)) {
+
+		if(strcmp(id, ___19bd64h) != 0)
+			dr3_log("[dr3] chaos: sdmc:/chaos_track.txt forces track %s (the race would have picked %s)",
+			        id, ___19bd64h);
+
+		strcpy(___19bd64h, id);
+	}
+	else dr3_log("[dr3] chaos: sdmc:/chaos_track.txt does not hold a track id (TR0..TR9) - ignored");
+
+	fclose(f);
+}
+
+static void dr3_chaos_dump_frame(const char *when){
 	struct_35e_t * s_35e = (struct_35e_t *)___1e6ed0h;
 	int            px, py;
 	int            x, y, n;
@@ -414,6 +442,8 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 		        dRally_Race_getSettings(RACE_SHADOWS) ? "ON" : "OFF");
 		dr3_log("[dr3] chaos: the extra car ladder is at stage %d for this race (0 nothing drawn, %d everything)",
 		        dr3_chaos_extra_stage(), DR3_EXTRA_STAGE_ALL);
+		dr3_chaos_track_override();
+		dr3_log("[dr3] chaos: this race runs on track %s", ___19bd64h);
 	}
 #endif
 	race___3f970h();
@@ -835,6 +865,16 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 			memcpy(BACKBUFFER+0x200*m+CURRENT_VIEWPORT_X+0x60, TRX_IMA+TRX_WIDTH*(TRX_VIEWPORT_TL_Y+m)+TRX_VIEWPORT_TL_X, ecx);
 		}
 
+#if defined(DR3_CHAOS)
+		/*
+		 * The first of the two band snapshots (see dr3_log.c): this is the road the pre car passes start
+		 * from, so a pass that paints the rows above the car before the cars are drawn - the spectators,
+		 * the tyre dust, the track shadows - is named in the log as well.  The second one is taken after
+		 * the cars (dr3_chaos_band_start further down).
+		 */
+		dr3_chaos_band_start();
+#endif
+
 #if defined(DR_MULTIPLAYER)
 		if(___19bd60h == 0){
 #endif // DR_MULTIPLAYER
@@ -842,12 +882,14 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 #if defined(DR_MULTIPLAYER)
 		}
 #endif // DR_MULTIPLAYER
+		dr3_chaos_band_mark("52d7ch spectators");
 		D(___243c60h) = -1;
 		{
 			unsigned long long t3 = dr3_chaos_tick();
 			while(++D(___243c60h) < dr3_chaos_extra_pass_limit(NUM_OF_CARS)){ dr3_chaos_step("50ef4h", (int)D(___243c60h)); race___50ef4h(); }
 			dr3_chaos_time(3, t3);
 		}
+		dr3_chaos_band_mark("50ef4h tyre dust");
 		dr3_chaos_step("4f300h", -1);
 #if defined(DR3_CHAOS)
 		/* is this one of the three frames per 30 degrees?  both dumps of the pair use this answer */
@@ -863,6 +905,7 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 		 * option; the DOS order is ground, shadows, cars, objects.
 		 */
 		if(dRally_Race_getSettings(RACE_SHADOWS)) race___4f170h();
+		dr3_chaos_band_mark("4f170h track shadow");
 		if(dr3_dump) dr3_chaos_dump_frame("after the shadows, before the cars");
 #endif
 		{
