@@ -330,16 +330,39 @@ void race___40f48h(void){
     eax = D(___1c9ef0h)+0x8000;
     eax = (int)eax>>0x10;
 
-    s = ___1d8a10h + 0x400 * eax;
-    d = BACKBUFFER + 0x9080 - 0x40 + CURRENT_VIEWPORT_X;
-    j = 32;
-    do {
-        i = 32;
+#if defined(DR3_CHAOS)
+    /*
+     * The position graphics (OWN-NUM1.BPK) exist for 1st..4th; a chaos race puts cars in 5th and
+     * beyond, where this sheet has no picture - the read then shows fragments of whatever the buffer
+     * held.  Draw a grey box instead, so the row still says "there is a position here".
+     */
+    if(eax > 4){
+
+        __BYTE__* d = BACKBUFFER + 0x9080 - 0x40 + CURRENT_VIEWPORT_X;
+
+        j = 32;
         do {
-            *d++ = *s++;
-        } while (--i);
-        d += 0x200 - 32;
-    } while (--j);
+            i = 32;
+            do {
+                *d++ = 0x0a;            /* entry 10 of the grey ramp */
+            } while (--i);
+            d += 0x200 - 32;
+        } while (--j);
+    }
+    else
+#endif
+    {
+        s = ___1d8a10h + 0x400 * eax;
+        d = BACKBUFFER + 0x9080 - 0x40 + CURRENT_VIEWPORT_X;
+        j = 32;
+        do {
+            i = 32;
+            do {
+                *d++ = *s++;
+            } while (--i);
+            d += 0x200 - 32;
+        } while (--j);
+    }
 
     ebp = 0x1;
     if((int)ebp < NUM_OF_CARS){
@@ -352,16 +375,35 @@ void race___40f48h(void){
             esi = D(___1c9ef0h+edi)+0x8000;
             esi = (int)esi>>0x10;
 
-            __BYTE__* s = ___1d2710h + 0x240 * esi;
-            __BYTE__* d = BACKBUFFER + D(esp + 0x18) + 0x88 - 0x40 + CURRENT_VIEWPORT_X;
-            j = 24;
-            do {
-                i = 24;
+#if defined(DR3_CHAOS)
+            /* same as above, for the opponents' list: OTH-NUM1.BPK stops at 4th - grey box beyond */
+            if(esi > 4){
+
+                __BYTE__* d = BACKBUFFER + D(esp + 0x18) + 0x88 - 0x40 + CURRENT_VIEWPORT_X;
+
+                j = 24;
                 do {
-                    *d++ = *s++;
-                } while (--i);
-                d += 0x200 - 24;
-            } while (--j);
+                    i = 24;
+                    do {
+                        *d++ = 0x0a;
+                    } while (--i);
+                    d += 0x200 - 24;
+                } while (--j);
+            }
+            else
+#endif
+            {
+                __BYTE__* s = ___1d2710h + 0x240 * esi;
+                __BYTE__* d = BACKBUFFER + D(esp + 0x18) + 0x88 - 0x40 + CURRENT_VIEWPORT_X;
+                j = 24;
+                do {
+                    i = 24;
+                    do {
+                        *d++ = *s++;
+                    } while (--i);
+                    d += 0x200 - 24;
+                } while (--j);
+            }
 
             D(esp+0x18) += 0x4000;
             edi += 4;

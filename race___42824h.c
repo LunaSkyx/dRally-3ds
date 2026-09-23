@@ -315,19 +315,11 @@ void race___42824h(void){
 
 		for(dr3_n = 4; dr3_n < DR3_MAX_CARS; ++dr3_n){
 
-			/*
-			 * Behind the car placed before this one, so the extras form a queue along the road.  The
-			 * direction is tried both ways: on tracks whose start line sits near the map edge walking
-			 * "back" leaves the track altogether (Rock Zone: the log showed cars pushed 800 px off the
-			 * map), and the single direction used before found nothing there.
-			 */
+			/* the car placed before this one is the centre of the search */
 			const int    from = dr3_n - 1;
-			const double rad  = 3.75 * (double)dr3_s35e[from].ImgIndex * (dR_PI / 180.0);
-			const double bx   = dRMath_sin(rad);
-			const double by   = dRMath_cos(rad);
 			const double x0   = (double)dr3_s35e[from].XLocation;
 			const double y0   = (double)dr3_s35e[from].YLocation;
-			int          phase, placed = 0;
+			int          placed = 0;
 			char         how[32];
 
 			strcpy(how, "KEPT THE GRID SLOT");
@@ -338,15 +330,27 @@ void race___42824h(void){
 			 * different piece of road (or behind a wall), which is what "spawning in walls and outside
 			 * the map" was.  Up to 300 pixels keeps the extras at the start of the race.
 			 */
-			for(phase = 0; (phase < 2) && !placed; ++phase){
+			/*
+			 * Search around the car in front in eight directions: walking only along its facing
+			 * ("back"/"ahead") found nothing on tracks whose start line sits at an angle to the road, so
+			 * every car fell back to its slot and the extras ended up stacked on the four defaults.
+			 */
+			static const double dr3_dir[8][2] = {
+				{ 1.0000,  0.0000}, { 0.7071,  0.7071}, { 0.0000,  1.0000}, {-0.7071,  0.7071},
+				{-1.0000,  0.0000}, {-0.7071, -0.7071}, { 0.0000, -1.0000}, { 0.7071, -0.7071}
+			};
+			int          dir_i;
 
-				const double sgn = (phase == 0) ? 1.0 : -1.0;
+			for(dir_i = 0; (dir_i < 8) && !placed; ++dir_i){
+
+				const double bx = dr3_dir[dir_i][0];
+				const double by = dr3_dir[dir_i][1];
 				int          tries;
 
 				for(tries = 1; (tries <= 30) && !placed; ++tries){
 
-					const double x = x0 + sgn * dr3_step * (double)tries * bx;
-					const double y = y0 + sgn * dr3_step * (double)tries * by;
+					const double x = x0 + dr3_step * (double)tries * bx;
+					const double y = y0 + dr3_step * (double)tries * by;
 					int          dx, dy, ok = 1, k;
 
 					for(dx = -12; (dx <= 12) && ok; dx += 4){
@@ -386,8 +390,8 @@ void race___42824h(void){
 
 						dr3_s35e[dr3_n].XLocation = (float)(int)x;
 						dr3_s35e[dr3_n].YLocation = (float)(int)y;
-						snprintf(how, sizeof(how), "%d px %s, surface %d",
-						         (int)(dr3_step*(double)tries), (phase == 0) ? "back" : "ahead",
+						snprintf(how, sizeof(how), "%d px dir %d, surface %d",
+						         (int)(dr3_step*(double)tries), dir_i,
 						         (int)(B(TRX_MAS + (int)x + TRX_WIDTH*(int)y) & 0xf));
 						placed = 1;
 					}

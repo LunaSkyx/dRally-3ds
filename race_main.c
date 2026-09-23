@@ -743,6 +743,51 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 		dr3_chaos_step("hud", -1);
 		(CURRENT_VIEWPORT_W != 0x140) ? race___40f48h() : race___40db4h();
 
+#if defined(DR3_CHAOS)
+	/*
+	 * THE GREY BOX CHASE: once a second, dump the palette indices of the rendered frame around the
+	 * player's car into the log.  The box shows up as a frame of one value around the sprite, and the
+	 * value says which palette entry draws it - which is what has not been identifiable from the code.
+	 */
+	{
+		static int dr3_dump_n;
+
+		if((++dr3_dump_n % 60) == 0){
+
+			const int px = (int)s_35e[D(MY_CAR_IDX)].__4 + 76;      /* the sprite's left edge */
+			const int py = (int)s_35e[D(MY_CAR_IDX)].__8 - 20;      /*       and top edge     */
+			int x, y;
+
+			dr3_log("[dr3] chaos: frame dump around the car at %d,%d (direction %d, img %d)",
+			        px, py, (int)s_35e[D(MY_CAR_IDX)].Direction, (int)s_35e[D(MY_CAR_IDX)].ImgIndex);
+
+			for(y = py - 6; y < py + 46; ++y){
+
+				char row[128];
+				int  at = 0;
+
+				for(x = px - 10; x < px + 50; ++x){
+
+					if((x < 0) || (y < 0) || (x >= 320) || (y >= 200)) row[at++] = '?';
+					else {
+
+						const int v = BACKBUFFER[0x200*y + x];
+
+						row[at++] = (v < 10) ? (char)('0' + v)
+						          : (v < 36) ? (char)('a' + v - 10)
+						          : (v < 62) ? (char)('A' + v - 36) : '#';
+					}
+				}
+
+				row[at] = 0;
+				dr3_log("[dr3] chaos: |%s|", row);
+			}
+
+			dr3_log_flush();
+		}
+	}
+#endif
+
 		D(___243c60h) = -1;
 		while(++D(___243c60h) < NUM_OF_CARS){
 
