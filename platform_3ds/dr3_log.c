@@ -220,6 +220,49 @@ const char *dr3_chaos_remap_who_get(void)
 }
 
 /*
+ * The pass switch (dr3_chaos.h): which drawing pass of the frame is switched off right now.  It takes effect
+ * at once - the pass is simply not called any more - so the grey lines can be watched while pressing.
+ */
+static const char * const dr3_pass_name[DR3_PASS_COUNT + 1] = {
+    "nothing (every pass is drawn)",
+    "52d7ch spectators",
+    "50ef4h tyre dust",
+    "4f170h track shadows",
+    "4f300h cars",
+    "51ce0h explosions",
+    "50a48h gun fire",
+    "51204h rocket fuel",
+    "53464h objects",
+    "50ba4h shots",
+    "51eb4h cash text",
+    "42218h banner",
+    "hud"
+};
+
+static int dr3_pass_skip = DR3_PASS_NONE;
+
+int dr3_chaos_skip_pass(int which)
+{
+    return (which != DR3_PASS_NONE) && (which == dr3_pass_skip);
+}
+
+int dr3_chaos_skip_cycle(void)
+{
+    dr3_pass_skip = (dr3_pass_skip >= DR3_PASS_COUNT) ? DR3_PASS_NONE : (dr3_pass_skip + 1);
+
+    if (dr3_pass_skip == DR3_PASS_NONE)
+        dr3_log("[dr3] chaos: PASS SWITCH: every pass is drawn again (press again to switch off %s)",
+                dr3_pass_name[1]);
+    else
+        dr3_log("[dr3] chaos: PASS SWITCH: %s is switched OFF now - %s (press again to switch off %s)",
+                dr3_pass_name[dr3_pass_skip],
+                (dr3_pass_skip >= DR3_PASS_COUNT) ? "that was the last one" : "look at the lines while racing",
+                dr3_pass_name[(dr3_pass_skip >= DR3_PASS_COUNT) ? 0 : (dr3_pass_skip + 1)]);
+
+    return dr3_pass_skip;
+}
+
+/*
  * The extra car ladder (dr3_chaos.h): how much of an extra car is drawn.  It lives next to the extra car
  * switch because both are the same idea - flip one thing while the game runs, race, look.
  */

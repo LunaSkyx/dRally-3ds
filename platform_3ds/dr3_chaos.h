@@ -70,6 +70,32 @@
 #define DR3_EXTRA_STAGE_LIGHTS    2
 #define DR3_EXTRA_STAGE_ALL       3
 
+/*
+ * The drawing passes of a race frame, in the order they are called.  L + R + X walks through them and
+ * switches ONE of them off at a time (the frames before/after it are drawn as always), so the pass that
+ * draws the grey lines over the car is found by looking at the screen while pressing: the pass standing in
+ * the log when the lines disappear is the one that draws them.
+ *
+ * Index 0 means "all passes drawn" - that is where it starts and where it ends after the last one.
+ */
+#define DR3_PASS_NONE          0
+#define DR3_PASS_SPECTATORS    1
+#define DR3_PASS_TYRE_DUST     2
+#define DR3_PASS_TRACK_SHADOW  3
+#define DR3_PASS_CARS          4
+#define DR3_PASS_EXPLOSIONS    5
+#define DR3_PASS_GUN_FIRE      6
+#define DR3_PASS_ROCKET        7
+#define DR3_PASS_OBJECTS       8
+#define DR3_PASS_SHOTS         9
+#define DR3_PASS_CASH_TEXT    10
+#define DR3_PASS_BANNER       11
+#define DR3_PASS_HUD          12
+#define DR3_PASS_COUNT        12
+
+int dr3_chaos_skip_pass(int which);        /* 1 while that pass is the one switched off */
+int dr3_chaos_skip_cycle(void);            /* L + R + X: the next pass, returns its index */
+
 int dr3_chaos_extra_stage(void);
 int dr3_chaos_extra_stage_cycle(void);
 int dr3_chaos_extra_draw(void);                 /* may the extra cars draw their sprite?   */

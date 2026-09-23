@@ -231,6 +231,7 @@ static void dr3_chaos_step(const char *what, int car){
 #define dr3_chaos_band_start()    ((void)0)
 #define dr3_chaos_band_mark(pass) ((void)0)
 #define dr3_chaos_extra_pass_limit(cars) (cars)
+#define dr3_chaos_skip_pass(which) (0)
 #endif
 
 #if defined(DR3_CHAOS)
@@ -878,7 +879,7 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 #if defined(DR_MULTIPLAYER)
 		if(___19bd60h == 0){
 #endif // DR_MULTIPLAYER
-			race___52d7ch();
+			if(!dr3_chaos_skip_pass(DR3_PASS_SPECTATORS)) race___52d7ch();
 #if defined(DR_MULTIPLAYER)
 		}
 #endif // DR_MULTIPLAYER
@@ -886,7 +887,7 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 		D(___243c60h) = -1;
 		{
 			unsigned long long t3 = dr3_chaos_tick();
-			while(++D(___243c60h) < dr3_chaos_extra_pass_limit(NUM_OF_CARS)){ dr3_chaos_step("50ef4h", (int)D(___243c60h)); race___50ef4h(); }
+			while(++D(___243c60h) < dr3_chaos_extra_pass_limit(NUM_OF_CARS)){ dr3_chaos_step("50ef4h", (int)D(___243c60h)); if(!dr3_chaos_skip_pass(DR3_PASS_TYRE_DUST)) race___50ef4h(); }
 			dr3_chaos_time(3, t3);
 		}
 		dr3_chaos_band_mark("50ef4h tyre dust");
@@ -904,13 +905,13 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 		 * matches this layer's place between the cars and the objects.  On the 3DS the shadows are an
 		 * option; the DOS order is ground, shadows, cars, objects.
 		 */
-		if(dRally_Race_getSettings(RACE_SHADOWS)) race___4f170h();
+		if(!dr3_chaos_skip_pass(DR3_PASS_TRACK_SHADOW) && dRally_Race_getSettings(RACE_SHADOWS)) race___4f170h();
 		dr3_chaos_band_mark("4f170h track shadow");
 		if(dr3_dump) dr3_chaos_dump_frame("after the shadows, before the cars");
 #endif
 		{
 			unsigned long long t2 = dr3_chaos_tick();
-			race___4f300h();	// RENDER CARS
+			if(!dr3_chaos_skip_pass(DR3_PASS_CARS)) race___4f300h();	// RENDER CARS
 			dr3_chaos_time(2, t2);
 		}
 #if defined(DR3_CHAOS)
@@ -921,28 +922,28 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 		dr3_chaos_band_start();
 #endif
 		dr3_chaos_step("51ce0h", -1);
-		race___51ce0h();
+		if(!dr3_chaos_skip_pass(DR3_PASS_EXPLOSIONS)) race___51ce0h();
 		dr3_chaos_band_mark("51ce0h explosions");
 		dr3_chaos_step("4f170h", -1);
 #if !defined(DR3_CHAOS)
 		if(dRally_Race_getSettings(RACE_SHADOWS)) race___4f170h();
 #endif
 		D(___243c60h) = -1;
-		while(++D(___243c60h) < dr3_chaos_extra_pass_limit(NUM_OF_CARS)){ dr3_chaos_step("50a48h", (int)D(___243c60h)); race___50a48h(); }
+		while(++D(___243c60h) < dr3_chaos_extra_pass_limit(NUM_OF_CARS)){ dr3_chaos_step("50a48h", (int)D(___243c60h)); if(!dr3_chaos_skip_pass(DR3_PASS_GUN_FIRE)) race___50a48h(); }
 		dr3_chaos_band_mark("50a48h gun fire");
 		D(___243c60h) = -1;
-		while(++D(___243c60h) < dr3_chaos_extra_pass_limit(NUM_OF_CARS)){ dr3_chaos_step("51204h", (int)D(___243c60h)); race___51204h(); }
+		while(++D(___243c60h) < dr3_chaos_extra_pass_limit(NUM_OF_CARS)){ dr3_chaos_step("51204h", (int)D(___243c60h)); if(!dr3_chaos_skip_pass(DR3_PASS_ROCKET)) race___51204h(); }
 		dr3_chaos_band_mark("51204h rocket fuel");
 		dr3_chaos_step("53310h", -1);
 		race___53310h();	// SORT OBJECTS
 		dr3_chaos_step("53464h", -1);
-		race___53464h();	// OBJECTS
+		if(!dr3_chaos_skip_pass(DR3_PASS_OBJECTS)) race___53464h();	// OBJECTS
 		dr3_chaos_band_mark("53464h objects");
 		D(___243c60h) = -1;
-		while(++D(___243c60h) < dr3_chaos_extra_pass_limit(NUM_OF_CARS)){ dr3_chaos_step("50ba4h", (int)D(___243c60h)); race___50ba4h(); }
+		while(++D(___243c60h) < dr3_chaos_extra_pass_limit(NUM_OF_CARS)){ dr3_chaos_step("50ba4h", (int)D(___243c60h)); if(!dr3_chaos_skip_pass(DR3_PASS_SHOTS)) race___50ba4h(); }
 		dr3_chaos_band_mark("50ba4h shots");
 		dr3_chaos_step("51eb4h", -1);
-		race___51eb4h();
+		if(!dr3_chaos_skip_pass(DR3_PASS_CASH_TEXT)) race___51eb4h();
 		dr3_chaos_band_mark("51eb4h cash text");
 #if defined(DR_MULTIPLAYER)
 		if(___19bd60h == 0){
@@ -951,10 +952,10 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 #if defined(DR_MULTIPLAYER)
 		}
 #endif // DR_MULTIPLAYER
-		if((int)getCounter(1) < 0x122) race___42218h();
+		if((int)getCounter(1) < 0x122){ if(!dr3_chaos_skip_pass(DR3_PASS_BANNER)) race___42218h(); }
 		dr3_chaos_band_mark("42218h banner");
 		dr3_chaos_step("hud", -1);
-		(CURRENT_VIEWPORT_W != 0x140) ? race___40f48h() : race___40db4h();
+		if(!dr3_chaos_skip_pass(DR3_PASS_HUD)) (CURRENT_VIEWPORT_W != 0x140) ? race___40f48h() : race___40db4h();
 		dr3_chaos_band_mark("hud");
 
 #if defined(DR3_CHAOS)
