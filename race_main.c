@@ -263,12 +263,49 @@ static int dr3_chaos_dump_due(void)
 	return 1;
 }
 
+/*
+ * The player's sprite position for *this* frame.  race___4f300h.c sets __4/__8 while it draws the cars -
+ * after the first dump of a pair - so that dump would otherwise be taken around last frame's position and
+ * the two dumps of a pair would be a pixel or two apart, which makes every diff between them noise.  The
+ * camera values are final here (race___4ee9ch.c ran before), so repeating its formula gives both dumps the
+ * same window.  __4/__8 end up with exactly these numbers once the car pass has run.
+ */
+static void dr3_chaos_player_pos(int *px, int *py)
+{
+	extern int X___243c8ch;
+	extern int Y___243c90h;
+	extern int CURRENT_VIEWPORT_W;
+	extern int CURRENT_VIEWPORT_H;
+	extern int CURRENT_VIEWPORT_CENTER_Y;
+
+	struct_35e_t * s = (struct_35e_t *)___1e6ed0h;
+	const int      n = (int)D(MY_CAR_IDX);
+	double         dx;
+	int            x, y;
+
+	dx = (double)CURRENT_VIEWPORT_CENTER_X;
+	if(dx > (double)X___243c8ch + (double)s[n].XLocation) x = (int)s[n].XLocation;
+	else if((double)(TRX_WIDTH - CURRENT_VIEWPORT_CENTER_X) < (double)X___243c8ch + (double)s[n].XLocation)
+		x = (int)((double)s[n].XLocation - (double)(int)(TRX_WIDTH - CURRENT_VIEWPORT_W));
+	else x = CURRENT_VIEWPORT_CENTER_X - X___243c8ch;
+
+	dx = (double)CURRENT_VIEWPORT_CENTER_Y;
+	if(dx > (double)Y___243c90h + (double)s[n].YLocation) y = (int)s[n].YLocation;
+	else if((double)(TRX_HEIGHT - CURRENT_VIEWPORT_CENTER_Y) < (double)Y___243c90h + (double)s[n].YLocation)
+		y = (int)((double)s[n].YLocation - (double)(int)(TRX_HEIGHT - CURRENT_VIEWPORT_H));
+	else y = CURRENT_VIEWPORT_CENTER_Y - Y___243c90h;
+
+	*px = x + CURRENT_VIEWPORT_X + 76;      /* the sprite's left edge */
+	*py = y - 20;                           /*       and top edge     */
+}
+
 static void dr3_chaos_dump_frame(const char *when)
 {
 	struct_35e_t * s_35e = (struct_35e_t *)___1e6ed0h;
-	const int      px = (int)s_35e[D(MY_CAR_IDX)].__4 + 76;      /* the sprite's left edge */
-	const int      py = (int)s_35e[D(MY_CAR_IDX)].__8 - 20;      /*       and top edge     */
+	int            px, py;
 	int            x, y, n;
+
+	dr3_chaos_player_pos(&px, &py);
 
 	dr3_log("[dr3] chaos: frame dump %s: car at %d,%d (direction %d, img %d) - 40 px above included",
 	        when, px, py, (int)s_35e[D(MY_CAR_IDX)].Direction, (int)s_35e[D(MY_CAR_IDX)].ImgIndex);
