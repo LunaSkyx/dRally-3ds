@@ -204,6 +204,22 @@ void race___4c434h(void){
 
 		if(s_35e[D(___243c60h)].Direction < 0.0f) s_35e[D(___243c60h)].Direction += 360.0f;
 		if(s_35e[D(___243c60h)].Direction >= 360.0f) s_35e[D(___243c60h)].Direction -= 360.0f;
+#if defined(DR3_CHAOS)
+		/*
+		 * One +-360 step is not enough.  Direction drives the sprite frame (ImgIndex = Direction/3.75) and
+		 * the sprite doubles as the collision shape, so a car that lands far outside [0,360) - a hard spin,
+		 * or a hit that hands it a big slip - gets a frame index past frame 95: the blit then reads the next
+		 * stripe in the block and draws a sliver of it over the car (the light grey lines), and its collision
+		 * outline is that of a different frame.  Wrap until it really is in range, and say so when the old
+		 * single step would have left it outside.
+		 */
+		if((s_35e[D(___243c60h)].Direction < -360.0f) || (s_35e[D(___243c60h)].Direction >= 720.0f))
+			dr3_log("[dr3] chaos: car %d Direction %.1f - one +-360 step would not bring it back (the sprite frame would be out of range)",
+			        (int)D(___243c60h), (double)s_35e[D(___243c60h)].Direction);
+
+		while(s_35e[D(___243c60h)].Direction < 0.0f)    s_35e[D(___243c60h)].Direction += 360.0f;
+		while(s_35e[D(___243c60h)].Direction >= 360.0f) s_35e[D(___243c60h)].Direction -= 360.0f;
+#endif
 	} // i
 
 	F32(esp+0x38) = (float)((double)s_35e[D(___243c60h)].__bc*dRMath_sin(((double)s_35e[D(___243c60h)].Direction+ 90.0)*A_PI/180.0)/11.0);
@@ -268,7 +284,27 @@ void race___4c434h(void){
 	D(esp+0x5c) = (int)((double)s_35e[D(___243c60h)].XLocation+(double)s_35e[D(___243c60h)].__ec);
 	D(esp+0x44) = helper00(edx*TRX_WIDTH+D(esp+0x5c));
 
+#if defined(DR3_CHAOS)
+	/*
+	 * The sprite frame has to stay inside the car's own stripe: it holds 96 frames and ImgIndex is
+	 * Direction/3.75, which is only 0..95 while Direction is inside [0,360).  A blit that reads past frame
+	 * 95 draws the neighbouring stripe's pixels - a sliver of another car's frame over this one, which is
+	 * what the light grey lines over the car are - and the very same frame is this car's collision shape
+	 * (the loop above scans it against the track mask), so the collisions stop matching the picture too.
+	 * Clamp it, and log every time the clamp has to do something.
+	 */
+	{
+		const int dr3_img = (int)((double)s_35e[D(___243c60h)].Direction/3.75);
+
+		s_35e[D(___243c60h)].ImgIndex = (dr3_img < 0) ? 0 : ((dr3_img > 95) ? 95 : dr3_img);
+
+		if(dr3_img != (int)s_35e[D(___243c60h)].ImgIndex)
+			dr3_log("[dr3] chaos: car %d sprite frame %d is outside 0..95 (Direction %.1f) - clamped",
+			        (int)D(___243c60h), dr3_img, (double)s_35e[D(___243c60h)].Direction);
+	}
+#else
 	s_35e[D(___243c60h)].ImgIndex = (int)((double)s_35e[D(___243c60h)].Direction/3.75);
+#endif
 	s_35e[D(___243c60h)].ImgOffset = 0x25800*D(___243c60h)+0x640*s_35e[D(___243c60h)].ImgIndex;
 	ecx = (int)((double)s_35e[D(___243c60h)].__15e+(double)s_35e[D(___243c60h)].YLocation-20.0);
 	ebxp = ___243d74h+(int)s_35e[D(___243c60h)].ImgOffset;
