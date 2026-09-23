@@ -97,62 +97,22 @@ void race___49bd4h(void){
 
 #if defined(DR3_CHAOS)
 	/*
-	 * The track file only carries four start slots, so the grid is built here: the four slots first, then
-	 * the extra cars, each stepped back along its slot's facing until it is clear of every car placed
-	 * before it ("does not sit on top of another car" is the whole point of a chaos grid).
-	 *
-	 * "Behind" is +(sin, cos) of the facing: the AI of race___4b62ch.c looks (and shoots) 35 pixels
-	 * ahead at (Direction + 180), so (Direction) points the other way.  Direction is the same value
-	 * race___4a25ch.c will set from the start slot's rotation.  Rows at a fixed distance were not
-	 * enough - two slots that face a different way still ended up on top of each other.
+	 * The track file only carries four start slots, so the extras share them (slot n & 3) and stand
+	 * exactly where the slot is.  Moving them onto the road happens in race___42824h.c, once the track
+	 * mask is loaded; that placement falls back to the position set here, so this one has to be the
+	 * slot's own.  Shifting the cars here as well left them outside the map (the log showed cars kept
+	 * at y = -84 - the fallback could not repair a position that was already wrong).
 	 *
 	 * Without DR3_CHAOS the original loop below runs, so this file generates the same code as before.
 	 */
-	{
-		const double dr3_step  = 22.0;      /* how far one attempt moves a car back */
-		const double dr3_clear = 48.0;      /* smallest distance between two cars  */
+	n = -1;
+	while(++n < DR3_MAX_CARS){
 
-		for(n = 0; n < DR3_MAX_CARS; ++n){
+		const int slot = (n < 4) ? n : (n & 3);
 
-			const int    slot  = (n < 4) ? n : (n & 3);
-			const double rad   = 3.75 * (double)TrxInf->startups[slot].rot * (dR_PI / 180.0);
-			const double bx    = dRMath_sin(rad);
-			const double by    = dRMath_cos(rad);
-			double       back  = (n < 4) ? 0.0 : dr3_step * (double)(1 + (n >> 2));
-			int          tries = 0;
-
-			s_35e[n].ImgIndex = TrxInf->startups[slot].rot;
-
-			while(1){
-
-				const double x = (double)TrxInf->startups[slot].x + back * bx;
-				const double y = (double)TrxInf->startups[slot].y + back * by;
-				int          k, hit = 0;
-
-				if(n >= 4){
-
-					for(k = 0; k < n; ++k){
-
-						const double dx = (double)s_35e[k].XLocation - x;
-						const double dy = (double)s_35e[k].YLocation - y;
-
-						if((dx*dx + dy*dy) < (dr3_clear * dr3_clear)){ hit = 1; break; }
-					}
-				}
-
-				if(!hit || (++tries >= 64)){
-
-					s_35e[n].XLocation = (float)(int)x;
-					s_35e[n].YLocation = (float)(int)y;
-					break;
-				}
-
-				back += dr3_step;
-			}
-
-			if(n >= 4) dr3_log("[dr3] chaos: grid car %d: seat %d, %d px back, at %d,%d (%d tries)",
-			                   n, slot, (int)back, (int)s_35e[n].XLocation, (int)s_35e[n].YLocation, tries);
-		}
+		s_35e[n].ImgIndex  = TrxInf->startups[slot].rot;
+		s_35e[n].XLocation = (float)TrxInf->startups[slot].x;
+		s_35e[n].YLocation = (float)TrxInf->startups[slot].y;
 	}
 #else
 	n = -1;

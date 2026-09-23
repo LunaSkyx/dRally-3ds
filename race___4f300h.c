@@ -32,11 +32,12 @@ __DWORD__ __GET_FRAME_COUNTER(void);
 
 #if defined(DR3_CHAOS)
 /*
- * TEST BUILD: the grey "box" around the player's car is suspected to be the headlight beam (helper00
- * clears pixels through TRX_LIT_TAB).  This switch turns the player's own beam off so the report can
- * say whether the box is gone; the table's first bytes go to the log to see if it holds sane values.
+ * The headlight beam (helper00) was the main suspect for the grey box around the car, but the test
+ * build with the player's beam switched off showed the box stayed - so the lights are innocent and
+ * stay on.  The light table is still logged once (dr3_log_once_light), it is cheap and says whether
+ * the track brought a sane table.
  */
-#define DR3_CHAOS_NO_PLAYER_LIGHTS 1
+#define DR3_CHAOS_NO_PLAYER_LIGHTS 0
 
 /* logs what the track's light table holds - once, so the log stays short */
 static void dr3_log_once_light(void){
@@ -204,10 +205,11 @@ void race___4f300h(void){
 
 
 #if defined(DR3_CHAOS)
-#if defined(DR3_CHAOS_NO_PLAYER_LIGHTS)
-	/* TEST: the player's own headlight beam off - does the grey box around the car go with it? */
+#if DR3_CHAOS_NO_PLAYER_LIGHTS
+	/* (the test switch is off now - the lights are drawn again, only the table gets logged) */
 	dr3_log_once_light();
 #else
+	dr3_log_once_light();
 	if(((int)D(___1de580h+0x94*D(MY_CAR_IDX)+0x18) > 0)&&(s_35e[D(MY_CAR_IDX)].Finished == 0)) helper00(D(MY_CAR_IDX));
 #endif
 #else
