@@ -354,6 +354,20 @@ static void dr3_chaos_dump_frame(const char *when){
 		        (int)s_35e[D(MY_CAR_IDX)].ImgIndex, (int)s_35e[D(MY_CAR_IDX)].ImgOffset,
 		        (int)s_35e[D(MY_CAR_IDX)].Direction, (void *)___243d74h, fr[0], fr[1], fr[2]);
 
+		/*
+		 * The state of the player's stripe right now: if the sprite data is being damaged while racing, this
+		 * number changes from dump to dump (and not just between the races).
+		 */
+		{
+			const __BYTE__ * base = (const __BYTE__ *)___243d74h;
+			unsigned         sum = 0u, xr = 0u;
+			int              k;
+
+			for(k = 0; k < (int)sizeof(car_spins_t); ++k){ sum += base[k]; xr = (xr << 1) ^ (unsigned)base[k]; }
+
+			dr3_log("[dr3] chaos:   stripe 0 checksum sum %08x xor %08x", sum, xr);
+		}
+
 		for(r = 0; r < 40; ++r){
 
 			at = 0;

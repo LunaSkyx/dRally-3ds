@@ -485,10 +485,12 @@ void dr3_chaos_band_mark(const char *pass)
      * the heap guard alone could only say that it happened, not who did it.
      */
     {
-        extern int dr3_drheap_overrun(const void *p, unsigned nbytes);
+        extern int  dr3_drheap_overrun(const void *p, unsigned nbytes);
+        extern void dr3_drheap_refill(void *p, unsigned nbytes);
 
         static int dr3_screen_overruns;
-        const int  over = dr3_drheap_overrun((const void *)((__BYTE__ *)BACKBUFFER - 0x200), 0x19400u);
+        void *     block = (void *)((__BYTE__ *)BACKBUFFER - 0x200);
+        const int  over  = dr3_drheap_overrun(block, 0x19400u);
 
         if((over >= 0) && (dr3_screen_overruns < 20)){
 
@@ -496,6 +498,9 @@ void dr3_chaos_band_mark(const char *pass)
             dr3_log("[dr3] chaos: SCREEN BUFFER OVERRUN at %s: %d bytes past the end of the screen buffer",
                     pass, over);
         }
+
+        /* put the guards back either way, so the next pass reports a write of *its* own */
+        dr3_drheap_refill(block, 0x19400u);
     }
 #endif
 

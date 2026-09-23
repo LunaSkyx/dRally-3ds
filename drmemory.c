@@ -25,6 +25,21 @@ typedef enum MEM_TYPE {
 #define DR3_HEAP_SLACK_BYTES    0x1000
 #define DR3_HEAP_SLACK_FILL     0xe7
 static const unsigned char dr3_heap_guard[DR3_HEAP_GUARD_BYTES] = { 0xa5, 0x5a, 0xc3, 0x3c };
+/*
+ * Re-fills the guard and the slack behind a block after a check found them damaged - that is what makes the
+ * next check (one pass later) say whether the write is still happening, instead of reporting the same old
+ * damage for every pass of every frame.
+ */
+void dr3_drheap_refill(void *p, unsigned nbytes)
+{
+    unsigned char * g = (unsigned char *)p + nbytes;
+
+    if(p == (void *)0) return;
+
+    memcpy(g, dr3_heap_guard, DR3_HEAP_GUARD_BYTES);
+    memset(g + DR3_HEAP_GUARD_BYTES, DR3_HEAP_SLACK_FILL, DR3_HEAP_SLACK_BYTES);
+}
+
 static int dr3_heap_reports;
 #define DR3_HEAP_REPORT_MAX 40      /* how many overruns are reported (the first one used to be the last) */
 
