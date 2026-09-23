@@ -332,6 +332,7 @@ static void dr3_chaos_track_override(void)
 
 static void dr3_chaos_dump_frame(const char *when){
 	struct_35e_t * s_35e = (struct_35e_t *)___1e6ed0h;
+	extern __POINTER__ ___243d74h;
 	int            px, py;
 	int            x, y, n;
 
@@ -339,6 +340,38 @@ static void dr3_chaos_dump_frame(const char *when){
 
 	dr3_log("[dr3] chaos: frame dump %s: car at %d,%d (direction %d, img %d) - 40 px above included",
 	        when, px, py, (int)s_35e[D(MY_CAR_IDX)].Direction, (int)s_35e[D(MY_CAR_IDX)].ImgIndex);
+
+	/*
+	 * The sprite frame that is on screen right now, and its top rows: the lines sit in the rows above the
+	 * car's body, which are the sprite's own first rows - so if they are in the data, they show up here.
+	 */
+	{
+		const __BYTE__ * fr = (const __BYTE__ *)___243d74h + (int)s_35e[D(MY_CAR_IDX)].ImgOffset;
+		char line[96];
+		int  r, c, at;
+
+		dr3_log("[dr3] chaos:   sprite: img %d, offset 0x%x, dir %d, stripe base %p, first row bytes %02x %02x %02x",
+		        (int)s_35e[D(MY_CAR_IDX)].ImgIndex, (int)s_35e[D(MY_CAR_IDX)].ImgOffset,
+		        (int)s_35e[D(MY_CAR_IDX)].Direction, (void *)___243d74h, fr[0], fr[1], fr[2]);
+
+		for(r = 0; r < 40; ++r){
+
+			if((r >= 8) && (r < 32)) continue;      /* the frame's top and bottom rows are what matters */
+
+			at = 0;
+
+			for(c = 0; c < 40; ++c){
+
+				const int v = fr[40*r + c];
+
+				line[at++] = "0123456789abcdef"[(v >> 4) & 0xf];
+				line[at++] = "0123456789abcdef"[v & 0xf];
+			}
+
+			line[at] = 0;
+			dr3_log("[dr3] chaos:   sprite row %2d |%s|", r, line);
+		}
+	}
 
 	for(n = 0; n < NUM_OF_CARS; ++n)
 		dr3_log("[dr3] chaos:   car %2d at %3d,%3d img %2d%s", n,
