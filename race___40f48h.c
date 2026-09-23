@@ -332,11 +332,13 @@ void race___40f48h(void){
 
 #if defined(DR3_CHAOS)
     /*
-     * The position graphics (OWN-NUM1.BPK) exist for 1st..4th; a chaos race puts cars in 5th and
-     * beyond, where this sheet has no picture - the read then shows fragments of whatever the buffer
-     * held.  Draw a grey box instead, so the row still says "there is a position here".
+     * The position graphics of OWN-NUM1.BPK cover 1st..4th and sit at index 0, 7, 14 and 21 of the sheet
+     * (its 22 frames are those four pictures plus the twelve in-between frames the animation moves
+     * through - see ___1c9ef0h above, which counts 0x70000 per position).  A chaos race puts cars in 5th
+     * and beyond, where the sheet has no picture, so a grey box is drawn instead - the test has to be
+     * against the last picture's frame (21), not against the number of positions.
      */
-    if(eax > 4){
+    if(eax > 21){
 
         __BYTE__* d = BACKBUFFER + 0x9080 - 0x40 + CURRENT_VIEWPORT_X;
 
@@ -365,7 +367,13 @@ void race___40f48h(void){
     }
 
     ebp = 0x1;
-    if((int)ebp < NUM_OF_CARS){
+    /*
+     * The box has room for four rows: the player's own position above and three opponents here.  Bounding
+     * this with DR3_HUD_LOOP_LIMIT is what the release build already does implicitly (four cars give three
+     * opponents); with more cars in the race the fourth opponent row used to be drawn below the screen -
+     * which is what wrote past the screen buffer and into the car sprite block (see race_memory.c).
+     */
+    if((int)ebp < DR3_HUD_LOOP_LIMIT(NUM_OF_CARS)){
 
         edi = 0x4;
         D(esp+0x18) = 0xe000;
@@ -376,8 +384,8 @@ void race___40f48h(void){
             esi = (int)esi>>0x10;
 
 #if defined(DR3_CHAOS)
-            /* same as above, for the opponents' list: OTH-NUM1.BPK stops at 4th - grey box beyond */
-            if(esi > 4){
+            /* same as above, for the opponents' list: OTH-NUM1.BPK stops at 4th (frame 21) as well */
+            if(esi > 21){
 
                 __BYTE__* d = BACKBUFFER + D(esp + 0x18) + 0x88 - 0x40 + CURRENT_VIEWPORT_X;
 
@@ -408,7 +416,7 @@ void race___40f48h(void){
             D(esp+0x18) += 0x4000;
             edi += 4;
             ebp++;
-            if((int)ebp >= NUM_OF_CARS) break;
+            if((int)ebp >= DR3_HUD_LOOP_LIMIT(NUM_OF_CARS)) break;
         }
     }
 
