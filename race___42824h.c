@@ -196,6 +196,10 @@ void race___42824h(void){
 
 		suffix = ((s_54[n].__24 == 1)&&((int)D(___1de580h+0x94*n) < 6)) ? "-S.BPK" : ".BPK";
 		strcat(strcpy(fname, ___196dfch[D(___1de580h+0x94*n)]), suffix);
+#if defined(DR3_CHAOS)
+		dr3_log("[dr3] chaos: car %d picture %s (model %d, small %d)", n, fname,
+		        (int)D(___1de580h+0x94*n), (int)s_54[n].__24);
+#endif
 		old_bpa_read("ENGINE.BPA", ___1a54d0h, fname);
 		CarSpinsStripe = (__BYTE__ *)___243d74h[n];
 #if defined(DR3_CHAOS)

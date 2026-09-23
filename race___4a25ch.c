@@ -170,5 +170,64 @@ static void dr3_chaos_dump_palette(void){
 
 	dr3_log("[dr3] chaos: player car %d stripe: pixel values %02x..%02x, %d of %d in the ramp range",
 	        (int)MY_CAR_IDX, lo, hi, in_ramp, 0x640);
+
+	/*
+	 * A "box around the car" at some rotation angles is a sprite frame whose used pixels reach the
+	 * whole 40x40, instead of the car's own outline.  Look at all 96 frames of the player's stripe and
+	 * print the first frame that looks like that (the car body is at most ~36x30).
+	 */
+	{
+		int f, x, y, odd = 0, empty = 0, normal = 0;
+
+		for(f = 0; f < 96; ++f){
+
+			const __BYTE__ *fr = stripe + 0x640*f;
+			int nz = 0, x0 = 40, y0 = 40, x1 = -1, y1 = -1;
+
+			for(y = 0; y < 40; ++y){
+
+				for(x = 0; x < 40; ++x){
+
+					if(fr[40*y+x]){
+
+						++nz;
+						if(x < x0) x0 = x;
+						if(x > x1) x1 = x;
+						if(y < y0) y0 = y;
+						if(y > y1) y1 = y;
+					}
+				}
+			}
+
+			if(nz == 0) ++empty;
+			else if(((x1-x0+1) > 34) || ((y1-y0+1) > 30)){
+
+				++odd;
+				dr3_log("[dr3] chaos: frame %d: %d pixels, box %d,%d..%d,%d", f, nz, x0, y0, x1, y1);
+
+				if(odd == 1){
+
+					for(y = 0; y < 40; ++y){
+
+						char row[41];
+
+						for(x = 0; x < 40; ++x){
+
+							const int v = fr[40*y+x];
+
+							row[x] = v ? (((v >= 0x0f) && (v <= 0x18)) ? '+' : ((v < 0x0f) ? '#' : '.')) : ' ';
+						}
+
+						row[40] = 0;
+						dr3_log("[dr3] chaos: |%s|", row);
+					}
+				}
+			}
+			else ++normal;
+		}
+
+		dr3_log("[dr3] chaos: player stripe frames: %d normal, %d empty, %d with a full box",
+		        normal, empty, odd);
+	}
 }
 #endif
