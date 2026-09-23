@@ -139,14 +139,29 @@ static void dr3_chaos_dump_palette(void){
 
 	for(i = 0; i < 4; ++i){
 
-		dr3_log("[dr3] chaos: ramp %d: %02x%02x%02x .. %02x%02x%02x (colour %d,%d,%d)", i,
+		dr3_log("[dr3] chaos: ramp %d: %02x%02x%02x .. %02x%02x%02x", i,
 		        B(___1a51d0h + 3*(10*i+15)), B(___1a51d0h + 3*(10*i+15) + 1), B(___1a51d0h + 3*(10*i+15) + 2),
 		        B(___1a51d0h + 3*(10*i+24)), B(___1a51d0h + 3*(10*i+24) + 1), B(___1a51d0h + 3*(10*i+24) + 2));
 	}
 
-	for(n = 0; n < 0x640; ++n){
+	/* the car sprites use entries 0..14 (their grey/dark parts) and 15+24n (their colour) - dump both */
+	for(i = 0; i < 3; ++i){
 
-		const int v = B(stripe + n);
+		int e;
+
+		dr3_log("[dr3] chaos: palette %d..%d:%s%d%s", i*5, i*5+4,
+		        " ", 0, "");
+
+		for(e = i*5; e < i*5+5; ++e){
+
+			dr3_log("[dr3] chaos:   entry %2d = %02x %02x %02x", e,
+			        B(___1a51d0h + 3*e), B(___1a51d0h + 3*e + 1), B(___1a51d0h + 3*e + 2));
+		}
+	}
+
+	for(i = 0; i < 0x640; ++i){
+
+		const int v = B(stripe + i);
 
 		if(v < lo) lo = v;
 		if(v > hi) hi = v;
