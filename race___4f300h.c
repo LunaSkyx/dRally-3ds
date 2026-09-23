@@ -216,7 +216,8 @@ void race___4f300h(void){
 	dr3_log_once_light();
 #else
 	dr3_log_once_light();
-	if(((int)D(___1de580h+0x94*D(MY_CAR_IDX)+0x18) > 0)&&(s_35e[D(MY_CAR_IDX)].Finished == 0)) helper00(D(MY_CAR_IDX));
+	if(!dr3_chaos_skip_pass(DR3_PASS_PLAYER_BEAM) &&
+	   ((int)D(___1de580h+0x94*D(MY_CAR_IDX)+0x18) > 0)&&(s_35e[D(MY_CAR_IDX)].Finished == 0)) helper00(D(MY_CAR_IDX));
 #endif
 #else
 	if(((int)D(___1de580h+0x94*D(MY_CAR_IDX)+0x18) > 0)&&(s_35e[D(MY_CAR_IDX)].Finished == 0)) helper00(D(MY_CAR_IDX));
@@ -238,6 +239,7 @@ void race___4f300h(void){
 #if defined(DR3_CHAOS)
 					   /* the extra cars' headlight beams are one step of the ladder (dr3_chaos.h) */
 					   ((n < DR3_HUD_CARS) || dr3_chaos_extra_lights()) &&
+					   !dr3_chaos_skip_pass(DR3_PASS_OTHER_BEAMS) &&
 #endif
 					   ((int)D(___1de580h+0x94*n+0x18) > 0)&&(s_35e[n].Finished == 0)) helper00(n);
 				}
@@ -245,9 +247,15 @@ void race___4f300h(void){
 		}
 	}
 
-	helper01(s_35e[D(MY_CAR_IDX)].__4+76, s_35e[D(MY_CAR_IDX)].__8-20, ___243d74h+s_35e[D(MY_CAR_IDX)].ImgOffset, 0x28);
+#if defined(DR3_CHAOS)
+	/* your own car: the sprite (and its wreck) is one of the three parts of this pass (dr3_chaos.h) */
+	if(!dr3_chaos_skip_pass(DR3_PASS_PLAYER_SPRITE))
+#endif
+	{
+		helper01(s_35e[D(MY_CAR_IDX)].__4+76, s_35e[D(MY_CAR_IDX)].__8-20, ___243d74h+s_35e[D(MY_CAR_IDX)].ImgOffset, 0x28);
 
-	if((int)D(___1de580h+0x94*D(MY_CAR_IDX)+0x18) <= 0) helper02(D(MY_CAR_IDX));
+		if((int)D(___1de580h+0x94*D(MY_CAR_IDX)+0x18) <= 0) helper02(D(MY_CAR_IDX));
+	}
 
 	n = -1;
 	while(++n < (int)D(NUM_OF_CARS)){

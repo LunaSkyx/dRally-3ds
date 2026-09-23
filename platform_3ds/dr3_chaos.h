@@ -78,20 +78,24 @@
  *
  * Index 0 means "all passes drawn" - that is where it starts and where it ends after the last one.
  */
-#define DR3_PASS_NONE          0
-#define DR3_PASS_SPECTATORS    1
-#define DR3_PASS_TYRE_DUST     2
-#define DR3_PASS_TRACK_SHADOW  3
-#define DR3_PASS_CARS          4
-#define DR3_PASS_EXPLOSIONS    5
-#define DR3_PASS_GUN_FIRE      6
-#define DR3_PASS_ROCKET        7
-#define DR3_PASS_OBJECTS       8
-#define DR3_PASS_SHOTS         9
-#define DR3_PASS_CASH_TEXT    10
-#define DR3_PASS_BANNER       11
-#define DR3_PASS_HUD          12
-#define DR3_PASS_COUNT        12
+#define DR3_PASS_NONE           0
+/* first the car pass (4) taken apart - the lines come from one of the first three */
+#define DR3_PASS_PLAYER_SPRITE  1
+#define DR3_PASS_PLAYER_BEAM    2
+#define DR3_PASS_OTHER_BEAMS    3
+#define DR3_PASS_CARS           4
+#define DR3_PASS_OBJECTS        5
+#define DR3_PASS_TRACK_SHADOW   6
+#define DR3_PASS_TYRE_DUST      7
+#define DR3_PASS_SPECTATORS     8
+#define DR3_PASS_EXPLOSIONS     9
+#define DR3_PASS_GUN_FIRE      10
+#define DR3_PASS_ROCKET        11
+#define DR3_PASS_SHOTS         12
+#define DR3_PASS_CASH_TEXT     13
+#define DR3_PASS_BANNER        14
+#define DR3_PASS_HUD           15
+#define DR3_PASS_COUNT         15
 
 int dr3_chaos_skip_pass(int which);        /* 1 while that pass is the one switched off */
 int dr3_chaos_skip_cycle(void);            /* L + R + X: the next pass, returns its index */
