@@ -34,11 +34,12 @@ meets the engine, the things worth knowing:
 * the chaos test build (`-DDR3_CHAOS`) can put eight extra cars on the grid - for testing, not for playing.
   How many it adds is a *runtime switch* (`dr3_chaos_extra_cars()` in `platform_3ds/dr3_chaos.h`, implemented
   in `dr3_log.c`), so a fault can be told apart from the twelve car grid without rebuilding: it starts at
-  `DR3_CHAOS_EXTRA_DEFAULT` (0, i.e. the race the game asked for), `L + R + X` toggles it while the game
-  runs (in the front end those three are unbound; SELECT could not be used, it opens the software
-  keyboard on the press), and `sdmc:/chaos_extras.txt` (one number, read at every race setup) flips it
-  from the PC.  It takes effect with the next race, because that is when a race gets its size
-  (`race_main.c`), the extra `s_54` entries and its grid.
+  `DR3_CHAOS_EXTRA_DEFAULT` (1, i.e. one extra car - enough to see the faults).  How many extra cars there
+  are comes from `sdmc:/chaos_extras.txt` (one number, read at every race setup), and how much of an extra
+  car is drawn comes from the *ladder*: `L + R + X` steps through it (0 = nothing of the extra cars is
+  drawn at all, 1 = + sprite, 2 = + lights, 3 = + weapon and tyre effects), which takes things apart piece
+  by piece when a fault has to be pinned to one of them.  It takes effect with the next race, because that
+  is when a race gets its size (`race_main.c`), the extra `s_54` entries and its grid.
   Four cars per race are baked into the BSS layout, so `bss.c` sizes `s_94`, `s_54`, `s_35e` and the car
   index tables with `DR3_MAX_CARS`; the extra grid entries in `___33010h.c` come from racers that are not
   in the race yet and stand in grid rows of their own behind the four start slots the track file provides

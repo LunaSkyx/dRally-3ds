@@ -41,7 +41,7 @@
  * player car are gone, and switching them back on is what tells whether they really are the cause.
  */
 #define DR3_CHAOS_EXTRA 8
-#define DR3_CHAOS_EXTRA_DEFAULT 0
+#define DR3_CHAOS_EXTRA_DEFAULT 1
 /*
  * How many cars the per car arrays of the test build have room for (bss.c, race_memory.c).  This stays
  * at the twelve car size whichever way the switch is set, so the memory layout does not move with it.
@@ -50,6 +50,32 @@
 
 #if defined(DR3_CHAOS)
 #define DR3_MAX_CARS    DR3_CHAOS_RACERS
+
+/*
+ * The extra car ladder.  One extra car is already enough to draw the grey lines over the player's car and
+ * to break the collisions, so the extra cars are taken apart piece by piece: the ladder says how much of
+ * an extra car is drawn, and L + R + X steps through it while the game runs (the log says where it is).
+ *
+ *    0  invisible    the car is in the race - it drives, it counts for position, it can collide - but
+ *                    nothing of it is drawn: no sprite, no lights, no weapon or tyre effects
+ *    1  sprite       + the car's sprite (and the wreck sprite when it is destroyed)
+ *    2  lights       + its headlight beam
+ *    3  everything   + its weapon and tyre effects - the state the faults are known in
+ *
+ * If the lines survive step 0 they are not drawn by the extra car at all, and the next thing to take apart
+ * is the other half: its physics, its collision handling and its place in the per car loops.
+ */
+#define DR3_EXTRA_STAGE_INVISIBLE 0
+#define DR3_EXTRA_STAGE_SPRITE    1
+#define DR3_EXTRA_STAGE_LIGHTS    2
+#define DR3_EXTRA_STAGE_ALL       3
+
+int dr3_chaos_extra_stage(void);
+int dr3_chaos_extra_stage_cycle(void);
+int dr3_chaos_extra_draw(void);                 /* may the extra cars draw their sprite?   */
+int dr3_chaos_extra_lights(void);               /*   and their headlight beam?              */
+int dr3_chaos_extra_effects(void);              /*   and their weapon / tyre effects?       */
+int dr3_chaos_extra_pass_limit(int cars);       /* how many cars an effect pass may handle  */
 
 /* the extra car switch - implemented in platform_3ds/dr3_log.c, see the comment above */
 int  dr3_chaos_extra_cars(void);

@@ -381,17 +381,16 @@ int dr3_poll_event(SDL_Event *e)
         dr3_build_state(&st);
 
         /*
-         * The chaos test build's extra car switch: L + R + X flips it (dr3_chaos.h), it takes effect
-         * with the next race.  In the front end L, R and X are unbound (they are race context: brake,
-         * gas and mine), so this is free - and unlike SELECT, which opens the 3DS software keyboard on
-         * the press, it cannot be mistyped.
+         * The chaos test build's extra car ladder: L + R + X steps through it (dr3_chaos.h) - stage 0
+         * takes the extra cars' drawing apart completely, stage 3 is everything drawn as before.  How
+         * many extra cars there are is set in sdmc:/chaos_extras.txt (read at every race setup).
          */
 #if defined(DR3_CHAOS)
         {
             const uint32_t dr3_combo = DR3_PAD_L | DR3_PAD_R | DR3_PAD_X;
 
             if (((st.held & dr3_combo) == dr3_combo) && ((dr3_prev_held & dr3_combo) != dr3_combo))
-                dr3_chaos_extra_cars_toggle();
+                dr3_chaos_extra_stage_cycle();
         }
 #endif
 

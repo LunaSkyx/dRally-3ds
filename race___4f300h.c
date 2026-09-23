@@ -1,6 +1,7 @@
 #include "drally.h"
 #include "drmath.h"
 #include "drally_structs_free.h"
+#include "platform_3ds/dr3_chaos.h"     /* the extra car ladder: DR3_HUD_CARS, dr3_chaos_extra_draw/lights */
 
 	extern __BYTE__ MY_CAR_IDX[];
 	extern int X___243c8ch;
@@ -233,7 +234,12 @@ void race___4f300h(void){
 
 				if(ltandlt(-40, (int)s_35e[n].__8, (int)(CURRENT_VIEWPORT_H+0x28))){
 	
-					if(((int)D(___1de580h+0x94*n+0x18) > 0)&&(s_35e[n].Finished == 0)) helper00(n);
+										if(
+#if defined(DR3_CHAOS)
+					   /* the extra cars' headlight beams are one step of the ladder (dr3_chaos.h) */
+					   ((n < DR3_HUD_CARS) || dr3_chaos_extra_lights()) &&
+#endif
+					   ((int)D(___1de580h+0x94*n+0x18) > 0)&&(s_35e[n].Finished == 0)) helper00(n);
 				}
 			}
 		}
@@ -248,7 +254,12 @@ void race___4f300h(void){
 
 		if(n != D(MY_CAR_IDX)){
 				
-			if(ltandlt((int)(CURRENT_VIEWPORT_X-0x14), (int)s_35e[n].__4, 0x154)){
+			if(
+#if defined(DR3_CHAOS)
+			   /* the extra cars' sprites are one step of the ladder (dr3_chaos.h) */
+			   ((n < DR3_HUD_CARS) || dr3_chaos_extra_draw()) &&
+#endif
+			   ltandlt((int)(CURRENT_VIEWPORT_X-0x14), (int)s_35e[n].__4, 0x154)){
 
 				if(ltandlt(-20, (int)s_35e[n].__8, (int)(CURRENT_VIEWPORT_H+0x14))){
 
@@ -256,7 +267,12 @@ void race___4f300h(void){
 				}
 			}
 
-			if(ltandlt((int)(CURRENT_VIEWPORT_X-0x8), (int)s_35e[n].__4, 0x148)){
+			if(
+#if defined(DR3_CHAOS)
+			   /* the wreck sprite of an extra car is part of the same step (dr3_chaos.h) */
+			   ((n < DR3_HUD_CARS) || dr3_chaos_extra_draw()) &&
+#endif
+			   ltandlt((int)(CURRENT_VIEWPORT_X-0x8), (int)s_35e[n].__4, 0x148)){
 				
 				if(ltandlt(-8, (int)s_35e[n].__8, (int)(CURRENT_VIEWPORT_H+0x8))){
 							

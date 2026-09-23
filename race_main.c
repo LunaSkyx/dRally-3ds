@@ -230,6 +230,7 @@ static void dr3_chaos_step(const char *what, int car){
 #if !defined(DR3_CHAOS)
 #define dr3_chaos_band_start()    ((void)0)
 #define dr3_chaos_band_mark(pass) ((void)0)
+#define dr3_chaos_extra_pass_limit(cars) (cars)
 #endif
 
 #if defined(DR3_CHAOS)
@@ -411,6 +412,8 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 		        NUM_OF_CARS, NumCars, dr3_extra ? "on" : "off", dr3_extra);
 		dr3_log("[dr3] chaos: track shadows are %s for this race",
 		        dRally_Race_getSettings(RACE_SHADOWS) ? "ON" : "OFF");
+		dr3_log("[dr3] chaos: the extra car ladder is at stage %d for this race (0 nothing drawn, %d everything)",
+		        dr3_chaos_extra_stage(), DR3_EXTRA_STAGE_ALL);
 	}
 #endif
 	race___3f970h();
@@ -842,7 +845,7 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 		D(___243c60h) = -1;
 		{
 			unsigned long long t3 = dr3_chaos_tick();
-			while(++D(___243c60h) < NUM_OF_CARS){ dr3_chaos_step("50ef4h", (int)D(___243c60h)); race___50ef4h(); }
+			while(++D(___243c60h) < dr3_chaos_extra_pass_limit(NUM_OF_CARS)){ dr3_chaos_step("50ef4h", (int)D(___243c60h)); race___50ef4h(); }
 			dr3_chaos_time(3, t3);
 		}
 		dr3_chaos_step("4f300h", -1);
@@ -882,10 +885,10 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 		if(dRally_Race_getSettings(RACE_SHADOWS)) race___4f170h();
 #endif
 		D(___243c60h) = -1;
-		while(++D(___243c60h) < NUM_OF_CARS){ dr3_chaos_step("50a48h", (int)D(___243c60h)); race___50a48h(); }
+		while(++D(___243c60h) < dr3_chaos_extra_pass_limit(NUM_OF_CARS)){ dr3_chaos_step("50a48h", (int)D(___243c60h)); race___50a48h(); }
 		dr3_chaos_band_mark("50a48h gun fire");
 		D(___243c60h) = -1;
-		while(++D(___243c60h) < NUM_OF_CARS){ dr3_chaos_step("51204h", (int)D(___243c60h)); race___51204h(); }
+		while(++D(___243c60h) < dr3_chaos_extra_pass_limit(NUM_OF_CARS)){ dr3_chaos_step("51204h", (int)D(___243c60h)); race___51204h(); }
 		dr3_chaos_band_mark("51204h rocket fuel");
 		dr3_chaos_step("53310h", -1);
 		race___53310h();	// SORT OBJECTS
@@ -893,7 +896,7 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 		race___53464h();	// OBJECTS
 		dr3_chaos_band_mark("53464h objects");
 		D(___243c60h) = -1;
-		while(++D(___243c60h) < NUM_OF_CARS){ dr3_chaos_step("50ba4h", (int)D(___243c60h)); race___50ba4h(); }
+		while(++D(___243c60h) < dr3_chaos_extra_pass_limit(NUM_OF_CARS)){ dr3_chaos_step("50ba4h", (int)D(___243c60h)); race___50ba4h(); }
 		dr3_chaos_band_mark("50ba4h shots");
 		dr3_chaos_step("51eb4h", -1);
 		race___51eb4h();

@@ -220,6 +220,62 @@ const char *dr3_chaos_remap_who_get(void)
 }
 
 /*
+ * The extra car ladder (dr3_chaos.h): how much of an extra car is drawn.  It lives next to the extra car
+ * switch because both are the same idea - flip one thing while the game runs, race, look.
+ */
+static int dr3_extra_stage = DR3_EXTRA_STAGE_ALL;
+
+int dr3_chaos_extra_stage(void)
+{
+    return dr3_extra_stage;
+}
+
+int dr3_chaos_extra_draw(void)
+{
+    return dr3_extra_stage >= DR3_EXTRA_STAGE_SPRITE;
+}
+
+int dr3_chaos_extra_lights(void)
+{
+    return dr3_extra_stage >= DR3_EXTRA_STAGE_LIGHTS;
+}
+
+int dr3_chaos_extra_effects(void)
+{
+    return dr3_extra_stage >= DR3_EXTRA_STAGE_ALL;
+}
+
+/*
+ * The weapon and tyre passes are per car loops in race_main.c.  While the ladder sits below the top step
+ * they stop after the four cars of the original race, so an extra car's shots, flames, rocket and tyre
+ * smoke are not drawn at all - that is one whole family of layers in one switch.
+ */
+int dr3_chaos_extra_pass_limit(int cars)
+{
+    if (dr3_chaos_extra_effects()) return cars;
+
+    return (cars < DR3_HUD_CARS) ? cars : DR3_HUD_CARS;
+}
+
+int dr3_chaos_extra_stage_cycle(void)
+{
+    static const char * const what[DR3_EXTRA_STAGE_ALL + 1] = {
+        "the extra cars are invisible (in the race, but nothing of them is drawn)",
+        "the extra cars draw their sprite (no lights, no weapon or tyre effects)",
+        "the extra cars draw their sprite and lights (no weapon or tyre effects)",
+        "the extra cars draw everything (sprite, lights, weapon and tyre effects)"
+    };
+
+    dr3_extra_stage = (dr3_extra_stage >= DR3_EXTRA_STAGE_ALL) ? 0 : (dr3_extra_stage + 1);
+
+    dr3_log("[dr3] chaos: EXTRA CAR STAGE %d/%d - %s (takes effect at once; the next press gives stage %d)",
+            dr3_extra_stage, DR3_EXTRA_STAGE_ALL, what[dr3_extra_stage],
+            (dr3_extra_stage >= DR3_EXTRA_STAGE_ALL) ? 0 : (dr3_extra_stage + 1));
+
+    return dr3_extra_stage;
+}
+
+/*
  * The extra car switch (dr3_chaos.h).  It lives with the chaos build's other runtime helpers - the
  * platform_3ds/dr3_log.c object is linked into every 3DS build, so no new file (and no Makefile entry)
  * is needed, and the release build never references any of it.
