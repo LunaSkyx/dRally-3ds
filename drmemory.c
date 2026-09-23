@@ -25,7 +25,30 @@ typedef enum MEM_TYPE {
 #define DR3_HEAP_SLACK_BYTES    0x1000
 #define DR3_HEAP_SLACK_FILL     0xe7
 static const unsigned char dr3_heap_guard[DR3_HEAP_GUARD_BYTES] = { 0xa5, 0x5a, 0xc3, 0x3c };
-static int dr3_heap_guard_reported;
+static int dr3_heap_reports;
+#define DR3_HEAP_REPORT_MAX 40      /* how many overruns are reported (the first one used to be the last) */
+
+/*
+ * Checks the guard and the slack the allocator put behind a block and returns the offset past the end at
+ * which they are damaged (or -1 when the block is intact).  The race frame calls this for the screen buffer
+ * after every drawing pass, so the pass that writes past the end of the screen names itself in the log.
+ */
+int dr3_drheap_overrun(const void *p, unsigned nbytes)
+{
+    const unsigned char * g = (const unsigned char *)p + nbytes;
+    unsigned              n;
+
+    if(p == (const void *)0) return -1;
+
+    for(n = 0; n < DR3_HEAP_GUARD_BYTES; ++n)
+        if(g[n] != dr3_heap_guard[n]) return (int)(nbytes + n);
+
+    for(n = 0; n < DR3_HEAP_SLACK_BYTES; ++n)
+        if(g[DR3_HEAP_GUARD_BYTES + n] != DR3_HEAP_SLACK_FILL)
+            return (int)(nbytes + DR3_HEAP_GUARD_BYTES + n);
+
+    return -1;
+}
 
 /*
  * A block that is given back is parked here instead of being freed.  Writing into a block *after* it was
@@ -122,7 +145,7 @@ void dr3_drheap_guard(const char * where){
     __DWORD__       n, m, over;
     unsigned char * end;
 
-    if(dr3_heap_guard_reported) return;
+    if(dr3_heap_reports >= DR3_HEAP_REPORT_MAX) return;
 
     /* first the blocks the engine already gave back: a write into one of these wrecks malloc */
     for(m = 0; m < DR3_HEAP_QUARANTINE; m++){
@@ -141,7 +164,7 @@ void dr3_drheap_guard(const char * where){
                         where, (unsigned)dr3_quar[m].nbytes, p, (unsigned)n, dr3_quar[m].freed_by,
                         p[n], p[n+1], p[n+2], p[n+3], p[n+4], p[n+5], p[n+6], p[n+7]);
 
-                dr3_heap_guard_reported = 1;
+                ++dr3_heap_reports;
                 dr3_log_flush();        /* the heap may go bad next - get this out first */
                 return;
             }
@@ -185,7 +208,7 @@ void dr3_drheap_guard(const char * where){
             }
         }
 
-        dr3_heap_guard_reported = 1;
+        ++dr3_heap_reports;
         dr3_log_flush();        /* the heap is damaged - the game may not get another chance to log */
         return;
     }
