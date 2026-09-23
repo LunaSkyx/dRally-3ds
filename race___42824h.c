@@ -1,5 +1,8 @@
 #include "drally.h"
 #include "platform_3ds/dr3_chaos.h"
+#if defined(DR3_CHAOS)
+#include "drmath.h"         /* dRMath_sin/cos - the grid placement below needs them */
+#endif
 #include "drally_structs_free.h"
 
 #pragma pack(1)
@@ -195,6 +198,14 @@ void race___42824h(void){
 		strcat(strcpy(fname, ___196dfch[D(___1de580h+0x94*n)]), suffix);
 		old_bpa_read("ENGINE.BPA", ___1a54d0h, fname);
 		CarSpinsStripe = (__BYTE__ *)___243d74h[n];
+#if defined(DR3_CHAOS)
+		/*
+		 * Wipe the stripe first: a car that brings fewer frames than the buffer holds (the "-S.BPK"
+		 * variants) otherwise keeps whatever the previous car left in the tail - which shows up as grey
+		 * lines across the car at the angles that fall into those frames.
+		 */
+		memset(CarSpinsStripe, 0, sizeof(car_spins_t));
+#endif
 		bpk_decode2(CarSpinsStripe, ___1a54d0h);	// 40*40*96
 
 		i = -1;
@@ -262,6 +273,86 @@ void race___42824h(void){
 		((int*)Y___1ded20h)[i] = SDL_SwapLE32(((int*)Y___1ded20h)[i]);
 		((int*)___1df120h)[i] = SDL_SwapLE32(((int*)___1df120h)[i]); // TODO unused?
 		((int*)___1e8448h)[i] = SDL_SwapLE32(((int*)___1e8448h)[i]);
+#if defined(DR3_CHAOS)
+	/*
+	 * Put the extra cars on the racing line.  X___1de920h/Y___1ded20h is the line the AI follows, so a
+	 * car standing on one of its points is on the road by definition - the start slots of the track file
+	 * face every direction and the rows "behind" them (race___49bd4h.c) ended up in walls or on soft
+	 * ground on tracks like Rock Zone.  The four cars the track file provides keep their slots, every
+	 * extra car goes to a path point before the start line, evenly spaced and clear of the others.
+	 *
+	 * They face forward along the path: the AI looks ahead at (Direction + 180), so the sprite index for
+	 * a given facing is that of the path direction (a 40x40 picture per sprite step, 96 steps).
+	 */
+	{
+		extern __BYTE__ ___1e6ed0h[];
+		extern __BYTE__ X___1de920h[];
+		extern __BYTE__ Y___1ded20h[];
+		struct_35e_t *  dr3_s35e = (struct_35e_t *)___1e6ed0h;
+		const int       dr3_npath = (int)D(___243c5ch);
+		int             dr3_start = 0, dr3_best = 0x7fffffff, dr3_i, dr3_n;
+
+		if(dr3_npath > 8){
+
+			/* the path point nearest to the first grid slot is the start of the line */
+			for(dr3_i = 0; dr3_i < dr3_npath; ++dr3_i){
+
+				const int dx = ((int *)X___1de920h)[dr3_i] - (int)dr3_s35e[0].XLocation;
+				const int dy = ((int *)Y___1ded20h)[dr3_i] - (int)dr3_s35e[0].YLocation;
+				const int d2 = dx*dx + dy*dy;
+
+				if(d2 < dr3_best){ dr3_best = d2; dr3_start = dr3_i; }
+			}
+
+			for(dr3_n = 4; dr3_n < DR3_MAX_CARS; ++dr3_n){
+
+				int back = dr3_n - 3;
+
+				for(dr3_i = 0; dr3_i < dr3_npath; ++dr3_i, ++back){
+
+					const int idx = ((dr3_start - back) % dr3_npath + dr3_npath) % dr3_npath;
+					const int nxt = (idx + 1) % dr3_npath;
+					const double x  = (double)((int *)X___1de920h)[idx];
+					const double y  = (double)((int *)Y___1ded20h)[idx];
+					const double dx = (double)(((int *)X___1de920h)[idx] - ((int *)X___1de920h)[nxt]);
+					const double dy = (double)(((int *)Y___1ded20h)[idx] - ((int *)Y___1ded20h)[nxt]);
+					int    k, hit = 0, bestk = 0;
+					double best = -2.0;
+
+					for(k = 0; k < dr3_n; ++k){
+
+						const double ex = (double)dr3_s35e[k].XLocation - x;
+						const double ey = (double)dr3_s35e[k].YLocation - y;
+
+						if((ex*ex + ey*ey) < (64.0*64.0)){ hit = 1; break; }
+					}
+
+					if(hit) continue;
+
+					/* the sprite step whose facing is closest to the path direction */
+					for(k = 0; k < 96; ++k){
+
+						const double a   = 3.75 * (double)k * (dR_PI / 180.0);
+						const double dot = dRMath_sin(a)*dx + dRMath_cos(a)*dy;
+
+						if(dot > best){ best = dot; bestk = k; }
+					}
+
+					dr3_s35e[dr3_n].ImgIndex  = bestk;
+					dr3_s35e[dr3_n].XLocation = (float)(int)x;
+					dr3_s35e[dr3_n].YLocation = (float)(int)y;
+
+					dr3_log("[dr3] chaos: grid car %d on the path: point %d of %d, facing %d, at %d,%d",
+					        dr3_n, idx, dr3_npath, bestk,
+					        (int)dr3_s35e[dr3_n].XLocation, (int)dr3_s35e[dr3_n].YLocation);
+					break;
+				}
+			}
+		}
+	}
+#endif
+
+
 		((int*)___1e8048h)[i] = SDL_SwapLE32(((int*)___1e8048h)[i]);
 		((int*)___1e7c48h)[i] = SDL_SwapLE32(((int*)___1e7c48h)[i]);
 	}
