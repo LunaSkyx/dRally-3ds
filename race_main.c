@@ -232,6 +232,82 @@ static void dr3_chaos_step(const char *what, int car){
 #define dr3_chaos_band_mark(pass) ((void)0)
 #endif
 
+#if defined(DR3_CHAOS)
+/*
+ * THE GREY LINE CHASE: the palette indices of the rendered frame around the player's car, dumped twice
+ * per frame - once right after the track shadows (that is the road the car pass starts from) and once at
+ * the end of the frame.  A pixel that differs between the two dumps was written after the shadows, and
+ * its value says by what: the car's own sprite lives in 0x00..0x18, everything else in that rectangle
+ * came from a layer that has no business being there.
+ *
+ * Every car of the race is listed with its screen position as well, so a car drawn over the player - the
+ * other cars' sprites are drawn *after* his (race___4f300h.c) - is visible from the log alone.
+ */
+static int dr3_chaos_dump_due(void)
+{
+	static int dr3_dump_n;
+	static int dr3_dump_img = -99;
+
+	struct_35e_t * s_35e = (struct_35e_t *)___1e6ed0h;
+
+	/* once the car has turned by 30 degrees, so every angle gets captured */
+	if(((int)s_35e[D(MY_CAR_IDX)].ImgIndex - dr3_dump_img + 96) % 96 >= 8){
+
+		dr3_dump_img = (int)s_35e[D(MY_CAR_IDX)].ImgIndex;
+		dr3_dump_n = 0;
+	}
+
+	if(dr3_dump_n >= 3) return 0;
+
+	++dr3_dump_n;
+	return 1;
+}
+
+static void dr3_chaos_dump_frame(const char *when)
+{
+	struct_35e_t * s_35e = (struct_35e_t *)___1e6ed0h;
+	const int      px = (int)s_35e[D(MY_CAR_IDX)].__4 + 76;      /* the sprite's left edge */
+	const int      py = (int)s_35e[D(MY_CAR_IDX)].__8 - 20;      /*       and top edge     */
+	int            x, y, n;
+
+	dr3_log("[dr3] chaos: frame dump %s: car at %d,%d (direction %d, img %d) - 40 px above included",
+	        when, px, py, (int)s_35e[D(MY_CAR_IDX)].Direction, (int)s_35e[D(MY_CAR_IDX)].ImgIndex);
+
+	for(n = 0; n < NUM_OF_CARS; ++n)
+		dr3_log("[dr3] chaos:   car %2d at %3d,%3d img %2d%s", n,
+		        (int)s_35e[n].__4, (int)s_35e[n].__8, (int)s_35e[n].ImgIndex,
+		        (n == (int)D(MY_CAR_IDX)) ? "   <- the player" : "");
+
+	for(y = py - 40; y < py + 46; y += 2){
+
+		char row[128];
+		int  at = 0;
+
+		for(x = px - 10; x < px + 50; ++x){
+
+			if((x < 0) || (y < 0) || (x >= 320) || (y >= 200)){
+
+				row[at++] = '?';
+				row[at++] = '?';
+			}
+			else {
+
+				/* the exact palette index, two hex digits, so the box cannot hide */
+				const int v = BACKBUFFER[0x200*y + x];
+
+				row[at++] = "0123456789abcdef"[(v >> 4) & 0xf];
+				row[at++] = "0123456789abcdef"[v & 0xf];
+			}
+		}
+
+		row[at] = 0;
+		dr3_log("[dr3] chaos: |%s|", row);
+	}
+
+	dr3_log_flush();
+}
+#endif
+
 static void race___4b62ch_helper(int n){
 
 	dr3_chaos_step("4b62ch", n);
@@ -296,6 +372,8 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 		NUM_OF_CARS = (NumCars + dr3_extra <= DR3_MAX_CARS) ? (NumCars + dr3_extra) : DR3_MAX_CARS;
 		dr3_log("[dr3] CHAOS build: %d cars on the grid (the race asked for %d, the extras are %s (%d))",
 		        NUM_OF_CARS, NumCars, dr3_extra ? "on" : "off", dr3_extra);
+		dr3_log("[dr3] chaos: track shadows are %s for this race",
+		        dRally_Race_getSettings(RACE_SHADOWS) ? "ON" : "OFF");
 	}
 #endif
 	race___3f970h();
@@ -732,6 +810,9 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 		}
 		dr3_chaos_step("4f300h", -1);
 #if defined(DR3_CHAOS)
+		/* is this one of the three frames per 30 degrees?  both dumps of the pair use this answer */
+		const int dr3_dump = dr3_chaos_dump_due();
+
 		/*
 		 * The track's shadow polygons (race___4f170h, table VARJO_TAB) are drawn *before* the cars here.
 		 * They used to come after them, and since the shadow table remaps whatever pixel it finds - the
@@ -742,6 +823,7 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 		 * option; the DOS order is ground, shadows, cars, objects.
 		 */
 		if(dRally_Race_getSettings(RACE_SHADOWS)) race___4f170h();
+		if(dr3_dump) dr3_chaos_dump_frame("after the shadows, before the cars");
 #endif
 		{
 			unsigned long long t2 = dr3_chaos_tick();
@@ -793,61 +875,8 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 		dr3_chaos_band_mark("hud");
 
 #if defined(DR3_CHAOS)
-	/*
-	 * THE GREY BOX CHASE: once a second, dump the palette indices of the rendered frame around the
-	 * player's car into the log.  The box shows up as a frame of one value around the sprite, and the
-	 * value says which palette entry draws it - which is what has not been identifiable from the code.
-	 */
-	{
-		static int dr3_dump_n;
-		static int dr3_dump_img = -99;
-
-		/* dump whenever the car has turned by 30 degrees, so every angle gets captured once */
-		if(((int)s_35e[D(MY_CAR_IDX)].ImgIndex - dr3_dump_img + 96) % 96 >= 8){
-
-			dr3_dump_img = (int)s_35e[D(MY_CAR_IDX)].ImgIndex;
-			dr3_dump_n = 0;
-		}
-
-		if(dr3_dump_n < 3){
-
-			const int px = (int)s_35e[D(MY_CAR_IDX)].__4 + 76;      /* the sprite's left edge */
-			const int py = (int)s_35e[D(MY_CAR_IDX)].__8 - 20;      /*       and top edge     */
-			int x, y;
-
-			dr3_log("[dr3] chaos: frame dump around the car at %d,%d (direction %d, img %d) - 40 px above included",
-			        px, py, (int)s_35e[D(MY_CAR_IDX)].Direction, (int)s_35e[D(MY_CAR_IDX)].ImgIndex);
-
-			for(y = py - 40; y < py + 46; y += 2){
-
-				char row[128];
-				int  at = 0;
-
-				for(x = px - 10; x < px + 50; ++x){
-
-					if((x < 0) || (y < 0) || (x >= 320) || (y >= 200)){
-
-						row[at++] = '?';
-						row[at++] = '?';
-					}
-					else {
-
-						/* the exact palette index, two hex digits, so the box cannot hide */
-						const int v = BACKBUFFER[0x200*y + x];
-
-						row[at++] = "0123456789abcdef"[(v >> 4) & 0xf];
-						row[at++] = "0123456789abcdef"[v & 0xf];
-					}
-				}
-
-				row[at] = 0;
-				dr3_log("[dr3] chaos: |%s|", row);
-			}
-
-			dr3_log_flush();
-			++dr3_dump_n;
-		}
-	}
+		/* the second half of the pair the shadow pass opened (see dr3_chaos_dump_frame) */
+		if(dr3_dump) dr3_chaos_dump_frame("at the end of the frame");
 #endif
 
 		D(___243c60h) = -1;

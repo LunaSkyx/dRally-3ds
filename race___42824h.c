@@ -587,6 +587,21 @@ void race___42824h(void){
 	old_bpa_read(TRX_BPA, TRX_BLO_TAB, strcat(strcpy(fname, ___19bd64h), "-BLO.TAB"));
 	old_bpa_read(TRX_BPA, TRX_LIT_TAB, strcat(strcpy(fname, ___19bd64h), "-LIT.TAB"));
 	old_bpa_read("ENGINE.BPA", VARJO_TAB, "VARJO.TAB");
+#if defined(DR3_CHAOS)
+	/*
+	 * What the two things the shadow drawing reads hold - the polygons (race___4f170h.c) and the colour
+	 * table they are remapped through (VARJO.TAB, "shadow" in Finnish).  Both come from the track file, so
+	 * a four car race and a twelve car race have to show the same numbers here.  If they do not, the extra
+	 * cars are writing into track data somewhere instead of the other way round.
+	 */
+	dr3_log("[dr3] chaos: track shadows: %d polygons, %d vertices, first vertex %d,%d",
+	        (int)D(___2438c4h), (int)D(___243c5ch), X___1de920h[0], Y___1ded20h[0]);
+	dr3_log("[dr3] chaos: VARJO_TAB: %02x %02x %02x %02x %02x %02x %02x %02x  %02x %02x %02x %02x %02x %02x %02x %02x",
+	        B(VARJO_TAB + 0), B(VARJO_TAB + 1), B(VARJO_TAB + 2), B(VARJO_TAB + 3),
+	        B(VARJO_TAB + 4), B(VARJO_TAB + 5), B(VARJO_TAB + 6), B(VARJO_TAB + 7),
+	        B(VARJO_TAB + 8), B(VARJO_TAB + 9), B(VARJO_TAB + 10), B(VARJO_TAB + 11),
+	        B(VARJO_TAB + 12), B(VARJO_TAB + 13), B(VARJO_TAB + 14), B(VARJO_TAB + 15));
+#endif
 	old_bpa_read(TRX_BPA, (__POINTER__)TRX_DRV_DAT, strcat(strcpy(fname, ___19bd64h), "-DRV.DAT"));
 	for (int i = 0; i < 512; i++) {
 		TRX_DRV_DAT[i] = SDL_SwapFloatLE(TRX_DRV_DAT[i]);
