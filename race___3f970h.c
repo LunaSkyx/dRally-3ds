@@ -494,20 +494,24 @@ void race___3f970h(void){
 	___1de580h[3].g = ___1de7d0h[3].g;
 	___1de580h[3].b = ___1de7d0h[3].b;
 
-#if defined(DR3_CHAOS)
-	/*
-	 * Give every extra car a complete s_94 entry before the colour copy below overwrites parts of it.
-	 * s_94 carries per car tables the front end only sets up for its four cars - the exhaust flame
-	 * tables (__84[], __60, __5c) are read by race___50a48h.c as
-	 *
-	 *     RACE_FLAMEX_BPK[s_94[car].__84[s_94[car].__60]] + 0x40*(s_35e[car].ImgIndex/2)
-	 *
-	 * so a car without them indexes past the pointer array and the blit reads foreign memory: that is
-	 * the single coloured block that appears on the car and flickers while it turns.
-	 */
-	n = 3;
-	while(++n < DR3_MAX_CARS) memcpy(&___1de580h[0x94*n], &___1de580h[0], 0x94);
-#endif
+/*
+ * NOTE (chaos test build): an earlier commit copied s_94 entry 0 over the entries of the extra cars here,
+ * believing the front end only fills four of them.  Two things were wrong with that:
+ *
+ *   * the loop above runs over NUM_OF_CARS, so every car of the race - the extra ones included - gets its
+ *     own entry from the parameter tables, down to the car's own gun/flame angles at +0x64/+0x74 (VAGABOND
+ *     22/8, DERVISH -18/17, ...).  The copy only overwrote that with one car's numbers.
+ *   * it was written as memcpy(&___1de580h[0x94*n], &___1de580h[0], 0x94).  ___1de580h is a struct_94_t[]
+ *     here (0x94 bytes per element), so that index - the byte style used on the __BYTE__ declarations of
+ *     the same array in the other files - walks 0x94 times too far: 148 bytes of entry 0 were written into
+ *     BSS *after* s_94, eight times, 0x5644 bytes apart.  The object geometry (___1f3b08h, 315 KiB of
+ *     points and triangles) and the object sort/build matrix (___1e8848h) sit right there, so objects were
+ *     drawn from stamped over data and their collisions stopped matching what was drawn: the light grey
+ *     fragments over the player's car and the invisible obstacles.  Only a grid with more than four cars
+ *     walks there, which is why none of it showed up in a four car race.
+ *
+ * Do not put the copy back: the per car loop above is what gives the extra cars their entry.
+ */
 
 #if defined(DR3_CHAOS)
 	/* the chaos test build (-DDR3_CHAOS) has more than four cars here, so the cars above 3 need the
