@@ -495,6 +495,21 @@ void race___3f970h(void){
 	___1de580h[3].b = ___1de7d0h[3].b;
 
 #if defined(DR3_CHAOS)
+	/*
+	 * Give every extra car a complete s_94 entry before the colour copy below overwrites parts of it.
+	 * s_94 carries per car tables the front end only sets up for its four cars - the exhaust flame
+	 * tables (__84[], __60, __5c) are read by race___50a48h.c as
+	 *
+	 *     RACE_FLAMEX_BPK[s_94[car].__84[s_94[car].__60]] + 0x40*(s_35e[car].ImgIndex/2)
+	 *
+	 * so a car without them indexes past the pointer array and the blit reads foreign memory: that is
+	 * the single coloured block that appears on the car and flickers while it turns.
+	 */
+	n = 3;
+	while(++n < DR3_MAX_CARS) memcpy(&___1de580h[0x94*n], &___1de580h[0], 0x94);
+#endif
+
+#if defined(DR3_CHAOS)
 	/* the chaos test build (-DDR3_CHAOS) has more than four cars here, so the cars above 3 need the
 	   same colour copy - the four blocks above stay as they are, this only adds to them */
 	n = 3;
