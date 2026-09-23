@@ -38,6 +38,24 @@
 
 __POINTER__ ___3f71ch__allocateMemory(__DWORD__);
 
+/*
+ * Room below the last screen row.  The screen buffer holds 512x200 (0x19400) and the engine draws into it
+ * with a one row margin *above* (see BACKBUFFER below), but a pass can write below the last row as well:
+ * the in-race HUD draws a row for a car beyond the four the standings have (found with the heap guard in
+ * the chaos build: "SCREEN BUFFER OVERRUN at hud: 107144 bytes past the end").  The car sprite block is
+ * allocated right after this one, so such a write used to land in the player's sprite frames - which is
+ * what drew the grey lines over the car at exactly those angles.  The margin makes sure that nothing a
+ * pass writes below the screen can ever reach the sprites.
+ *
+ * It is chaos only: the extra car is what puts a fifth row into the HUD, so the four car race never writes
+ * below the screen - and the release build keeps its exact original allocation.
+ */
+#if defined(DR3_CHAOS)
+#define DR3_SCREEN_MARGIN   0x8000
+#else
+#define DR3_SCREEN_MARGIN   0
+#endif
+
 void race_alloc(void){
 
 	TRX_IMA = ___3f71ch__allocateMemory(TRX_WIDTH*TRX_HEIGHT);
@@ -45,7 +63,12 @@ void race_alloc(void){
 	TRX_VAI = ___3f71ch__allocateMemory(TRX_WIDTH_QTR*TRX_HEIGHT_QTR);
 	TRX_LR1 = ___3f71ch__allocateMemory(TRX_WIDTH_QTR*TRX_HEIGHT_QTR);
 	___243d5ch = ___3f71ch__allocateMemory(0x5f370);
+#if defined(DR3_CHAOS)
+	/* the screen buffer with the room below it (DR3_SCREEN_MARGIN) - see the note above */
+	BACKBUFFER = ___3f71ch__allocateMemory(0x19400 + DR3_SCREEN_MARGIN)+0x200;
+#else
 	BACKBUFFER = ___3f71ch__allocateMemory(0x19400)+0x200;
+#endif
 	/*
 	 * One 40x40x96 stripe block per car (0x25800 bytes each).  The original has four - race___42824h.c
 	 * decodes one per car into ___243d74h[n], so a grid with more cars (chaos test build, -DDR3_CHAOS)

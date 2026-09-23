@@ -370,6 +370,8 @@ static void dr3_chaos_dump_frame(const char *when){
 
 		for(r = 0; r < 40; ++r){
 
+			if((r >= 8) && (r < 32)) continue;      /* the frame's top and bottom rows are what matters */
+
 			at = 0;
 
 			for(c = 0; c < 40; ++c){

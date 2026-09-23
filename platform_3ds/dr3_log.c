@@ -478,32 +478,6 @@ void dr3_chaos_band_mark(const char *pass)
 {
     extern __POINTER__ BACKBUFFER;
 
-#if defined(DR3_CHAOS)
-    /*
-     * The screen buffer as the heap guard sees it (drmemory.c puts 4 guard bytes and 4 KB of slack behind
-     * every block): a pass that writes past the end of the screen is logged right here, with its own name -
-     * the heap guard alone could only say that it happened, not who did it.
-     */
-    {
-        extern int  dr3_drheap_overrun(const void *p, unsigned nbytes);
-        extern void dr3_drheap_refill(void *p, unsigned nbytes);
-
-        static int dr3_screen_overruns;
-        void *     block = (void *)((__BYTE__ *)BACKBUFFER - 0x200);
-        const int  over  = dr3_drheap_overrun(block, 0x19400u);
-
-        if((over >= 0) && (dr3_screen_overruns < 20)){
-
-            ++dr3_screen_overruns;
-            dr3_log("[dr3] chaos: SCREEN BUFFER OVERRUN at %s: %d bytes past the end of the screen buffer",
-                    pass, over);
-        }
-
-        /* put the guards back either way, so the next pass reports a write of *its* own */
-        dr3_drheap_refill(block, 0x19400u);
-    }
-#endif
-
     const __BYTE__ *bb = (const __BYTE__ *)BACKBUFFER;
     int             count[0x100];
     int             hits = 0, x, y, i, slot = -1;
