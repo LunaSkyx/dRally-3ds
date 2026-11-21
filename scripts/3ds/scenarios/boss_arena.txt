@@ -1,0 +1,15 @@
+# boss_arena.txt - Chaos Arena battle with the Adversary randomly spawning in corner 0, through to race over + payout.
+#   powershell -File scripts\3ds\az_run.ps1 -Scenario scripts\3ds\scenarios\boss_arena.txt -Mode arena -Extras 11 -Boss 100 -Grep 'adversary|ADVERSARY|roster row|grid place|arena:.*car 11|picture SPECIAL|report|points'
+until ready spam Return every 150 timeout 40000
+quickrace track 4
+autopilot on
+until frames 66 timeout 20000
+screenshot boss_arena_roster.bmp
+until event race_start spam Return every 150 timeout 30000
+until race_frames 115 timeout 20000
+screenshot boss_arena_start.bmp
+until race_frames 600 timeout 30000
+screenshot boss_arena_fight.bmp
+until event race_over spam Return every 400 timeout 240000
+screenshot boss_arena_over.bmp
+quit

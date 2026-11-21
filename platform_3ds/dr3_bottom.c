@@ -3,14 +3,22 @@
  * SPDX-License-Identifier: MIT (see LICENSE and THIRD_PARTY.md)
  */
 #include "dr3_bottom.h"
+#include "dr3_bottom_ui.h"
+#include "dr3_chaos.h"
+#if defined(DR3_CHAOS)
+#include "dr3_arena.h"
+#include "dr3_boss.h"
+#include "dr3_dm.h"
+#endif
 #include "dr3_input_map.h"
 #include "dr3_laptime.h"
 #include "dr3_log.h"
 #include "dr3_minimap.h"
 
 #include "drally.h"
+#include "drally_race.h"
 
-/* this file draws via the real printf (libctru's console on the bottom screen) */
+/* this file also serves the profiler/missing-file console via real printf */
 #if defined(printf)
 #undef printf
 #endif
@@ -20,77 +28,59 @@
 #include <3ds.h>
 #include <SDL.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-/* the 20 racers of the running game and the index of the player's car (bss.c) */
-extern __BYTE__  ___1a01e0h[];
-extern __BYTE__  ___1a1ef8h[];
+/* Engine globals (bss.c / data.c / car_data.c / config_c.c) */
+extern __BYTE__        ___1a01e0h[];
+extern __BYTE__        ___1a1ef8h[];
+extern __BYTE__       *___1a0fb8h;      /* copper.pal: player's chosen car colour */
+extern __BYTE__       *___1a0fe0h;      /* carcol.pal: AI drivers' car colours    */
+extern const cardata_t ___18e298h[7];
+extern __DWORD__       ___24cc58h_msx_volume;
+extern __DWORD__       ___24cc54h_sfx_volume;
+extern __BYTE__        ___185a14h_UseWeapons[];
+extern __DWORD__       ___196a94h_difficulty;
 
-/* the cars of the running race: positions in track pixels, lap and position (bss.c) */
-extern struct_35e_t ___1e6ed0h[4];
-extern int       MY_CAR_IDX;
-extern int       NUM_OF_CARS;
-extern int       NUM_OF_LAPS;
+/* Running race state (bss.c) */
+extern struct_35e_t ___1e6ed0h[DR3_MAX_CARS];
+extern __BYTE__     ___1de7d0h[];
+extern __BYTE__     ___1de580h[];
+extern int          MY_CAR_IDX;
+extern int          NUM_OF_CARS;
+extern int          NUM_OF_LAPS;
 
-/*
- * The lap times of the race that is running (bss.c):
- *   LAP_PREVIOUS_*  the clock of the lap that is on right now (race___40db4h.c hands it the running
- *                   tick counter every frame, so it *is* the live lap time)
- *   LAP_BEST_*      the best lap of this race (zeroed when a race starts, ___33010h.c)
- *   LAP_RECORD_*    the record of the player's car for this track (loaded at race setup from the
- *                   lap record table, ___33010h.c, and overwritten as soon as he beats it)
- *   ___243cb8h      the lap that was just finished, as a raw tick counter (70 ticks per second)
- */
-extern int       LAP_PREVIOUS_MIN;
-extern int       LAP_PREVIOUS_SEC;
-extern int       LAP_PREVIOUS_100;
-extern int       LAP_BEST_MIN;
-extern int       LAP_BEST_SEC;
-extern int       LAP_BEST_100;
-extern int       LAP_RECORD_MIN;
-extern int       LAP_RECORD_SEC;
-extern int       LAP_RECORD_100;
-extern __BYTE__  ___243cb8h[];
+/* Lap times (bss.c) */
+extern int      LAP_PREVIOUS_MIN;
+extern int      LAP_PREVIOUS_SEC;
+extern int      LAP_PREVIOUS_100;
+extern int      LAP_BEST_MIN;
+extern int      LAP_BEST_SEC;
+extern int      LAP_BEST_100;
+extern int      LAP_RECORD_MIN;
+extern int      LAP_RECORD_SEC;
+extern int      LAP_RECORD_100;
+extern __BYTE__ ___243cb8h[];
 
-/* the per-driver colours used by the front end (3 bytes per entry, menu_main.c) */
-extern __BYTE__ *___1a0fb8h;
+#define DR3_BOTTOM_TOP 10
 
-#define DR3_BOTTOM_TOP 10          /* how many drivers the standings list shows */
+static int dr3_bottom_ready;
 
-static int  dr3_bottom_ready;
-
-/*
- * Two pages share the bottom screen: the controls/standings block (text, printed by libctru's
- * console) and the minimap (pixels written straight into the framebuffer, see dr3_minimap.c).
- * Outside a race a tap switches that block off and on again.  In a race the map is the *only* page:
- * the tap there switches between the map and dark (the standings are front end information, what a
- * race needs is the map).  Without a loaded track - or in the profiler build, which owns the screen
- * itself - there is no map page at all.
- */
-#define DR3_VIEW_TEXT 0
-#define DR3_VIEW_MAP  1
+#define DR3_VIEW_MENU 0
+#define DR3_VIEW_RACE 1
 
 #if !defined(DR3_PROFILE)
-static int         dr3_bottom_view;
-static char        dr3_bottom_track_id[16];
-static char        dr3_bottom_track_name[24]; /* the human readable name, e.g. "Suburbia" */
-static int         dr3_bottom_map_dirty;      /* the geometry line still has to be logged */
-static int         dr3_bottom_map_full = 1;   /* the next map draw has to repaint everything */
-static char        dr3_bottom_map_hdr[96];    /* text currently on the map page */
-static char        dr3_bottom_map_times[96];
-static char        dr3_bottom_map_ftr[96];
-
-/*
- * The record of the player's car, as it was last seen.  When it changes the player just beat it (the
- * engine also plays SFX_LAP_RECORD and writes the new time back into the record table) - that is worth
- * a moment on the screen.  The -1 marks "not seen yet", so the record that comes with the race does
- * not flash.
- */
+static int          dr3_bottom_view;
+static char         dr3_bottom_track_id[16];
+static char         dr3_bottom_track_name[24];
+static int          dr3_bottom_map_dirty;
+static int          dr3_bottom_map_full = 1;
+static int          dr3_bottom_force_redraw = 1;
 static int          dr3_bottom_rec_seen[3] = { -1, -1, -1 };
-static unsigned int dr3_bottom_rec_flash_ms;   /* until this tick the flash is shown */
+static unsigned int dr3_bottom_rec_flash_ms;
 #endif
 
-/* ------------------------------------------------------------------ controls --- */
+/* ----------------------------------------------------- legacy text block (profiler build) --- */
 
 static const char *const dr3_bottom_controls[] = {
     "D-pad     steer",
@@ -109,12 +99,20 @@ static const char *const dr3_bottom_controls[] = {
     "(tap: screen on/off)"
 };
 
-/* ---------------------------------------------------------------- standings --- */
+typedef struct { char name[16]; uint32_t color; int points; int is_player; } dr3_standing_t;
 
-typedef struct { char name[16]; int points; int is_player; } dr3_standing_t;
+static uint32_t dr3_bottom_driver_rgb(unsigned int color_idx, int is_player)
+{
+    const unsigned char *pal = is_player ? (const unsigned char *)___1a0fb8h
+                                         : (const unsigned char *)___1a0fe0h;
+    const unsigned char *c;
 
-/* Reads the racer array the engine keeps for the running game (racer_t: name at +0, points at
-   +0x44).  Returns the number of drivers written; 0 when no game is loaded yet. */
+    if (!pal || (color_idx >= 256u)) return 0u;
+    c = pal + (3u * color_idx);
+    if ((c[0] | c[1] | c[2]) == 0) return 0u;
+    return ((uint32_t)c[0] << 16) | ((uint32_t)c[1] << 8) | (uint32_t)c[2];
+}
+
 static int dr3_bottom_read_standings(dr3_standing_t *out, int max)
 {
     const racer_t *r  = (const racer_t *)___1a01e0h;
@@ -131,8 +129,6 @@ static int dr3_bottom_read_standings(dr3_standing_t *out, int max)
         name[12] = 0;
         for (j = 11; (j >= 0) && ((name[j] == (char)32) || (name[j] == 0)); --j) name[j] = 0;
 
-        /* guard against uninitialised memory (before a game is loaded) and empty slots: only accept
-           short names made of plain printable characters */
         if ((name[0] < 33) || (name[1] == 0)) continue;
         for (j = 0; name[j]; ++j) {
             if (((unsigned char)name[j] < 32) || ((unsigned char)name[j] > 126)) break;
@@ -140,15 +136,15 @@ static int dr3_bottom_read_standings(dr3_standing_t *out, int max)
         if (name[j] != 0) continue;
 
         snprintf(out[n].name, sizeof(out[n].name), "%s", name);
-        out[n].points    = (int)r[i].points;
         out[n].is_player = (i == me);
+        out[n].color     = dr3_bottom_driver_rgb((unsigned int)r[i].color, out[n].is_player);
+        out[n].points    = (int)r[i].points;
         ++n;
     }
 
     return n;
 }
 
-/* highest points first (at most 20 entries) */
 static void dr3_bottom_sort(dr3_standing_t *list, int n)
 {
     int i, j;
@@ -161,110 +157,9 @@ static void dr3_bottom_sort(dr3_standing_t *list, int n)
     }
 }
 
-/* -------------------------------------------------------------------- draw --- */
-
-int dr3_bottom_console_ensure(void)
-{
-    if (dr3_bottom_ready) return 1;
-    if (!SDL_WasInit(SDL_INIT_VIDEO)) return 0;      /* gfx is not up yet - try again later */
-
-    /*
-     * Deliberately *single* buffered: libctru's console remembers the frame buffer it was initialised
-     * with, so with double buffering its text would end up in the buffer that is not being shown (the
-     * text blinked) and my pixels and its cells disagreed about which buffer is current.  Flicker is
-     * avoided the other way round instead: the static map is painted once and the frequent updates
-     * only repaint the few pixels a car marker occupies (dr3_minimap_draw_incremental).
-     */
-    dr3_bottom_ready = 1;
-    consoleInit(GFX_BOTTOM, NULL);
-
-    return 1;
-}
-
-void dr3_bottom_flush(void)
-{
-    gfxFlushBuffers();
-    gfxScreenSwapBuffers(GFX_BOTTOM, false);
-}
-
-/* --------------------------------------------------------------- tap to hide --- */
-
-/* Fixed height of the block we print, so that lines which disappear (e.g. "your rank") are
-   overwritten instead of staying on screen - and so that we never have to clear the whole screen.
-   2 header rows + 14 control rows + a blank + the player row = 18. */
-#define DR3_BOTTOM_PRINT_ROWS 18
-
-/* the console is 40 columns wide; staying below that keeps a row from wrapping (which would scroll
-   the whole screen).  Used by the controls/standings block and by the two map page text rows. */
-#define DR3_BOTTOM_TEXT_W 38
-
-static int dr3_bottom_hidden;
-
-int dr3_bottom_is_hidden(void) { return dr3_bottom_hidden; }
-
-void dr3_bottom_touch(void) { dr3_bottom_touch_ex(-1, -1); }
-
-#if !defined(DR3_PROFILE)
-/*
- * A tap on the bottom screen: while a track is loaded (a race) it switches between the minimap and
- * dark - nothing else, the standings page belongs to the front end.  Outside a race it switches the
- * controls/standings block off and on again, as in the first release.
- */
-static void dr3_bottom_cycle_view(void)
-{
-    const int in_race = dr3_minimap_ready();
-
-    if (dr3_bottom_hidden) {
-        dr3_bottom_hidden    = 0;
-        dr3_bottom_view      = in_race ? DR3_VIEW_MAP : DR3_VIEW_TEXT;
-        dr3_bottom_map_dirty = 1;
-        dr3_bottom_map_full  = 1;
-
-        dr3_log("[dr3] bottom screen: %s page", in_race ? "minimap" : "ranking");
-        return;
-    }
-
-    dr3_bottom_hidden = 1;
-    dr3_log("[dr3] bottom screen hidden (tap to switch it back)");
-}
-#endif
-
-void dr3_bottom_touch_ex(int ignore_y0, int ignore_y1)
-{
-    static unsigned int last_ms;
-    static int          was_down;
-    touchPosition       touch;
-    const unsigned int  now = SDL_GetTicks();
-    int                 down;
-
-    if ((now - last_ms) < 30) return;          /* 33 Hz is plenty for tapping */
-    last_ms = now;
-
-    hidTouchRead(&touch);
-    down = (touch.px || touch.py) ? 1 : 0;
-
-    if (down && !was_down) {
-        const unsigned int y = touch.py;
-
-        if (!((ignore_y0 >= 0) && (y >= (unsigned int)ignore_y0) && (y < (unsigned int)ignore_y1))) {
-#if defined(DR3_PROFILE)
-            dr3_bottom_hidden = !dr3_bottom_hidden;
-            dr3_log("[dr3] bottom screen %s (tap to switch it back)", dr3_bottom_hidden ? "hidden" : "shown");
-#else
-            dr3_bottom_cycle_view();
-#endif
-        }
-    }
-
-    was_down = down;
-}
-
-/* One line of the standings: rank, player marker, name and points.  The name is padded so the points
-   always sit in the same column, whatever the name length is.  12 character names still fit (the
-   right column allows 21 characters). */
 static void dr3_bottom_rank_line(char *out, size_t out_size, int rank, const dr3_standing_t *s)
 {
-    snprintf(out, out_size, "%2d %c %-11s%4d", rank, s->is_player ? '*' : ' ', s->name, s->points);
+    snprintf(out, out_size, "%2d %c %-11.11s%4d", rank, s->is_player ? '*' : ' ', s->name, s->points);
 }
 
 int dr3_bottom_build_lines(char out[DR3_BOTTOM_LINES][DR3_BOTTOM_LINE_LEN])
@@ -298,10 +193,7 @@ int dr3_bottom_build_lines(char out[DR3_BOTTOM_LINES][DR3_BOTTOM_LINE_LEN])
             ++rows;
         }
         else if (!list[0].is_player) {
-            /* keep the player in sight even when he is not in the top ten - a row further down so it
-               does not run into the controls list */
-            ++rows;                     /* blank line */
-
+            ++rows;
             for (i = 0; i < n; ++i) {
                 if (list[i].is_player) {
                     char right[64];
@@ -318,258 +210,719 @@ int dr3_bottom_build_lines(char out[DR3_BOTTOM_LINES][DR3_BOTTOM_LINE_LEN])
     return rows;
 }
 
+/* ----------------------------------------------------- offscreen buffer & flicker probe --- */
+
+#define DR3_BOTTOM_FB_W      240          /* pixels per column (= screen height) */
+#define DR3_BOTTOM_FB_COLS   320          /* columns           (= screen width)  */
+
+static uint16_t dr3_bottom_offscreen[DR3_BOTTOM_FB_W * DR3_BOTTOM_FB_COLS] __attribute__((aligned(8)));
+static int      dr3_bottom_legacy;
+
+void dr3_bottom_set_legacy(int on) { dr3_bottom_legacy = on; }
+
+#define DR3_PROBE_MAX 30000
+
+static uint16_t          dr3_probe_lit[DR3_PROBE_MAX];
+static volatile int      dr3_probe_on, dr3_probe_stop;
+static volatile unsigned dr3_probe_n;
+static Thread            dr3_probe_thread;
+static u64               dr3_probe_t0;
+
+static unsigned dr3_probe_count_lit(void)
+{
+    uint16_t        w = 0, h = 0;
+    const uint16_t *fb = (const uint16_t *)gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, &w, &h);
+    unsigned        i, n = 0, total = (unsigned)w * (unsigned)h;
+
+    if (!fb) return 0;
+    for (i = 0; i < total; i += 8) n += (fb[i] != 0);
+    return n;
+}
+
+static void dr3_probe_main(void *arg)
+{
+    (void)arg;
+
+    while (!dr3_probe_stop) {
+        svcSleepThread(1000000LL);
+        if (dr3_probe_on && (dr3_probe_n < DR3_PROBE_MAX)) {
+            const unsigned n = dr3_probe_count_lit();
+
+            dr3_probe_lit[dr3_probe_n] = (uint16_t)(n > 65535u ? 65535u : n);
+            dr3_probe_n = dr3_probe_n + 1;
+        }
+    }
+}
+
+void dr3_bottom_probe_start(void)
+{
+    if (!dr3_bottom_console_ensure()) return;
+
+    dr3_probe_n  = 0;
+    dr3_probe_t0 = svcGetSystemTick();
+    dr3_probe_on = 1;
+
+    if (!dr3_probe_thread) {
+        dr3_probe_stop   = 0;
+        dr3_probe_thread = threadCreate(dr3_probe_main, NULL, 16 * 1024, 0x18, -2, false);
+        if (!dr3_probe_thread) dr3_log("[dr3] bottom probe: no thread - nothing will be sampled");
+    }
+}
+
+void dr3_bottom_probe_report(const char *name, char *out, size_t out_size)
+{
+    const unsigned n = dr3_probe_n;
+    unsigned       i, blank = 0, run = 0, longest = 0, median, lim;
+    const unsigned ms = (unsigned)((svcGetSystemTick() - dr3_probe_t0) / 268000u);
+
+    dr3_probe_on = 0;
+
+    if (n < 10) { snprintf(out, out_size, "[probe] %s: only %u sample(s) - no verdict", name, n); return; }
+
+    {
+        static unsigned hist[9601];
+        unsigned        acc = 0;
+
+        memset(hist, 0, sizeof(hist));
+        for (i = 0; i < n; ++i) hist[dr3_probe_lit[i] > 9600 ? 9600 : dr3_probe_lit[i]]++;
+        median = 0;
+        for (i = 0; i <= 9600; ++i) { acc += hist[i]; if (acc * 2 >= n) { median = i; break; } }
+    }
+
+    lim = (median * 6u) / 10u;
+    for (i = 0; i < n; ++i) {
+        if (dr3_probe_lit[i] < lim) { ++blank; if (++run > longest) longest = run; }
+        else run = 0;
+    }
+
+    snprintf(out, out_size, "[probe] %s: %u samples over %u ms, settled page %u lit samples, %u sample(s) blank or half drawn (%u.%02u %%), longest blank run %u ms",
+             name, n, ms, median, blank, (blank * 100u) / n, ((blank * 10000u) / n) % 100u, longest);
+}
+
+int dr3_bottom_console_ensure(void)
+{
+    if (dr3_bottom_ready) return 1;
+    if (!SDL_WasInit(SDL_INIT_VIDEO)) return 0;
+
+    dr3_bottom_ready = 1;
+    consoleInit(GFX_BOTTOM, NULL);
+    return 1;
+}
+
+void dr3_bottom_flush(void)
+{
+    gfxFlushBuffers();
+    gfxScreenSwapBuffers(GFX_BOTTOM, false);
+}
+
+int dr3_bottom_save_bmp(const char *path)
+{
+    uint16_t        w = 0, h = 0;
+    const uint16_t *fb = (const uint16_t *)gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, &w, &h);
+    unsigned char   hdr[54];
+    unsigned char  *row;
+    FILE           *f;
+    const int       sw = (int)h, sh = (int)w;
+    const int       stride = (sw * 3 + 3) & ~3;
+    int             x, y;
+
+    if (!fb || (gfxGetScreenFormat(GFX_BOTTOM) != GSP_RGB565_OES)) return 0;
+
+    f = fopen(path, "wb");
+    if (!f) return 0;
+
+    row = (unsigned char *)malloc((size_t)stride);
+    if (!row) { fclose(f); return 0; }
+
+    memset(hdr, 0, sizeof(hdr));
+    hdr[0] = 'B'; hdr[1] = 'M';
+    {
+        const unsigned int size = 54u + (unsigned int)stride * (unsigned int)sh;
+        const unsigned int img  = (unsigned int)stride * (unsigned int)sh;
+
+        hdr[2] = size; hdr[3] = size >> 8; hdr[4] = size >> 16; hdr[5] = size >> 24;
+        hdr[10] = 54; hdr[14] = 40;
+        hdr[18] = sw; hdr[19] = sw >> 8;
+        hdr[22] = sh; hdr[23] = sh >> 8;
+        hdr[26] = 1;  hdr[28] = 24;
+        hdr[34] = img; hdr[35] = img >> 8; hdr[36] = img >> 16; hdr[37] = img >> 24;
+    }
+    fwrite(hdr, 1, sizeof(hdr), f);
+
+    for (y = sh - 1; y >= 0; --y) {
+        memset(row, 0, (size_t)stride);
+        for (x = 0; x < sw; ++x) {
+            const unsigned int p = fb[(size_t)x * (size_t)w + (size_t)(sh - 1 - y)];
+            const unsigned int r = (p >> 11) & 31u, g = (p >> 5) & 63u, b = p & 31u;
+
+            row[x * 3 + 0] = (unsigned char)((b << 3) | (b >> 2));
+            row[x * 3 + 1] = (unsigned char)((g << 2) | (g >> 4));
+            row[x * 3 + 2] = (unsigned char)((r << 3) | (r >> 2));
+        }
+        fwrite(row, 1, (size_t)stride, f);
+    }
+
+    free(row);
+    fclose(f);
+    return 1;
+}
+
+/* ----------------------------------------------------------- tap to darken / wake --- */
+
+static int dr3_bottom_hidden;
+
+int dr3_bottom_is_hidden(void) { return dr3_bottom_hidden; }
+
+void dr3_bottom_toggle_hidden(void)
+{
+#if defined(DR3_PROFILE)
+    dr3_bottom_hidden = !dr3_bottom_hidden;
+    dr3_log("[dr3] bottom screen %s (tap to switch it back)", dr3_bottom_hidden ? "hidden" : "shown");
+#else
+    const int in_race = dr3_minimap_ready();
+
+    if (dr3_bottom_hidden) {
+        dr3_bottom_hidden       = 0;
+        dr3_bottom_view         = in_race ? DR3_VIEW_RACE : DR3_VIEW_MENU;
+        dr3_bottom_map_dirty    = 1;
+        dr3_bottom_map_full     = 1;
+        dr3_bottom_force_redraw = 1;
+        dr3_log("[dr3] bottom screen: %s page restored", in_race ? "race dashboard" : "menu command center");
+    }
+    else {
+        dr3_bottom_hidden       = 1;
+        dr3_bottom_force_redraw = 1;
+        dr3_log("[dr3] bottom screen darkened (tap to restore)");
+    }
+#endif
+}
+
+void dr3_bottom_touch(void) { dr3_bottom_touch_ex(-1, -1); }
+
+void dr3_bottom_touch_ex(int ignore_y0, int ignore_y1)
+{
+    static unsigned int last_ms;
+    static int          was_down;
+    touchPosition       touch;
+    const unsigned int  now = SDL_GetTicks();
+    int                 down;
+
+    if ((now - last_ms) < 30) return;
+    last_ms = now;
+
+    hidTouchRead(&touch);
+    down = (touch.px || touch.py) ? 1 : 0;
+
+    if (down && !was_down) {
+        const unsigned int y = touch.py;
+
+        if (!((ignore_y0 >= 0) && (y >= (unsigned int)ignore_y0) && (y < (unsigned int)ignore_y1))) {
+            dr3_bottom_toggle_hidden();
+        }
+    }
+
+    was_down = down;
+}
+
 #if !defined(DR3_PROFILE)
-/* ------------------------------------------------------------------ map page --- */
+/* ---------------------------------------------------------- Death Rally graphical pages --- */
 
-/*
- * libctru's console font is 8x8 on the 320x240 bottom screen: 40 columns, 30 rows.  Three text rows
- * belong to this page - row 1 (track name and the running lap clock), row 2 (last, best and record
- * lap) and row 30 (position and lap of the race) - and the minimap is painted into the band between
- * them.  Those rows are the only text here: the console only repaints the cells it prints, so the map
- * pixels survive until the page is left (then the screen is cleared).
- */
-#define DR3_BOTTOM_MAP_Y   16      /* = two text rows: the header plus the lap times below it */
-#define DR3_BOTTOM_MAP_H   216     /* 240 - 3*8: the band between the times row and the footer */
-#define DR3_BOTTOM_MAP_W   320
-
-/* the lap clock is part of this page, so it is refreshed more often than the text block (500 ms) */
-#define DR3_BOTTOM_MAP_MS  125     /* eight times a second */
-
-/* how long the "*** NEW RECORD ***" notice stays on the times row after the record was beaten */
+#define DR3_BOTTOM_RACE_MS  125     /* 8 Hz during races for smooth car markers + standings */
+#define DR3_BOTTOM_MENU_MS  250     /* 4 Hz polling in menus (skips draw unless state changed) */
 #define DR3_RECORD_FLASH_MS 3000
 
-/*
- * The colour the player picked for his car: the engine keeps the per-driver colours in
- * menu_main.c's ___1a0fb8h table (3 bytes per entry, indexed by racer_t.color).  Returns 0 when it is
- * not available yet, then the marker falls back to yellow.
- */
+static int dr3_bottom_pixel_size(GSPGPU_FramebufferFormat fmt, int *canvas_fmt)
+{
+    switch (fmt) {
+    case GSP_RGBA8_OES: *canvas_fmt = DR3_CANVAS_RGBA8888; return 4;
+    case GSP_BGR8_OES:  *canvas_fmt = DR3_CANVAS_BGR888;   return 3;
+    default:            *canvas_fmt = DR3_CANVAS_RGB565;   return 2;
+    }
+}
+
 static uint32_t dr3_bottom_player_rgb(void)
 {
     const racer_t *r  = (const racer_t *)___1a01e0h;
     const int      me = (int)D(___1a1ef8h);
-    unsigned int   idx;
-    const unsigned char *c;
 
-    if (!___1a0fb8h || (me < 0) || (me >= 20)) return 0;
-
-    idx = (unsigned int)r[me].color;
-    if (idx >= 20) return 0;
-
-    c = (const unsigned char *)___1a0fb8h + (3 * idx);
-    if ((c[0] | c[1] | c[2]) == 0) return 0;          /* not loaded yet */
-
-    return ((uint32_t)c[0] << 16) | ((uint32_t)c[1] << 8) | (uint32_t)c[2];
+    if ((me < 0) || (me >= 20)) return 0u;
+    return dr3_bottom_driver_rgb((unsigned int)r[me].color, 1);
 }
 
-/* Reads the cars of the running race (positions in track pixels).  Returns how many were written. */
+#if defined(DR3_CHAOS)
+static uint32_t dr3_bottom_car_rgb(int n)
+{
+    const unsigned char *base;
+    unsigned int         r, g, b;
+
+    if ((n < 0) || (n >= DR3_MAX_CARS)) return 0u;
+    if (n == dr3_chaos_boss_car()) return 0xC000FFu;
+
+    /* s_54 stores each car's RGB as three 32-bit values at +0x34, +0x38, +0x3c (___33010h.c) */
+    base = (const unsigned char *)___1de7d0h + (0x54 * n);
+    r = (unsigned int)base[0x34];
+    g = (unsigned int)base[0x38];
+    b = (unsigned int)base[0x3c];
+    if ((r | g | b) == 0u) return 0u;
+
+    return ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)b;
+}
+#endif
+
 static int dr3_bottom_read_cars(dr3_map_car_t *out, int max)
 {
-    const struct_35e_t *s     = ___1e6ed0h;
-    const int           me    = ((MY_CAR_IDX >= 0) && (MY_CAR_IDX < 4)) ? MY_CAR_IDX : 0;
+    const struct_35e_t *s      = ___1e6ed0h;
+    const int           me     = ((MY_CAR_IDX >= 0) && (MY_CAR_IDX < DR3_MAX_CARS)) ? MY_CAR_IDX : 0;
     const uint32_t      my_rgb = dr3_bottom_player_rgb();
-    int                 n     = NUM_OF_CARS;
+    int                 n      = NUM_OF_CARS;
     int                 i;
 
     if (n < 0) n = 0;
-    if (n > 4) n = 4;
+    if (n > DR3_MAX_CARS) n = DR3_MAX_CARS;
     if (n > max) n = max;
 
     for (i = 0; i < n; ++i) {
         out[i].x         = s[i].XLocation;
         out[i].y         = s[i].YLocation;
         out[i].is_player = (i == me);
-        out[i].color     = (i == me) ? my_rgb : 0u;   /* 0 = the default colour for the role */
-
-        /* before the first frame of a race the array holds zeros - nothing to draw then */
+#if defined(DR3_CHAOS)
+        out[i].color     = (i == me) ? my_rgb : dr3_bottom_car_rgb(i);
+#else
+        out[i].color     = (i == me) ? my_rgb : 0u;
+#endif
         out[i].valid     = (out[i].x >= 1.0f) && (out[i].y >= 1.0f);
     }
 
     return n;
 }
 
-/* Bytes per pixel of the bottom screen frame buffer plus the canvas format that matches it.
-   libctru's console switches the bottom screen to RGB565, the top screen stays 32-bit (SDL). */
-static int dr3_bottom_pixel_size(GSPGPU_FramebufferFormat fmt, int *canvas_fmt)
+static void dr3_bottom_clean_name(char *out, size_t out_size, const char *src)
 {
-    switch (fmt) {
-    case GSP_RGBA8_OES:
-        *canvas_fmt = DR3_CANVAS_RGBA8888;
-        return 4;
+    char tmp[13];
+    int  j;
 
-    case GSP_BGR8_OES:
-        *canvas_fmt = DR3_CANVAS_BGR888;
-        return 3;
+    memcpy(tmp, src, 12);
+    tmp[12] = 0;
+    for (j = 11; (j >= 0) && ((tmp[j] == (char)32) || (tmp[j] == 0)); --j) tmp[j] = 0;
+    for (j = 0; tmp[j]; ++j) {
+        if (((unsigned char)tmp[j] < 32u) || ((unsigned char)tmp[j] > 126u)) tmp[j] = ' ';
+    }
+    snprintf(out, out_size, "%s", tmp);
+}
 
-    default:            /* RGB565 / RGB5A1 / RGBA4 - all of them are 2 bytes per pixel */
-        *canvas_fmt = DR3_CANVAS_RGB565;
-        return 2;
+static int dr3_bottom_clamp_pct(int v)
+{
+    if (v < 0) return 0;
+    if (v > 100) return 100;
+    return v;
+}
+
+static void dr3_bottom_compact_binding(char *out, size_t out_size, const char *func)
+{
+    char   raw[24];
+    size_t i, j = 0;
+
+    dr3_input_binding_name(raw, sizeof(raw), func);
+    for (i = 0; raw[i] && (j + 1 < out_size); ++i) {
+        if (raw[i] == ',') {
+            out[j++] = '/';
+        }
+        else if (raw[i] != ' ') {
+            out[j++] = raw[i];
+        }
+    }
+    out[j] = 0;
+}
+
+static void dr3_bottom_build_race_state(dr3_ui_race_t *st)
+{
+    const struct_35e_t *s35    = ___1e6ed0h;
+    const int           me     = ((MY_CAR_IDX >= 0) && (MY_CAR_IDX < DR3_MAX_CARS)) ? MY_CAR_IDX : 0;
+    const uint32_t      my_rgb = dr3_bottom_player_rgb();
+    int                 n      = NUM_OF_CARS;
+    int                 i, alive = 0;
+
+    memset(st, 0, sizeof(*st));
+
+    if (n < 0) n = 0;
+    if (n > DR3_MAX_CARS) n = DR3_MAX_CARS;
+    if (n > DR3_UI_MAX_RACERS) n = DR3_UI_MAX_RACERS;
+
+    /* Mode classification + header title */
+    st->mode_kind = DR3_UI_RACE_NORMAL;
+    snprintf(st->title, sizeof(st->title), "%s", dr3_bottom_track_name[0] ? dr3_bottom_track_name : "DEATH RALLY");
+
+#if defined(DR3_CHAOS)
+    if (dr3_boss_is_swarm()) {
+        st->mode_kind = DR3_UI_RACE_BOSS_P1;
+        snprintf(st->title, sizeof(st->title), "PHASE 1/3: THE SWARM");
+    }
+    else if (dr3_boss_is_escort_race()) {
+        st->mode_kind = DR3_UI_RACE_BOSS_P2;
+        snprintf(st->title, sizeof(st->title), "PHASE 2/3: THE ESCORT");
+    }
+    else if (dr3_boss_is_final_duel()) {
+        st->mode_kind = DR3_UI_RACE_BOSS_P3;
+        snprintf(st->title, sizeof(st->title), "FINAL: GIANT ADVERSARY");
+    }
+    else if (dr3_chaos_arena()) {
+        st->mode_kind = DR3_UI_RACE_ARENA;
+        snprintf(st->title, sizeof(st->title), "BATTLE ARENA");
+    }
+    else if (dr3_chaos_active() && (dr3_chaos_mode() == DR3_CHAOS_MODE_DM)) {
+        st->mode_kind = DR3_UI_RACE_DM;
+    }
+    else if (dr3_chaos_active() && (dr3_chaos_mode() == DR3_CHAOS_MODE_DUEL)) {
+        st->mode_kind = DR3_UI_RACE_DUEL;
+    }
+#endif
+
+    /* Running clock on header right */
+    if (dr3_laptime_is_set(LAP_PREVIOUS_MIN, LAP_PREVIOUS_SEC, LAP_PREVIOUS_100)) {
+        char t[12];
+        dr3_laptime_format(t, sizeof(t), LAP_PREVIOUS_MIN, LAP_PREVIOUS_SEC, LAP_PREVIOUS_100);
+#if defined(DR3_CHAOS)
+        snprintf(st->clock_str, sizeof(st->clock_str), "%s %s",
+                 (dr3_chaos_arena() || dr3_boss_is_arena_phase()) ? "TIME" : "LAP", t);
+#else
+        snprintf(st->clock_str, sizeof(st->clock_str), "LAP %s", t);
+#endif
+    }
+    else {
+        snprintf(st->clock_str, sizeof(st->clock_str), "TAP:OFF");
+    }
+
+    /* Lap times & track record flash */
+    if (D(___243cb8h) > 0) dr3_laptime_format_ticks(st->last_str, sizeof(st->last_str), (int)D(___243cb8h));
+    else                   snprintf(st->last_str, sizeof(st->last_str), "%s", DR3_LAPTIME_UNSET);
+
+    dr3_laptime_format_or_unset(st->best_str, sizeof(st->best_str), LAP_BEST_MIN, LAP_BEST_SEC, LAP_BEST_100);
+    dr3_laptime_format_or_unset(st->rec_str,  sizeof(st->rec_str),  LAP_RECORD_MIN, LAP_RECORD_SEC, LAP_RECORD_100);
+
+    if ((LAP_RECORD_MIN != dr3_bottom_rec_seen[0]) || (LAP_RECORD_SEC != dr3_bottom_rec_seen[1]) ||
+        (LAP_RECORD_100 != dr3_bottom_rec_seen[2])) {
+        if (dr3_bottom_rec_seen[0] >= 0) dr3_bottom_rec_flash_ms = SDL_GetTicks() + DR3_RECORD_FLASH_MS;
+        dr3_bottom_rec_seen[0] = LAP_RECORD_MIN;
+        dr3_bottom_rec_seen[1] = LAP_RECORD_SEC;
+        dr3_bottom_rec_seen[2] = LAP_RECORD_100;
+    }
+    if (dr3_bottom_rec_flash_ms && ((int)(dr3_bottom_rec_flash_ms - SDL_GetTicks()) > 0)) {
+        st->new_record_flash = 1;
+    }
+
+    /* Racers table for live standings */
+    st->n_racers = n;
+    for (i = 0; i < n; ++i) {
+        dr3_ui_racer_t *dst  = &st->racers[i];
+        const int       hp   = (int)(*(const int32_t *)(const void *)(___1de580h + 0x94 * i + 0x18));
+        int             hmax = 102400;
+
+        /* s_54 (___1de7d0h + 0x54 * i) carries the driver name for ALL 0..20 cars; fall back to s_94+0x44 */
+        dr3_bottom_clean_name(dst->name, sizeof(dst->name), (const char *)(___1de7d0h + 0x54 * i));
+        if (dst->name[0] < 33) {
+            dr3_bottom_clean_name(dst->name, sizeof(dst->name), (const char *)(___1de580h + 0x94 * i + 0x44));
+        }
+        if ((dst->name[0] < 33) && (i == me)) {
+            snprintf(dst->name, sizeof(dst->name), "PLAYER");
+        }
+        dst->position  = (int)s35[i].Position;
+        dst->lap       = (int)s35[i].Lap;
+        dst->finished  = (int)s35[i].Finished;
+        dst->hp        = (hp > 0) ? hp : 0;
+        dst->is_player = (i == me);
+
+#if defined(DR3_CHAOS)
+        if (dr3_chaos_hp_max[i] > 0) hmax = dr3_chaos_hp_max[i];
+        if (dr3_boss_is_final_duel() && (i == 0)) {
+            hmax         = dr3_boss_p3_hp_max();
+            dst->is_boss = 1;
+        }
+        else if (i == dr3_chaos_boss_car()) {
+            dst->is_boss = 1;
+        }
+        if (dr3_boss_is_swarm() && (i != me)) {
+            hmax = dr3_boss_p1_enemy_hp();
+        }
+        if (st->mode_kind == DR3_UI_RACE_DM) {
+            dst->lap = dr3_dm_laps(i) + 1;
+        }
+        dst->color = (i == me) ? my_rgb : dr3_bottom_car_rgb(i);
+#else
+        dst->color = (i == me) ? my_rgb : 0u;
+#endif
+        dst->hp_max = (hmax > 0) ? hmax : 102400;
+        if (dst->hp > 0) ++alive;
+    }
+
+    st->alive_count = alive;
+    st->total_laps  = (NUM_OF_LAPS > 0) ? NUM_OF_LAPS : 1;
+
+    /* Player vehicle telemetry */
+    if ((me >= 0) && (me < n)) {
+        static const int base_mph[7] = { 60, 75, 90, 110, 130, 160, 160 };
+        const int        car_id      = (int)(*(const uint32_t *)(const void *)(___1de580h + 0x94 * me + 0x00)) & 0xff;
+        const float      max_spd     = *(const float *)(const void *)(___1de580h + 0x94 * me + 0x04);
+        const int        hp          = (int)(*(const int32_t *)(const void *)(___1de580h + 0x94 * me + 0x18));
+        const int        mines       = (int)(*(const int32_t *)(const void *)(___1de580h + 0x94 * me + 0x28));
+        const int        wpn_on      = (int)(*(const int32_t *)(const void *)(___1de580h + 0x94 * me + 0x2c));
+        const int        ammo        = (int)(*(const int32_t *)(const void *)(___1de580h + 0x94 * me + 0x30));
+        const int        turbo       = (int)(*(const int32_t *)(const void *)(___1de580h + 0x94 * me + 0x34));
+        const int        top_mph     = ((car_id >= 0) && (car_id < 7)) ? base_mph[car_id] : 120;
+
+        st->player_pos = (int)s35[me].Position;
+        st->player_lap = (int)s35[me].Lap;
+#if defined(DR3_CHAOS)
+        if (st->mode_kind == DR3_UI_RACE_DM) st->player_lap = dr3_dm_laps(me) + 1;
+#endif
+        if (max_spd > 0.01f) {
+            float r = s35[me].__b0 / max_spd;
+            if (r < 0.0f) r = 0.0f;
+            if (r > 1.35f) r = 1.35f;
+            st->speed_mph = (int)(r * (float)top_mph + 0.5f);
+        }
+        st->hull_pct   = dr3_bottom_clamp_pct((hp > 0) ? ((hp + 512) / 1024) : 0);
+        st->turbo_pct  = dr3_bottom_clamp_pct((int)((100.0 * (double)turbo) / 104196.0));
+        st->ammo_pct   = dr3_bottom_clamp_pct((int)((100.0 * (double)ammo)  / 102400.0));
+        st->weapons_on = (wpn_on != 0);
+        st->mines      = (mines > 0) ? mines : 0;
+    }
+
+    /* Boss & Arena extras + minimap closing ring */
+#if defined(DR3_CHAOS)
+    if (dr3_boss_is_swarm()) {
+        const int my_alive = ((me >= 0) && (me < n) && (st->racers[me].hp > 0)) ? 1 : 0;
+        st->swarm_left  = (alive > my_alive) ? (alive - my_alive) : 0;
+        st->swarm_total = DR3_BOSS_P1_ENEMIES;
+        dr3_minimap_set_ring(0);
+    }
+    else if (dr3_boss_is_final_duel()) {
+        int bhp = 0, bmax = DR3_BOSS_P3_HP_MAX, benr = 0;
+        dr3_boss_hud_bar(&bhp, &bmax, &benr);
+        st->boss_hp       = bhp;
+        st->boss_hp_max   = bmax;
+        st->boss_enraged  = benr;
+        st->boss_defeated = dr3_boss_defeated();
+        dr3_minimap_set_ring(dr3_boss_p3_ring_active() ? dr3_boss_p3_ring_r() : 0);
+    }
+    else if (dr3_chaos_arena()) {
+        const char *l1 = NULL, *l2 = NULL;
+        const int   bk    = dr3_arena_banner_now(&l1, &l2);
+        const int   ticks = (int)getCounter(1);
+        const int   phase = dr3_arena_ring_phase(ticks);
+        st->ring_state = (bk == 2) ? 2 : ((phase >= 1) ? 1 : 0);
+        dr3_minimap_set_ring((phase >= 1) ? dr3_arena_ring_radius(ticks) : 0);
+    }
+    else {
+        dr3_minimap_set_ring(0);
+    }
+#endif
+}
+
+static void dr3_bottom_build_menu_state(dr3_ui_menu_t *st)
+{
+    static const char *const diff_names[6] = {
+        "SPEED FREAK", "PETROL HEAD", "FULL THROTTLE", "30TH ANNIV", "30TH ANNIV", "30TH EXTREME"
+    };
+    dr3_standing_t list[20];
+    const racer_t *r  = (const racer_t *)___1a01e0h;
+    const int      me = (int)D(___1a1ef8h);
+    int            n, i;
+
+    memset(st, 0, sizeof(*st));
+
+    /* Live options */
+    st->music_pct   = dr3_bottom_clamp_pct((int)(((___24cc58h_msx_volume * 100u) + 0x8000u) >> 16));
+    st->sfx_pct     = dr3_bottom_clamp_pct((int)(((___24cc54h_sfx_volume * 100u) + 0x8000u) >> 16));
+    st->weapons_on  = (D(___185a14h_UseWeapons) != 0);
+    st->shadows_on  = (dRally_Race_getSettings(RACE_SHADOWS) != 0);
+    st->textures_on = (dRally_Race_getSettings(RACE_TEXTURES) != 0);
+
+    dr3_bottom_compact_binding(st->qsave_key, sizeof(st->qsave_key), "QUICKSAVE");
+    dr3_bottom_compact_binding(st->qload_key, sizeof(st->qload_key), "QUICKLOAD");
+
+    /* Difficulty & Mode badges */
+    {
+        const unsigned int d = (unsigned int)___196a94h_difficulty;
+        snprintf(st->badge, sizeof(st->badge), "%s", (d < 6u) ? diff_names[d] : "DEATH RALLY");
+    }
+
+#if defined(DR3_CHAOS)
+    st->chaos_active = dr3_chaos_active() ? 1 : 0;
+    st->boss_phase   = dr3_boss_phase();
+    st->cheat_active = dr3_boss_cheat_active();
+
+    if (st->chaos_active) {
+        const char *mname = dr3_chaos_mode_name(dr3_chaos_mode_setting());
+        snprintf(st->mode_name, sizeof(st->mode_name), "%s", mname ? mname : "RANDOM");
+    }
+    else {
+        snprintf(st->mode_name, sizeof(st->mode_name), "CLASSIC");
+    }
+
+    if (st->cheat_active) {
+        snprintf(st->badge, sizeof(st->badge), "GODMODE TEST");
+    }
+    else if (st->boss_phase == DR3_BOSS_PHASE_1) {
+        snprintf(st->badge, sizeof(st->badge), "BOSS 1/3 SWARM");
+    }
+    else if (st->boss_phase == DR3_BOSS_PHASE_2) {
+        snprintf(st->badge, sizeof(st->badge), "BOSS 2/3 ESCORT");
+    }
+    else if (st->boss_phase == DR3_BOSS_PHASE_3) {
+        snprintf(st->badge, sizeof(st->badge), "FINAL BOSS 3/3");
+    }
+#else
+    snprintf(st->mode_name, sizeof(st->mode_name), "CLASSIC");
+#endif
+
+    /* Championship standings */
+    n = dr3_bottom_read_standings(list, 20);
+    dr3_bottom_sort(list, n);
+    st->n_standings = (n > DR3_UI_MAX_STANDINGS) ? DR3_UI_MAX_STANDINGS : n;
+    for (i = 0; i < st->n_standings; ++i) {
+        snprintf(st->standings[i].name, sizeof(st->standings[i].name), "%s", list[i].name);
+        st->standings[i].color     = list[i].color;
+        st->standings[i].points    = list[i].points;
+        st->standings[i].is_player = list[i].is_player;
+    }
+
+    /* Active career / garage telemetry (only when player has a valid loaded driver) */
+    if ((n > 0) && (me >= 0) && (me < 20)) {
+        char pname[16];
+        dr3_bottom_clean_name(pname, sizeof(pname), r[me].name);
+
+        if ((pname[0] >= 33) && (pname[1] != 0)) {
+            const unsigned int car = (unsigned int)r[me].car;
+            int                rk  = 0;
+
+            for (i = 0; i < n; ++i) {
+                if (list[i].is_player) { rk = i + 1; break; }
+            }
+
+            st->has_career   = 1;
+            snprintf(st->player_name, sizeof(st->player_name), "%s", pname);
+            st->player_color = dr3_bottom_driver_rgb((unsigned int)r[me].color, 1);
+            st->cash         = (int)r[me].money;
+            st->rank         = rk;
+            st->wins         = (int)r[me].wins;
+            st->races        = (int)r[me].races;
+            st->engine       = (int)r[me].engine;
+            st->tires        = (int)r[me].tires;
+            st->armor        = (int)r[me].armor;
+            st->hull_pct     = dr3_bottom_clamp_pct(100 - (int)r[me].damage);
+            st->has_mines    = (r[me].mines != 0);
+            st->has_spikes   = (r[me].spikes != 0);
+            st->has_rocket   = (r[me].rocket_fuel != 0);
+            st->has_sabotage = (r[me].sabotage != 0);
+
+            if (car < 7u) {
+                snprintf(st->car_name, sizeof(st->car_name), "%s", ___18e298h[car].name);
+                st->engine_max = (int)___18e298h[car].n_engine_upgrades;
+                st->tires_max  = (int)___18e298h[car].n_tire_upgrades;
+                st->armor_max  = (int)___18e298h[car].n_armor_upgrades;
+            }
+            else {
+                snprintf(st->car_name, sizeof(st->car_name), "VAGABOND");
+                st->engine_max = 1;
+                st->tires_max  = 2;
+                st->armor_max  = 1;
+            }
+        }
     }
 }
 
-static void dr3_bottom_draw_map_page(void)
+static void dr3_bottom_blit_offscreen(void *fb, uint16_t w, uint16_t h, int bpp)
 {
+    if ((bpp == 2) && (w == DR3_BOTTOM_FB_W) && (h == DR3_BOTTOM_FB_COLS)) {
+        memcpy(fb, dr3_bottom_offscreen, (size_t)DR3_BOTTOM_FB_W * (size_t)DR3_BOTTOM_FB_COLS * 2u);
+    }
+}
+
+static void dr3_bottom_draw_race_page(void)
+{
+    dr3_ui_race_t st;
+    dr3_map_car_t cars[DR3_MAX_CARS];
     dr3_canvas_t  canvas;
-    dr3_map_car_t cars[4];
     uint16_t      w = 0, h = 0;
-    uint32_t *    fb = (uint32_t *)gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, &w, &h);
-    int           n_cars, bpp = 4;
+    void         *fb = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, &w, &h);
+    int           n_cars, bpp;
 
-    if (!fb || (w <= 0) || (h <= 0)) return;
+    if (!fb || (w == 0) || (h == 0)) return;
 
-    /* The bottom frame buffer is stored rotated exactly like the top screen in dr3_fb.c: screen x
-       runs along the buffer's tall axis and screen y backwards.  Its *pixel format* however differs:
-       SDL initialises both screens as GSP_RGBA8_OES, but consoleInit() switches the bottom screen to
-       GSP_RGB565_OES, because libctru's console has no 32-bit mode.  Writing 4-byte pixels there
-       covers two screen pixels per store and shifts the whole image - so the format decides the
-       pointer arithmetic. */
-    {
-        bpp = dr3_bottom_pixel_size(gfxGetScreenFormat(GFX_BOTTOM), &canvas.fmt);
+    bpp = dr3_bottom_pixel_size(gfxGetScreenFormat(GFX_BOTTOM), &canvas.fmt);
+    canvas.stride_x = (int)w;
+    canvas.stride_y = -1;
+    canvas.w        = (int)h;
+    canvas.h        = (int)w;
 
-        canvas.px       = (uint8_t *)fb + (size_t)(w - 1) * (size_t)bpp;
-        canvas.stride_x = (int)w;
-        canvas.stride_y = -1;
-        canvas.w        = (int)h;
-        canvas.h        = (int)w;
+    if (dr3_bottom_map_dirty) {
+        dr3_log("[dr3] bottom race UI: fb %dx%d fmt %d (%d bpp) map rect (%d,%d %dx%d) track %dx%d",
+                (int)w, (int)h, (int)gfxGetScreenFormat(GFX_BOTTOM), bpp,
+                DR3_UI_RACE_MAP_X, DR3_UI_RACE_MAP_Y, DR3_UI_RACE_MAP_W, DR3_UI_RACE_MAP_H,
+                dr3_minimap_w(), dr3_minimap_h());
+        dr3_bottom_map_dirty = 0;
+    }
+
+    dr3_bottom_build_race_state(&st);
+    n_cars = dr3_bottom_read_cars(cars, DR3_MAX_CARS);
+
+    if (!dr3_bottom_legacy && (bpp == 2) && (w == DR3_BOTTOM_FB_W) && (h == DR3_BOTTOM_FB_COLS)) {
+        canvas.px = (uint8_t *)dr3_bottom_offscreen + (size_t)(DR3_BOTTOM_FB_W - 1) * 2u;
+        dr3_ui_draw_race(&canvas, &st, cars, n_cars, dr3_bottom_map_full);
+        dr3_bottom_blit_offscreen(fb, w, h, bpp);
+    }
+    else {
+        canvas.px = (uint8_t *)fb + (size_t)(w - 1) * (size_t)bpp;
+        dr3_ui_draw_race(&canvas, &st, cars, n_cars, dr3_bottom_map_full);
+    }
+
+    dr3_bottom_map_full = 0;
+    dr3_bottom_flush();
+}
+
+static void dr3_bottom_draw_menu_page(int force)
+{
+    static dr3_ui_menu_t last_menu;
+    static int           last_menu_valid;
+    dr3_ui_menu_t        st;
+    dr3_canvas_t         canvas;
+    uint16_t             w = 0, h = 0;
+    void                *fb = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, &w, &h);
+    int                  bpp;
+
+    if (!fb || (w == 0) || (h == 0)) return;
+
+    dr3_bottom_build_menu_state(&st);
+    if (!force && last_menu_valid && (memcmp(&st, &last_menu, sizeof(st)) == 0)) return;
+
+    last_menu       = st;
+    last_menu_valid = 1;
+
+    bpp = dr3_bottom_pixel_size(gfxGetScreenFormat(GFX_BOTTOM), &canvas.fmt);
+    canvas.stride_x = (int)w;
+    canvas.stride_y = -1;
+    canvas.w        = (int)h;
+    canvas.h        = (int)w;
+
+    if (!dr3_bottom_legacy && (bpp == 2) && (w == DR3_BOTTOM_FB_W) && (h == DR3_BOTTOM_FB_COLS)) {
+        canvas.px = (uint8_t *)dr3_bottom_offscreen + (size_t)(DR3_BOTTOM_FB_W - 1) * 2u;
+        dr3_ui_draw_menu(&canvas, &st);
+        dr3_bottom_blit_offscreen(fb, w, h, bpp);
+    }
+    else {
+        canvas.px = (uint8_t *)fb + (size_t)(w - 1) * (size_t)bpp;
+        dr3_ui_draw_menu(&canvas, &st);
     }
 
     {
-        /*
-         * The map page keeps its text in the cache below and only rewrites its three text rows when
-         * something in them changed - and it never clears the screen except when the page is entered,
-         * because a clear would also wipe the map band.  Everything else (the markers) goes through
-         * dr3_minimap_draw_incremental(), so the pixels of the static map are written exactly once
-         * per race: that is what removed the flicker.
-         */
-        char           header[96];
-        char           times[96];
-        char           footer[96];
-        int            lap = 0, pos = 0, text_changed;
-
-        if (dr3_bottom_map_dirty) {
-            const PrintConsole * con = consoleGetDefault();
-
-            /* one geometry line per track: this is what proves whether the frame buffer layout the map
-               assumes (rotated, screen y runs backwards) and its pixel format are really the ones in
-               use - it made the first broken minimap build obvious from the log alone */
-            dr3_log("[dr3] bottom fb %dx%d fmt %d (%d bytes/px, canvas fmt %d) -> canvas %dx%d "
-                    "(x stride %d, y stride %d), band (0,%d) %dx%d, map %dx%d, console %dx%d chars",
-                    (int)w, (int)h, (int)gfxGetScreenFormat(GFX_BOTTOM), bpp, canvas.fmt,
-                    canvas.w, canvas.h, canvas.stride_x, canvas.stride_y,
-                    DR3_BOTTOM_MAP_Y, DR3_BOTTOM_MAP_W, DR3_BOTTOM_MAP_H,
-                    dr3_minimap_w(), dr3_minimap_h(),
-                    con ? con->consoleWidth : -1, con ? con->consoleHeight : -1);
-
-            dr3_bottom_map_dirty = 0;
-        }
-
-        if ((MY_CAR_IDX >= 0) && (MY_CAR_IDX < 4)) {
-            lap = (int)___1e6ed0h[MY_CAR_IDX].Lap;
-            pos = (int)___1e6ed0h[MY_CAR_IDX].Position;
-        }
-
-        {
-            /*
-             * Row 1: the map name on the left and the clock of the lap that is on right now on the
-             * right.  LAP_PREVIOUS_* *is* that clock - the engine keeps the running lap in it
-             * (race___40db4h.c) and only hands it over to LAP_BEST_* / LAP_RECORD_* when the lap is
-             * finished.  Before the first lap time exists the right side carries the tap hint instead:
-             * the hint is needed once, the clock is needed every lap.
-             */
-            char        clock[16];
-            const char *title  = dr3_bottom_track_name[0] ? dr3_bottom_track_name : "-";
-            int         name_w, title_w = (int)strlen(title);
-
-            if (dr3_laptime_is_set(LAP_PREVIOUS_MIN, LAP_PREVIOUS_SEC, LAP_PREVIOUS_100)) {
-                char t[12];                 /* "12:59.99" is the longest a lap time gets */
-
-                dr3_laptime_format(t, sizeof(t), LAP_PREVIOUS_MIN, LAP_PREVIOUS_SEC, LAP_PREVIOUS_100);
-                snprintf(clock, sizeof(clock), "LAP %s", t);
-            }
-            else {
-                snprintf(clock, sizeof(clock), "%s", "tap = off");
-            }
-
-            name_w = DR3_BOTTOM_TEXT_W - (int)strlen(clock);
-            if (name_w < 0) name_w = 0;
-            if (title_w > name_w) title_w = name_w;
-
-            snprintf(header, sizeof(header), "%-*.*s%s", name_w, title_w, title, clock);
-        }
-
-        {
-            /*
-             * Row 2: the lap times.  LAST is the lap that was just finished - the engine keeps it as a
-             * tick counter in ___243cb8h - BEST is the best lap of this race and REC the record of this
-             * car on this track, which the engine overwrites the moment it is beaten: the row then
-             * shows the player his own new record right away.
-             */
-            char last[16], best[16], rec[16];
-
-            if (D(___243cb8h) > 0) dr3_laptime_format_ticks(last, sizeof(last), (int)D(___243cb8h));
-            else                   snprintf(last, sizeof(last), "%s", DR3_LAPTIME_UNSET);
-
-            dr3_laptime_format_or_unset(best, sizeof(best), LAP_BEST_MIN, LAP_BEST_SEC, LAP_BEST_100);
-            dr3_laptime_format_or_unset(rec, sizeof(rec), LAP_RECORD_MIN, LAP_RECORD_SEC, LAP_RECORD_100);
-
-            /*
-             * A record row that changed means the record was just beaten (the engine plays
-             * SFX_LAP_RECORD for it as well).  The record that comes with the track must not flash -
-             * that is what the -1 in dr3_bottom_rec_seen marks.
-             */
-            if ((LAP_RECORD_MIN != dr3_bottom_rec_seen[0]) || (LAP_RECORD_SEC != dr3_bottom_rec_seen[1]) ||
-                (LAP_RECORD_100 != dr3_bottom_rec_seen[2])) {
-
-                if (dr3_bottom_rec_seen[0] >= 0) dr3_bottom_rec_flash_ms = SDL_GetTicks() + DR3_RECORD_FLASH_MS;
-
-                dr3_bottom_rec_seen[0] = LAP_RECORD_MIN;
-                dr3_bottom_rec_seen[1] = LAP_RECORD_SEC;
-                dr3_bottom_rec_seen[2] = LAP_RECORD_100;
-            }
-
-            if (dr3_bottom_rec_flash_ms && ((int)(dr3_bottom_rec_flash_ms - SDL_GetTicks()) > 0)) {
-                snprintf(times, sizeof(times), "*** NEW RECORD %s ***", rec);
-            }
-            else {
-                snprintf(times, sizeof(times), "LAST %s BEST %s REC %s", last, best, rec);
-            }
-        }
-
-        snprintf(footer, sizeof(footer), "POS %d/%d  LAP %d/%d",
-                 pos, (NUM_OF_CARS > 0) ? NUM_OF_CARS : 0,
-                 lap, (NUM_OF_LAPS > 0) ? NUM_OF_LAPS : 0);
-
-        text_changed = (strcmp(header, dr3_bottom_map_hdr) != 0) ||
-                       (strcmp(times,  dr3_bottom_map_times) != 0) ||
-                       (strcmp(footer, dr3_bottom_map_ftr) != 0);
-
-        if (dr3_bottom_map_full) {
-            /* entering the page: clear once, print the three text lines and paint the whole map */
-            printf("\x1b[2J\x1b[1;1H%-38.38s\x1b[2;1H%-38.38s\x1b[30;1H%-38.38s", header, times, footer);
-            snprintf(dr3_bottom_map_hdr, sizeof(dr3_bottom_map_hdr), "%s", header);
-            snprintf(dr3_bottom_map_times, sizeof(dr3_bottom_map_times), "%s", times);
-            snprintf(dr3_bottom_map_ftr, sizeof(dr3_bottom_map_ftr), "%s", footer);
-
-            n_cars = dr3_bottom_read_cars(cars, 4);
-            dr3_minimap_draw(&canvas, 0, DR3_BOTTOM_MAP_Y, DR3_BOTTOM_MAP_W, DR3_BOTTOM_MAP_H,
-                             cars, n_cars);
-
-            dr3_bottom_map_full = 0;
-            dr3_bottom_flush();
-            return;
-        }
-
-        if (text_changed) {
-            /* only the three text rows - the map band below them is left alone */
-            printf("\x1b[1;1H%-38.38s\x1b[2;1H%-38.38s\x1b[30;1H%-38.38s", header, times, footer);
-            snprintf(dr3_bottom_map_hdr, sizeof(dr3_bottom_map_hdr), "%s", header);
-            snprintf(dr3_bottom_map_times, sizeof(dr3_bottom_map_times), "%s", times);
-            snprintf(dr3_bottom_map_ftr, sizeof(dr3_bottom_map_ftr), "%s", footer);
+        static int n_drawn;
+        if (n_drawn < 40) {
+            ++n_drawn;
+            dr3_log("[dr3] bottom screen: Death Rally menu UI drawn #%d (career=%d standings=%d)",
+                    n_drawn, st.has_career, st.n_standings);
         }
     }
 
-    n_cars = dr3_bottom_read_cars(cars, 4);
-    dr3_minimap_draw_incremental(&canvas, 0, DR3_BOTTOM_MAP_Y, DR3_BOTTOM_MAP_W, DR3_BOTTOM_MAP_H,
-                                 cars, n_cars);
     dr3_bottom_flush();
 }
 
@@ -599,19 +952,16 @@ void dr3_bottom_track_loaded(const void *mask, const void *image, const void *pa
             counts[DR3_MAP_ROAD], counts[DR3_MAP_OFFROAD], counts[DR3_MAP_OTHER], counts[DR3_MAP_NONE],
             (image && palette) ? ", colours from the track image" : ", fallback colours");
 
-    /* the shape of the map as text, so a log from a console/emulator is enough to check it */
     if (dr3_minimap_ascii(preview, sizeof(preview), 40, 18) > 0) dr3_log("minimap preview:\n%s", preview);
 
-    /* a new race brings its own record row: the first sight of it must not flash */
     dr3_bottom_rec_seen[0] = dr3_bottom_rec_seen[1] = dr3_bottom_rec_seen[2] = -1;
     dr3_bottom_rec_flash_ms = 0;
 
-    /* show the map right away - it is the interesting page while racing.  If the player hid the
-       screen on purpose, it stays hidden. */
     if (!dr3_bottom_is_hidden()) {
-        dr3_bottom_view      = DR3_VIEW_MAP;
-        dr3_bottom_map_dirty = 1;
-        dr3_bottom_map_full  = 1;      /* a new track: repaint the whole band */
+        dr3_bottom_view         = DR3_VIEW_RACE;
+        dr3_bottom_map_dirty    = 1;
+        dr3_bottom_map_full     = 1;
+        dr3_bottom_force_redraw = 1;
     }
 }
 
@@ -621,120 +971,68 @@ void dr3_bottom_track_unloaded(void)
 
     dr3_bottom_track_id[0]   = 0;
     dr3_bottom_track_name[0] = 0;
-    dr3_bottom_view          = DR3_VIEW_TEXT;
+    dr3_bottom_view          = DR3_VIEW_MENU;
     dr3_bottom_map_full      = 1;
+    dr3_bottom_force_redraw  = 1;
 }
 #endif /* !DR3_PROFILE */
 
-/*
- * The two bottom rows of the front end page: what the quick save / quick load buttons are.  The
- * buttons are asked for by name (dr3_input_map.c), so a rebinding in dr3_controls.txt moves the hint
- * with it.  They only exist in the front end - a race cannot be quicksaved, and during a race this
- * page is not on the screen anyway.
- */
-#define DR3_BOTTOM_HINT_ROW 29          /* rows 29 and 30, the last two of the 30 row screen */
-
-static void dr3_bottom_quick_hint(char *save_line, char *load_line)
-{
-    char save[24], load[24];
-
-    dr3_input_binding_name(save, sizeof(save), "QUICKSAVE");
-    dr3_input_binding_name(load, sizeof(load), "QUICKLOAD");
-
-    snprintf(save_line, DR3_BOTTOM_LINE_LEN, "%s = quick save", save[0] ? save : "(not bound)");
-    snprintf(load_line, DR3_BOTTOM_LINE_LEN, "%s = quick load", load[0] ? load : "(not bound)");
-}
+/* ---------------------------------------------------------------- main update --- */
 
 void dr3_bottom_update(void)
 {
     static unsigned int last_ms;
-    static char         last[DR3_BOTTOM_PRINT_ROWS][DR3_BOTTOM_LINE_LEN];
-    static int          last_valid;
-    static int          last_hidden;
-    char                line[DR3_BOTTOM_LINES][DR3_BOTTOM_LINE_LEN];
-    char                block[DR3_BOTTOM_PRINT_ROWS * (DR3_BOTTOM_LINE_LEN + 2)];
-    int                 rows, i, len = 0, clear_first = 0;
+    static int          last_hidden = -1;
 
-#if !defined(DR3_PROFILE)
-    static int          last_view = -1;                 /* no page drawn yet */
-    /* the minimap follows the cars and carries the running lap clock, so that page is refreshed far
-       more often than the text block */
-    const unsigned int  interval = ((dr3_bottom_view == DR3_VIEW_MAP) && !dr3_bottom_hidden)
-                                   ? (unsigned int)DR3_BOTTOM_MAP_MS : 500u;
+#if defined(DR3_PROFILE)
+    /* Profiler build owns the bottom screen through dr3_prof.c */
+    (void)last_ms;
+    (void)last_hidden;
+    return;
 #else
-    const unsigned int  interval = 500u;                /* twice a second is plenty */
-#endif
+    static int         last_view = -1;
+    const unsigned int now       = SDL_GetTicks();
+    const unsigned int interval  = ((dr3_bottom_view == DR3_VIEW_RACE) && !dr3_bottom_hidden)
+                                   ? (unsigned int)DR3_BOTTOM_RACE_MS : (unsigned int)DR3_BOTTOM_MENU_MS;
 
     if (!dr3_bottom_console_ensure()) return;
-    if ((SDL_GetTicks() - last_ms) < interval) return;
-    last_ms = SDL_GetTicks();
+    if (!dr3_bottom_force_redraw && ((now - last_ms) < interval)) return;
+    last_ms = now;
 
     if (dr3_bottom_hidden) {
-        if (last_valid && last_hidden) return;          /* already dark */
+        if ((last_hidden == 1) && !dr3_bottom_force_redraw) return;
 
-        last_valid = 1;
-        last_hidden = 1;
-        printf("\x1b[2J\x1b[H");
+        {
+            uint16_t w = 0, h = 0;
+            void    *fb = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, &w, &h);
+            int      cfmt = 0;
+            const int bpp = dr3_bottom_pixel_size(gfxGetScreenFormat(GFX_BOTTOM), &cfmt);
+
+            if (fb && (w > 0) && (h > 0)) {
+                memset(fb, 0, (size_t)w * (size_t)h * (size_t)bpp);
+            }
+        }
+        last_hidden             = 1;
+        dr3_bottom_force_redraw = 0;
         dr3_bottom_flush();
         return;
     }
 
-#if !defined(DR3_PROFILE)
-    if ((dr3_bottom_view == DR3_VIEW_MAP) && dr3_minimap_ready()) {
-        if (last_view != DR3_VIEW_MAP) last_valid = 0;  /* the text page must be printed again later */
-        last_view   = DR3_VIEW_MAP;
-        last_hidden = 0;
-        dr3_bottom_draw_map_page();
+    if ((dr3_bottom_view == DR3_VIEW_RACE) && dr3_minimap_ready()) {
+        if ((last_view != DR3_VIEW_RACE) || (last_hidden == 1)) dr3_bottom_map_full = 1;
+        last_view               = DR3_VIEW_RACE;
+        last_hidden             = 0;
+        dr3_bottom_force_redraw = 0;
+        dr3_bottom_draw_race_page();
         return;
     }
 
-    if (last_view != DR3_VIEW_TEXT) {                   /* coming back from the map page */
-        last_view   = DR3_VIEW_TEXT;
-        last_valid  = 0;
-        clear_first = 1;                                /* the map pixels are still on the screen */
+    {
+        const int force = (last_view != DR3_VIEW_MENU) || (last_hidden == 1) || dr3_bottom_force_redraw;
+        last_view               = DR3_VIEW_MENU;
+        last_hidden             = 0;
+        dr3_bottom_force_redraw = 0;
+        dr3_bottom_draw_menu_page(force);
     }
 #endif
-
-    rows = dr3_bottom_build_lines(line);
-
-    /* Nothing to do unless something changed - the engine own printf() output no longer reaches this
-       screen (it goes to the log), so the content really is stable. */
-    if (last_valid && !last_hidden && !clear_first && (rows == DR3_BOTTOM_PRINT_ROWS) &&
-        (memcmp(line, last, sizeof(last)) == 0)) return;
-
-    memcpy(last, line, sizeof(last));
-    last_valid  = 1;
-    last_hidden = 0;
-
-    /* libctru console redraws the screen for every printf(), so printing the block line by line (and
-       clearing the screen first) was visible as flicker.  Build the whole block and write it once -
-       the quick save / quick load hint at the bottom of the screen goes into the same write. */
-    for (i = 0; i < DR3_BOTTOM_PRINT_ROWS; ++i) {
-        const char *text = (i < rows) ? line[i] : "                                        ";
-
-        len += snprintf(block + len, sizeof(block) - (size_t)len, "%.*s\n", DR3_BOTTOM_LINE_LEN, text);
-    }
-
-    {
-        char hint[2][DR3_BOTTOM_LINE_LEN];
-        char tail[2 * (DR3_BOTTOM_LINE_LEN + 16)];
-        int  j, tail_len = 0;
-
-        dr3_bottom_quick_hint(hint[0], hint[1]);
-
-        for (j = 0; j < 2; ++j) {
-            const int hint_len = (int)strlen(hint[j]);
-            const int pad      = (hint_len < DR3_BOTTOM_TEXT_W) ? ((DR3_BOTTOM_TEXT_W - hint_len) / 2) : 0;
-
-            /* the last two rows of the screen, centred */
-            tail_len += snprintf(tail + tail_len, sizeof(tail) - (size_t)tail_len, "\x1b[%d;1H%*s%.*s",
-                                 DR3_BOTTOM_HINT_ROW + j, pad, "", DR3_BOTTOM_TEXT_W, hint[j]);
-        }
-
-        /* with double buffering every repaint has to be complete - clear, then the whole page - so the
-           back buffer we swap in never shows leftovers of the previous page */
-        printf("\x1b[2J\x1b[H%s%s", block, tail);
-    }
-
-    dr3_bottom_flush();
 }

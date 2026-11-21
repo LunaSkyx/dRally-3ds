@@ -1,0 +1,4 @@
+# idle_frontend.txt - the front end, doing nothing for 12 s (the bottom screen flicker probe watches the window meanwhile)
+until ready spam Return every 150 timeout 40000
+sleep 12000
+quit

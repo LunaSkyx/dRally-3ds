@@ -1,0 +1,44 @@
+# newgame_flow.txt - front end -> Start Racing -> Start A New Game -> licence (name) -> difficulty list, screenshots on the way.
+until ready spam Return every 150 timeout 40000
+sleep 800
+key Return tap
+sleep 1200
+key Return tap
+sleep 2500
+key Return tap
+sleep 2000
+screenshot g1_licence.bmp
+key B tap
+sleep 250
+key O tap
+sleep 250
+key B tap
+sleep 400
+screenshot g2_name.bmp
+key Return tap
+sleep 1800
+screenshot g3_yesno.bmp
+key Return tap
+sleep 2000
+screenshot g4_diff.bmp
+key Down tap
+sleep 400
+key Down tap
+sleep 400
+key Down tap
+sleep 400
+key Down tap
+sleep 800
+screenshot g5_chaos.bmp
+key Return tap
+sleep 2500
+screenshot g6_after_chaos.bmp
+key Return tap
+sleep 2500
+screenshot g7.bmp
+key Return tap
+sleep 2500
+screenshot g8.bmp
+key Return tap
+until event race_start timeout 40000
+quit

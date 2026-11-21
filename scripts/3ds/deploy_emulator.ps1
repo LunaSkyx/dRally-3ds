@@ -30,6 +30,24 @@ foreach ($f in $files){
     }
 }
 
+Write-Host '=== chaos test build (optional) ==='
+
+$chaos    = Join-Path $repo 'build\3ds_chaos\dRally_3ds_chaos.3dsx'
+$chaosrel = Join-Path (Split-Path -Parent $repo) '3ds-release\dRally_3ds_chaos'
+
+if (Test-Path $chaos){
+
+    # next to the normal build, so the Homebrew Launcher offers both
+    Copy-Item $chaos (Join-Path $sdmc 'dRally_3ds_chaos.3dsx') -Force
+    Write-Host ("dRally_3ds_chaos.3dsx -> {0}" -f (Join-Path $sdmc 'dRally_3ds_chaos.3dsx'))
+
+    if (-not (Test-Path $chaosrel)) { New-Item -ItemType Directory -Path $chaosrel | Out-Null }
+    Copy-Item $chaos (Join-Path $chaosrel 'dRally_3ds_chaos.3dsx') -Force
+}
+else {
+    Write-Host 'not built (make -f Makefile.3ds DR3_CHAOS=1)' -ForegroundColor DarkGray
+}
+
 Write-Host '=== test save games ==='
 & (Join-Path $repo 'scripts\gen_3ds_saves.ps1')
 

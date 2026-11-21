@@ -1,0 +1,487 @@
+#include "drally.h"
+#include "drally_fonts.h"
+#include "drally_structs_fixed.h"
+#if defined(DR3_CHAOS)
+#include "platform_3ds/dr3_chaos.h"
+#include "platform_3ds/dr3_dm.h"
+extern int MY_CAR_IDX;
+#endif
+
+	extern __POINTER__ ___1a1138h__VESA101_BACKGROUND;
+	extern __POINTER__ ___1a112ch__VESA101_ACTIVESCREEN_PTR;
+	extern __POINTER__ ___1a0fbch;
+	extern __POINTER__ ___1a0fd8h;
+#if defined(DR_MULTIPLAYER)
+	extern __DWORD__ ___19bd60h;
+#endif // DR_MULTIPLAYER
+	extern __BYTE__ ___1a1ef8h[];
+	extern __BYTE__ ___1a01e0h[];
+	extern __BYTE__ ___196ab8h[];
+	extern __BYTE__ ___196ae8h[];
+	extern __BYTE__ ___1a1028h[];
+	extern __BYTE__ ___1a1f64h[];
+	extern char ___18d492h[][0xf];
+	extern __BYTE__ ___196ad4h[];
+	extern __BYTE__ ___1a2010h[];
+	extern __BYTE__ ___196adch[];
+	extern __BYTE__ ___196aech[];
+	extern __BYTE__ ___196af0h[];
+	extern int NUM_OF_LAPS;
+	extern __BYTE__ ___1a10a0h[];
+	extern __BYTE__ ___1a10a8h[];
+	extern __BYTE__ ___1a1090h[];
+	extern int LAP_BEST_MIN;
+	extern int LAP_BEST_SEC;
+	extern int LAP_BEST_100;
+	extern record_t ___19f750h[6][18];
+
+char * itoa_watcom106(int value, char * buffer, int radix);
+char * strupr_watcom106(char * s);
+
+// RESULTS AFTER POINTS ASSIGNED
+void ___36adch(void){
+
+	__DWORD__ 	eax, ebx, ecx, edx, edi, esi, ebp;
+	__BYTE__ 	esp[0xa4];
+	__POINTER__ 	ebxp;
+	__POINTER__ 	esip;
+	int 			x, y;
+	racer_t * 		s_6c;
+
+	s_6c = (racer_t *)___1a01e0h;
+		edx = 0x36;
+		memcpy(___1a112ch__VESA101_ACTIVESCREEN_PTR, ___1a1138h__VESA101_BACKGROUND, 0x4b000);
+		ecx = 0x182;
+		esip = ___1a0fbch;
+		ebxp = ___1a112ch__VESA101_ACTIVESCREEN_PTR+0xd32c;
+
+		while(1){
+
+			edi = edx;
+
+			while(1){
+
+				L(eax) = B(esip);
+				if(L(eax) != 0) B(ebxp) = L(eax);
+				ebxp++;
+				esip++;
+				edi--;
+				if(edi == 0) break;
+			}
+
+			ebxp += 0x280;
+			ebxp -= edx;
+			ecx--;
+			if(ecx == 0) break;
+		}
+
+		ecx = 0x182;
+		edx = 0x110;
+		esip = ___1a0fd8h;
+		ebxp = ___1a112ch__VESA101_ACTIVESCREEN_PTR+0xd362;
+
+		while(1){
+
+			edi = edx;
+
+			while(1){
+
+				L(eax) = B(esip);
+				if(L(eax) != 0) B(ebxp) = L(eax);
+				ebxp++;
+				esip++;
+				edi--;
+				if(edi == 0) break;
+			}
+
+			ebxp += 0x280;
+			ebxp -= edx;
+			ecx--;
+			if(ecx == 0) break;
+		}
+
+		ebp = 0x20e;
+
+#if defined(DR_MULTIPLAYER)
+	if(___19bd60h != 0){
+
+		ecx = 0x182;
+		edx = 0x110;
+		esip = ___1a0fd8h;
+		ebxp = ___1a112ch__VESA101_ACTIVESCREEN_PTR+0xd20a;
+
+		while(1){
+
+			edi = edx;
+
+			while(1){
+
+				L(eax) = B(esip);
+				if(L(eax) != 0) B(ebxp) = L(eax);
+				ebxp++;
+				esip++;
+				edi--;
+				if(edi == 0) break;
+			}
+
+			ebxp += 0x280;
+			ebxp -= edx;
+			ecx--;
+			if(ecx == 0) break;
+		}
+
+		strcpy(esp, "Status after ");
+		eax = s_6c[D(___1a1ef8h)].races;
+		itoa_watcom106(eax, esp+0x64, 0xa);
+		strcat(esp, esp+0x64);
+		strcat(esp, " race(s)");
+		___12e78h_v3(___1a1108h___185c0bh, esp, 46, 452);
+	}
+
+	if(___19bd60h != 0){
+
+		___12e78h_v3(___1a1108h___185c0bh, "Multiplayer Ranking", 56, 86);
+	}
+#endif // DR_MULTIPLAYER
+
+		___12e78h_v3(___1a1108h___185c0bh, "Your Statistics:", 416, 86);
+
+#if defined(DR3_CHAOS)
+		/*
+		 * The report says the same grey lines with white dots show up around this text.  Dumping the
+		 * palette indices of the area (every second pixel, two hex digits) says which entries draw them
+		 * - the DOS default palette's light grey (7), dark grey (8) and white (15) would mean the screen
+		 * paints with palette entries nobody set.  Only when diagnostic dumps are enabled.
+		 */
+		if(dr3_chaos_dump_on()){
+			int dy, dx;
+
+			dr3_log("[dr3] chaos: front end dump around 'Your Statistics:' (front end palette):");
+
+			for(dy = 78; dy < 118; dy += 2){
+
+				char row[240];
+				int  at = 0;
+
+				for(dx = 392; dx < 480; dx += 2){
+
+					const unsigned int off = 0x280u * (unsigned int)dy + (unsigned int)dx;
+					const int          v   = (int)B(___1a112ch__VESA101_ACTIVESCREEN_PTR + off);
+
+					row[at++] = "0123456789abcdef"[(v >> 4) & 0xf];
+					row[at++] = "0123456789abcdef"[v & 0xf];
+				}
+
+				row[at] = 0;
+				dr3_log("[dr3] chaos: |%s|", row);
+			}
+
+			dr3_log_flush();
+		}
+#endif
+		itoa_watcom106(s_6c[D(___1a1ef8h)].rank, esp+0x64, 0xa);
+		strcat(esp+0x64, ".");
+		strcpy(esp, "Position");
+		___12e78h_v3(___1a1108h___185c0bh, esp, 360, 115);
+		strcpy(esp, ": ");
+		strcat(esp, esp+0x64);
+		x = ebp+0x11f80;
+		y = x/0x280;
+		x = x%0x280;
+		___12e78h_v3(___1a1108h___185c0bh, esp, x, y);
+		itoa_watcom106(s_6c[D(___1a1ef8h)].wins, esp+0x64, 0xa);
+		strcpy(esp, "Races won");
+		___12e78h_v3(___1a1108h___185c0bh, esp, 360, 138);
+		strcpy(esp, ": ");
+		strcat(esp, esp+0x64);
+		x = ebp+0x15900;
+		y = x/0x280;
+		x = x%0x280;
+		___12e78h_v3(___1a1108h___185c0bh, esp, x, y);
+		itoa_watcom106(s_6c[D(___1a1ef8h)].races, esp+0x64, 0xa);
+		strcpy(esp, "Total races");
+		___12e78h_v3(___1a1108h___185c0bh, esp, 360, 161);
+		strcpy(esp, ": ");
+		strcat(esp, esp+0x64);
+
+#if defined(DR_MULTIPLAYER)
+		if(___19bd60h != 0){
+
+			strcat(esp, " / ");
+			itoa_watcom106(D(___196ab8h), esp+0x64, 0xa);
+			strcat(esp, esp+0x64);
+		}
+#endif // DR_MULTIPLAYER
+
+		x = ebp+0x19280;
+		y = x/0x280;
+		x = x%0x280;
+		___12e78h_v3(___1a1108h___185c0bh, esp, x, y);
+		itoa_watcom106(s_6c[D(___1a1ef8h)].income, esp+0x64, 0xa);
+		strcpy(esp, "Total income");
+		___12e78h_v3(___1a1108h___185c0bh, esp, 360, 184);
+		strcpy(esp, ": $");
+		strcat(esp, esp+0x64);
+		x = ebp+0x1cc00;
+		y = x/0x280;
+		x = x%0x280;
+		___12e78h_v3(___1a1108h___185c0bh, esp, x, y);
+		itoa_watcom106(s_6c[D(___1a1ef8h)].money, esp+0x64, 0xa);
+		strcpy(esp, "Total money");
+		___12e78h_v3(___1a1108h___185c0bh, esp, 360, 207);
+		strcpy(esp, ": $");
+		strcat(esp, esp+0x64);
+		x = ebp+0x20580;
+		y = x/0x280;
+		x = x%0x280;
+		___12e78h_v3(___1a1108h___185c0bh, esp, x, y);
+		if((int)D(___196ae8h) <= 0) goto ___37ebch;
+		eax = D(___1a1028h);
+		edx = B(eax+___1a1f64h);
+		strcpy(esp, ___18d492h[edx]);
+
+#if defined(DR_MULTIPLAYER)		
+		if(___19bd60h != 0){
+		
+			edx = B(___1a2010h+D(___196ad4h));
+			strcpy(esp, ___18d492h[edx]);
+		}
+
+		if(___19bd60h == 0){
+#endif // DR_MULTIPLAYER
+#if defined(DR3_CHAOS)
+			if(dr3_chaos_active() && (D(___1a1028h) != 3) && dr3_chaos_arena()) strcpy(esp, "The Arena:");
+			else if(dr3_chaos_active() && (D(___1a1028h) != 3) && (dr3_chaos_mode() == DR3_CHAOS_MODE_DM)) strcat(esp, " destroy 'em all:");
+			else if(dr3_chaos_active() && (D(___1a1028h) != 3) && (dr3_chaos_mode() == DR3_CHAOS_MODE_DUEL)) strcat(esp, " duel:");
+			else {
+#endif
+			if(D(___1a1028h) == 0) strcat(esp, " easy race:");
+			if(D(___1a1028h) == 1) strcat(esp, " medium race:");
+			if(D(___1a1028h) == 2) strcat(esp, " hard race:");
+			if(D(___1a1028h) == 3) strcpy(esp, "The Arena:");
+#if defined(DR3_CHAOS)
+			}
+#endif
+#if defined(DR_MULTIPLAYER)	
+		}
+
+		if(___19bd60h != 0){
+
+			itoa_watcom106(D(___196adch), esp+0x64, 0xa);
+			strcat(esp, " ");
+			strcat(esp, esp+0x64);
+			strcat(esp, "-player race:");
+		}
+#endif // DR_MULTIPLAYER
+
+		___12e78h_v3(___1a1108h___185c0bh, esp, 360, 247);
+		itoa_watcom106(D(___196ae8h), esp+0x64, 0xa);
+		strcat(esp+0x64, ".");
+		strcpy(esp, "Placing");
+		___12e78h_v3(___1a1108h___185c0bh, esp, 360, 270);
+		strcpy(esp, ": ");
+		strcat(esp, esp+0x64);
+		x = ebp+0x2a300;
+		y = x/0x280;
+		x = x%0x280;
+		___12e78h_v3(___1a1108h___185c0bh, esp, x, y);
+		itoa_watcom106(D(___196aech), esp+0x64, 0xa);
+		strcpy(esp, "Race income");
+		___12e78h_v3(___1a1108h___185c0bh, esp, 360, 293);
+		strcpy(esp, ": $");
+		strcat(esp, esp+0x64);
+		x = ebp+0x2dc80;
+		y = x/0x280;
+		x = x%0x280;
+		___12e78h_v3(___1a1108h___185c0bh, esp, x, y);
+		itoa_watcom106(D(___196af0h), esp+0x64, 0xa);
+		strcpy(esp, "Bonus income");
+		___12e78h_v3(___1a1108h___185c0bh, esp, 360, 316);
+		strcpy(esp, ": $");
+		strcat(esp, esp+0x64);
+		x = ebp+0x31600;
+		y = x/0x280;
+		x = x%0x280;
+		___12e78h_v3(___1a1108h___185c0bh, esp, x, y);
+		itoa_watcom106(D(___196aech)+D(___196af0h), esp+0x64, 0xa);
+		strcpy(esp, "Total race income");
+		___12e78h_v3(___1a1108h___185c0bh, esp, 360, 339);
+		strcpy(esp, ": $");
+		strcat(esp, esp+0x64);
+		x = ebp+0x34f80;
+		y = x/0x280;
+		x = x%0x280;
+		___12e78h_v3(___1a1108h___185c0bh, esp, x, y);
+#if defined(DR3_CHAOS)
+		if(dr3_chaos_active() && (D(___1a1028h) != 3) && (dr3_chaos_mode() == DR3_CHAOS_MODE_DM)){
+			const int dm_me = ((MY_CAR_IDX >= 0) && (MY_CAR_IDX < DR3_MAX_CARS)) ? MY_CAR_IDX : 0;
+			itoa_watcom106(dr3_dm_laps(dm_me), esp+0x64, 0xa);
+		}
+		else
+#endif
+		itoa_watcom106(NUM_OF_LAPS, esp+0x64, 0xa);
+		strcpy(esp, "Number of laps");
+		___12e78h_v3(___1a1108h___185c0bh, esp, 360, 362);
+		strcpy(esp, ": ");
+		strcat(esp, esp+0x64);
+		x = ebp+0x38900;
+		y = x/0x280;
+		x = x%0x280;
+		___12e78h_v3(___1a1108h___185c0bh, esp, x, y);
+		itoa_watcom106(D(___1a10a0h), esp+0x78, 0xa);
+		itoa_watcom106(D(___1a10a8h), esp+0x50, 0xa);
+		itoa_watcom106(D(___1a1090h), esp+0x8c, 0xa);
+
+		if(strlen(esp+0x78) == 1){
+
+			B(esp+0x7a) = 0;
+			B(esp+0x79) = B(esp+0x78);
+			B(esp+0x78) = 0x30;
+		}
+
+		if(strlen(esp+0x50) == 1){
+
+			B(esp+0x52) = 0;
+			B(esp+0x51) = B(esp+0x50);
+			B(esp+0x50) = 0x30;
+		}
+
+		if(strlen(esp+0x8c) == 1){
+
+			B(esp+0x8e) = 0;
+			B(esp+0x8d) = B(esp+0x8c);
+			B(esp+0x8c) = 0x30;
+		}
+
+		strcpy(esp+0x64, esp+0x78);
+		strcat(esp+0x64, ":");
+		strcat(esp+0x64, esp+0x50);
+		strcat(esp+0x64, ".");
+		strcat(esp+0x64, esp+0x8c);
+		strcpy(esp, "Race time");
+		___12e78h_v3(___1a1108h___185c0bh, esp, 360, 385);
+		strcpy(esp, ": ");
+		strcat(esp, esp+0x64);
+		x = ebp+0x3c280;
+		y = x/0x280;
+		x = x%0x280;
+		___12e78h_v3(___1a1108h___185c0bh, esp, x, y);
+		
+		ebx = ___19f750h[DR3_RECORD_CAR(s_6c[D(___1a1ef8h)].car)][B(___1a1f64h+D(___1a1028h))].sec100;
+		ebx += 100*___19f750h[DR3_RECORD_CAR(s_6c[D(___1a1ef8h)].car)][B(___1a1f64h+D(___1a1028h))].sec;
+		ebx += 6000*___19f750h[DR3_RECORD_CAR(s_6c[D(___1a1ef8h)].car)][B(___1a1f64h+D(___1a1028h))].min;
+
+		eax = 0x64*LAP_BEST_SEC+0x1770*LAP_BEST_MIN+LAP_BEST_100;
+
+		if((int)eax < (int)ebx){
+
+			eax = LAP_BEST_MIN+LAP_BEST_SEC+LAP_BEST_100;
+
+			if(eax != 0){
+
+				strcpy(___19f750h[DR3_RECORD_CAR(s_6c[D(___1a1ef8h)].car)][B(___1a1f64h+D(___1a1028h))].name, s_6c[D(___1a1ef8h)].name);
+				strupr_watcom106(___19f750h[DR3_RECORD_CAR(s_6c[D(___1a1ef8h)].car)][B(___1a1f64h+D(___1a1028h))].name);
+				___19f750h[DR3_RECORD_CAR(s_6c[D(___1a1ef8h)].car)][B(___1a1f64h+D(___1a1028h))].min = LAP_BEST_MIN;
+				___19f750h[DR3_RECORD_CAR(s_6c[D(___1a1ef8h)].car)][B(___1a1f64h+D(___1a1028h))].sec = LAP_BEST_SEC;
+				___19f750h[DR3_RECORD_CAR(s_6c[D(___1a1ef8h)].car)][B(___1a1f64h+D(___1a1028h))].sec100 = LAP_BEST_100;
+			}
+		}
+
+		eax = ___19f750h[DR3_RECORD_CAR(s_6c[D(___1a1ef8h)].car)][B(___1a1f64h+D(___1a1028h))].min;
+		eax += ___19f750h[DR3_RECORD_CAR(s_6c[D(___1a1ef8h)].car)][B(___1a1f64h+D(___1a1028h))].sec;
+		eax += ___19f750h[DR3_RECORD_CAR(s_6c[D(___1a1ef8h)].car)][B(___1a1f64h+D(___1a1028h))].sec100;
+
+		if(eax == 0){
+
+			eax = 0x64*LAP_BEST_SEC+0x1770*LAP_BEST_MIN+LAP_BEST_100;
+
+			if((int)eax > 0){
+
+				strcpy(___19f750h[DR3_RECORD_CAR(s_6c[D(___1a1ef8h)].car)][B(___1a1f64h+D(___1a1028h))].name, s_6c[D(___1a1ef8h)].name);
+				strupr_watcom106(___19f750h[DR3_RECORD_CAR(s_6c[D(___1a1ef8h)].car)][B(___1a1f64h+D(___1a1028h))].name);
+				___19f750h[DR3_RECORD_CAR(s_6c[D(___1a1ef8h)].car)][B(___1a1f64h+D(___1a1028h))].min = LAP_BEST_MIN;
+				___19f750h[DR3_RECORD_CAR(s_6c[D(___1a1ef8h)].car)][B(___1a1f64h+D(___1a1028h))].sec = LAP_BEST_SEC;
+				___19f750h[DR3_RECORD_CAR(s_6c[D(___1a1ef8h)].car)][B(___1a1f64h+D(___1a1028h))].sec100 = LAP_BEST_100;
+			}
+		}
+
+		itoa_watcom106(LAP_BEST_MIN, esp+0x78, 0xa);
+		itoa_watcom106(LAP_BEST_SEC, esp+0x50, 0xa);
+		itoa_watcom106(LAP_BEST_100, esp+0x8c, 0xa);
+
+		if(strlen(esp+0x78) == 1){
+
+			B(esp+0x7a) = 0;
+			B(esp+0x79) = B(esp+0x78);
+			B(esp+0x78) = 0x30;
+		}
+
+		if(strlen(esp+0x50) == 1){
+
+			B(esp+0x52) = 0;
+			B(esp+0x51) = B(esp+0x50);
+			B(esp+0x50) = 0x30;
+		}
+
+		if(strlen(esp+0x8c) == 1){
+
+			B(esp+0x8e) = 0;
+			B(esp+0x8d) = B(esp+0x8c);
+			B(esp+0x8c) = 0x30;
+		}
+
+		strcpy(esp+0x64, esp+0x78);
+		strcat(esp+0x64, ":");
+		strcat(esp+0x64, esp+0x50);
+		strcat(esp+0x64, ".");
+		strcat(esp+0x64, esp+0x8c);
+		strcpy(esp, "Best lap");
+		___12e78h_v3(___1a1108h___185c0bh, esp, 360, 408);
+		strcpy(esp, ": ");
+		strcat(esp, esp+0x64);
+		x = ebp+0x3fc00;
+		y = x/0x280;
+		x = x%0x280;
+		___12e78h_v3(___1a1108h___185c0bh, esp, x, y);
+		itoa_watcom106(___19f750h[DR3_RECORD_CAR(s_6c[D(___1a1ef8h)].car)][B(___1a1f64h+D(___1a1028h))].min, esp+0x78, 0xa);
+		itoa_watcom106(___19f750h[DR3_RECORD_CAR(s_6c[D(___1a1ef8h)].car)][B(___1a1f64h+D(___1a1028h))].sec, esp+0x50, 0xa);
+		itoa_watcom106(___19f750h[DR3_RECORD_CAR(s_6c[D(___1a1ef8h)].car)][B(___1a1f64h+D(___1a1028h))].sec100, esp+0x8c, 0xa);
+
+		if(strlen(esp+0x78) == 1){
+
+			B(esp+0x78) = 0x30;
+			B(esp+0x7a) = 0;
+			B(esp+0x79) = B(esp+0x78);
+		}
+
+		if(strlen(esp+0x50) == 1){
+
+			B(esp+0x51) = B(esp+0x50);
+			B(esp+0x50) = 0x30;
+			B(esp+0x52) = 0;
+		}
+
+		if(strlen(esp+0x8c) == 1){
+		
+			B(esp+0x8d) = B(esp+0x8c);
+			B(esp+0x8e) = 0;
+			B(esp+0x8c) = 0x30;
+		}
+
+		strcpy(esp+0x64, esp+0x78);
+		strcat(esp+0x64, ":");
+		strcat(esp+0x64, esp+0x50);
+		strcat(esp+0x64, ".");
+		strcat(esp+0x64, esp+0x8c);
+		strcpy(esp, "Best lap ever");
+		___12e78h_v3(___1a1108h___185c0bh, esp, 360, 431);
+		strcpy(esp, ": ");
+		strcat(esp, esp+0x64);
+		x = ebp+0x43580;
+		y = x/0x280;
+		x = x%0x280;
+		___12e78h_v3(___1a1108h___185c0bh, esp, x, y);
+___37ebch:
+		D(___196ae8h) = 0;
+		return;
+}

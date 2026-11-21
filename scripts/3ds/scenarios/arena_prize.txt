@@ -1,0 +1,115 @@
+# arena_prize.txt - the payout of an ARENA: the player hunts like the others (autopilot) and his car is healed to full
+# every ~1.1 s (playerhp), so he outlives the field and lands on the podium; the log then shows
+#   arena: the player finished place N of M -> prize $X   and the report with the prize in the income.
+#   powershell -File scriptsdsz_run.ps1 -Scenario scriptsds\scenariosrena_prize.txt -Mode arena -Extras 0 -Grep 'arena: (place|the player)|report of|points: place'
+until ready spam Return every 150 timeout 40000
+quickrace track 4
+autopilot on
+until event race_start spam Return every 150 timeout 30000
+until race_frames 100 timeout 60000
+playerhp 102400
+until race_frames 180 timeout 60000
+playerhp 102400
+until race_frames 260 timeout 60000
+playerhp 102400
+until race_frames 340 timeout 60000
+playerhp 102400
+until race_frames 420 timeout 60000
+playerhp 102400
+until race_frames 500 timeout 60000
+playerhp 102400
+until race_frames 580 timeout 60000
+playerhp 102400
+until race_frames 660 timeout 60000
+playerhp 102400
+until race_frames 740 timeout 60000
+playerhp 102400
+until race_frames 820 timeout 60000
+playerhp 102400
+until race_frames 900 timeout 60000
+playerhp 102400
+until race_frames 980 timeout 60000
+playerhp 102400
+until race_frames 1060 timeout 60000
+playerhp 102400
+until race_frames 1140 timeout 60000
+playerhp 102400
+until race_frames 1220 timeout 60000
+playerhp 102400
+until race_frames 1300 timeout 60000
+playerhp 102400
+until race_frames 1380 timeout 60000
+playerhp 102400
+until race_frames 1460 timeout 60000
+playerhp 102400
+until race_frames 1540 timeout 60000
+playerhp 102400
+until race_frames 1620 timeout 60000
+playerhp 102400
+until race_frames 1700 timeout 60000
+playerhp 102400
+until race_frames 1780 timeout 60000
+playerhp 102400
+until race_frames 1860 timeout 60000
+playerhp 102400
+until race_frames 1940 timeout 60000
+playerhp 102400
+until race_frames 2020 timeout 60000
+playerhp 102400
+until race_frames 2100 timeout 60000
+playerhp 102400
+until race_frames 2180 timeout 60000
+playerhp 102400
+until race_frames 2260 timeout 60000
+playerhp 102400
+until race_frames 2340 timeout 60000
+playerhp 102400
+until race_frames 2420 timeout 60000
+playerhp 102400
+until race_frames 2500 timeout 60000
+playerhp 102400
+until race_frames 2580 timeout 60000
+playerhp 102400
+until race_frames 2660 timeout 60000
+playerhp 102400
+until race_frames 2740 timeout 60000
+playerhp 102400
+until race_frames 2820 timeout 60000
+playerhp 102400
+until race_frames 2900 timeout 60000
+playerhp 102400
+until race_frames 2980 timeout 60000
+playerhp 102400
+until race_frames 3060 timeout 60000
+playerhp 102400
+until race_frames 3140 timeout 60000
+playerhp 102400
+until race_frames 3220 timeout 60000
+playerhp 102400
+until race_frames 3300 timeout 60000
+playerhp 102400
+until race_frames 3380 timeout 60000
+playerhp 102400
+until race_frames 3460 timeout 60000
+playerhp 102400
+until race_frames 3540 timeout 60000
+playerhp 102400
+until race_frames 3620 timeout 60000
+playerhp 102400
+until race_frames 3700 timeout 60000
+playerhp 102400
+until race_frames 3780 timeout 60000
+playerhp 102400
+until race_frames 3860 timeout 60000
+playerhp 102400
+until race_frames 3940 timeout 60000
+playerhp 102400
+until race_frames 4020 timeout 60000
+playerhp 102400
+until race_frames 4100 timeout 60000
+playerhp 102400
+until race_frames 4180 timeout 60000
+playerhp 102400
+screenshot p1.bmp
+until event race_over spam Return every 400 timeout 300000
+quit

@@ -1,0 +1,41 @@
+# duel_decline.txt - the career flow with the duel mode armed (run with -Mode duel): the sign-up screen must NAME a rival
+# ("X wants a duel - ENTER: fight, ESC: race on"). ENTER signs up and the race is the two car duel.
+until ready spam Return every 150 timeout 40000
+sleep 800
+key Return tap
+sleep 1200
+key Return tap
+sleep 2500
+key Return tap
+sleep 2000
+key B tap
+sleep 250
+key O tap
+sleep 250
+key B tap
+sleep 400
+key Return tap
+sleep 1800
+key Return tap
+sleep 2000
+key Down tap
+sleep 300
+key Down tap
+sleep 300
+key Down tap
+sleep 300
+key Down tap
+sleep 500
+key Return tap
+sleep 2500
+screenshot d0_welcome.bmp
+key Return tap
+sleep 2500
+screenshot d1_signup.bmp
+sleep 1500
+screenshot d2_signup_later.bmp
+# ESC = race on: the duel is turned down, the line goes, the screen stays (an ordinary race can still be signed up for)
+key Escape tap
+sleep 1500
+screenshot d3_after_esc.bmp
+quit

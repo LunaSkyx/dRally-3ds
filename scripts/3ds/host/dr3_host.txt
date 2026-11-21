@@ -1,0 +1,57 @@
+# dr3_host.txt - was der Harness tut (Befehle: platform_3ds/dr3_host.c).
+#
+# Jeder Lauf startet mit log=1 und timing=1 (run_host.ps1 schreibt die Schalterdateien); hier stehen die
+# Dinge, die ein bestimmter Test braucht.  Diese Datei liegt im Arbeitsordner run_host/ und darf dort
+# angepasst werden - der Runner kopiert die Vorlage nur, wenn noch keine da ist.
+#
+#   log     <0|1>       chaos_log.txt    das Engine-Log
+#   timing  <0|1>       chaos_time.txt   die Frame-Zeit-Aufschluesselung
+#   extras  <0..20>     chaos_extras.txt wie viele Extras der naechste Rennstart hat (0 = das Rennen
+#                                        wie das Spiel es aufsetzt, 20 = alle zwanzig Fahrer)
+#   stage   <0..3>      die Extras-Ausbaustufe (0 unsichtbar, 3 alles).  Auf der 3DS schaltet sie kein
+#                        Knopf: dort gehoeren L+R+X dem Pass-Schalter - die Stufe ist hier im Skript
+#   pass    <0..15>     einen Zeichen-Durchgang abschalten (die Suche nach den grauen Linien)
+#   frames  <n>         nach n praesentierten Frames aufhoeren (0 = bis quit_ms oder Fenster zu)
+#   quit_ms <ms>        Notbremse
+#   track   <0..17|-1>  Strecke festnageln (-1 = wuerfeln; 0..8 = TR1..TR9 vorwaerts, 9..17 dieselben
+#                        rueckwaerts, also 16 = TR8 rueckwaerts)
+#   slot    <0..2>      welches der drei Rennen der Direktstart fahrt
+#   auto    <0|1>       Autopilot: die Engine-KI faehrt auch das Auto des Spielers (0 = aus, Standard).
+#                        Eine Tastenroute kann nicht lenken - mit Gas allein faehrt der Spieler in der
+#                        ersten Kurve von der Strasse und schleift am Kartenrand entlang (siehe doc/host_harness.md)
+#   field   <ms>        das ganze Feld (HP, Position, Runde, Tempo) alle ms ins Log schreiben.  Ein Wrack
+#                        ist ein Auto mit HP 0 - zusammen mit den "kill bonus"-Zeilen des Logs zeigt das,
+#                        ob der Chaos-Killbonus zahlt (nur fuer einen Abschuss des Spielers)
+#   power   <x>         Motorleistung des Spielerautos (s_94.__4).  Das Rookie-Auto des Savegames hat 2.5
+#                        (~1.96 px/frame Ende) und holt ein Zwanzig-Auto-Feld nie ein - mit ~5 faehrt es in
+#                        dessen Liga und kann rammen.  Fuer die Killbonus-Pruefung (doc/host_harness.md)
+#   hp      <auto> <n>  mit wieviel HP ein Auto startet (102400 = unbeschaedigt, 0x400*(100-Schaden)).
+#                        1 HP heisst: das erste Antippen durch den Spieler ist ein Wrack und muss zahlen
+#   nomine  <0|1>       kein Auto legt eine Mine.  Die KI des Chaos-Feldes vermint das Feld, in dem sie
+#                        faehrt - mit abgeschwaechten Autos ist das der Hauptgrund fuer Wracks (10 von 16
+#                        in einer Runde), und eine Mine zahlt nichts; fuer die Killbonus-Pruefung aus
+#   ammo    <0|1>       volle Munition fuer den Spieler (der In-Race-Cheat des Spiels, "DREAD"): die
+#                        Maschinenpistole ruft denselben Killbonus (race___4ff50h.c) - so sind auch die
+#                        Schuss-Wracks zu sehen (die Waffe selbst kommt aus einem Pickup auf der Strecke)
+#   weapon  <0|1>       der Spieler HAT die Maschinenpistole ab der ersten Frame (s_94 +0x2c, das Feld,
+#                        das ein Waffen-Pickup fuellt; den Feuerknopf drueckt der Autopilot selbst).  Mit
+#                        "ammo" allein haengt der Schuss-Kill davon ab, ob zufaellig eine Waffe geladen
+#                        ist, wenn endlich ein Auto vor dem Spieler faehrt - so ist er reproduzierbar
+#   nohurt  <0|1>       volle HP fuer den Spieler (der In-Race-Cheat des Spiels, "DRUB"): damit ueberlebt
+#                        er lange genug fuer MEHRERE Wracks in einem Rennen (mehrere Zahlungen)
+#   key          <ms> <name> down|up      eine Taste in das echte SDL-Event-Queue
+#   keys         <pfad>                   eine Keyscript-Datei laden
+#   autokey      <ms> <name>              diese Taste immer wieder
+#   quickrace_ms <ms>                     ab dieser Zeit direkt ins Rennen
+#   dump         <ms> <pfad>              ein Bild (BMP, so wie die Engine zeichnet, %d = Nummer)
+#   dumpevery    <ms> <pfad>              regelmaessig ein Bild
+#
+# Beispiel fuer einen kompletten Lauf von der Kommandozeile (statt dieser Datei):
+#   scripts/3ds/run_host.ps1 -Extras 18 -QuickRaceMs 6000 -Frames 1500
+
+log        1
+timing     1
+extras     18
+
+frames     3000
+quit_ms    180000

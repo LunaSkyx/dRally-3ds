@@ -1,0 +1,14 @@
+# arena.txt - the ARENA chaos mode (doc/arena.md): all cars start at once in the four corners of TRA, the AI hunts.
+#   powershell -File scripts\3ds\az_run.ps1 -Scenario scripts\3ds\scenarios\arena.txt -Mode arena -Extras 11 -Grep 'arena|chaos: pickup|kill bonus|report'
+until ready spam Return every 150 timeout 40000
+quickrace track 4
+until event race_start spam Return every 150 timeout 30000
+until race_frames 100 timeout 20000
+screenshot a0_start.bmp
+until race_frames 500 timeout 30000
+screenshot a1.bmp
+until race_frames 1200 timeout 40000
+screenshot a2.bmp
+until race_frames 2400 timeout 60000
+screenshot a3.bmp
+quit

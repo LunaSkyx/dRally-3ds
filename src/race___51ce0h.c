@@ -1,0 +1,92 @@
+#include "drally.h"
+
+	extern __BYTE__ ___1df520h[];
+	extern int TRX_VIEWPORT_TL_X;
+	extern int CURRENT_VIEWPORT_X;
+	extern int TRX_VIEWPORT_TL_Y;
+	extern __POINTER__ RACE_BLOWI_BPK;
+	extern __POINTER__ BACKBUFFER;
+
+__DWORD__ __GET_FRAME_COUNTER_NOW(void);
+
+// SOMETHING WITH MINES ???
+void race___51ce0h(void){
+
+	__DWORD__ 	eax, ebx, ecx, edx, edi, esi, ebp;
+	__BYTE__ 	esp[0xc];
+	__BYTE__ 	px;
+	int 	i, j, n;
+
+
+	D(esp) = 0;
+
+	if((int)getCounter(6) > 0){
+		const __DWORD__ fc = __GET_FRAME_COUNTER_NOW();
+
+		while(1){
+
+			if((int)D(___1df520h+0x10*D(esp)+8) != -1){
+
+				edi = CURRENT_VIEWPORT_X+D(___1df520h+0x10*D(esp))-TRX_VIEWPORT_TL_X;
+				eax = D(___1df520h+0x10*D(esp)+4)-TRX_VIEWPORT_TL_Y;
+
+				if((int)edi >= 8){
+
+					edx = edi+8;
+
+					if(((int)edx < DR3_RACE_W)&&((int)eax >= 8)){
+
+						edx = eax+8;
+
+						if(((int)edx < DR3_RACE_H)&&(D(___1df520h+0x10*D(esp)+8) != 5)){
+
+							__BYTE__* s = RACE_BLOWI_BPK + 0x10 * (0x10 * D(___1df520h + 0x10 * D(esp) + 8));
+							__BYTE__* d = BACKBUFFER + 0x200 * (eax - 8) + edi + 0x58;
+							j = 16;
+							do {
+								i = 16;
+								do {
+									if ((px = *s++) != 0) *d = px;
+									d++;
+								} while (--i);
+								d += 0x200 - 16;
+							} while (--j);
+						}
+					}
+				}
+
+				ebx = D(___1df520h+0x10*D(esp)+0xc)+0x5;
+				
+				if(fc >= ebx){
+				
+					D(___1df520h+0x10*D(esp)+8)++;
+					D(___1df520h+0x10*D(esp)+0xc) = fc;
+				}
+
+				if((int)D(___1df520h+0x10*D(esp)+8) > 5){
+
+					ebx = getCounter(6)-1;
+					eax = D(esp);
+					D(___1df520h+0x10*D(esp)+8) = -1;
+
+					while((int)eax < (int)ebx){
+
+						D(___1df520h+0x10*eax) = D(___1df520h+0x10*eax+0x10);
+						D(___1df520h+0x10*eax+4) = D(___1df520h+0x10*eax+0x10+4);
+						D(___1df520h+0x10*eax+8) = D(___1df520h+0x10*eax+0x10+8);
+						D(___1df520h+0x10*eax+0xc) = D(___1df520h+0x10*eax+0x10+0xc);
+						eax++;
+					}
+					D(___1df520h+0x10*ebx+8) = -1;
+					D(___1df520h+0x10*ebx+0xc) = 0;
+
+					decCounter(6);
+					D(esp)--;
+				}
+			}
+
+			D(esp)++;
+			if((int)D(esp) >= (int)getCounter(6)) break;
+		}
+	}
+}

@@ -66,15 +66,24 @@ void dr3_fix_paths(const char *argv0)
         }
     }
 
-    /* 2) the documented homebrew folder, then the SD root */
-    for (tries = 0; tries < 2; ++tries) {
-        const char *cand = (tries == 0) ? "sdmc:/3ds/drally" : "sdmc:";
-        if (chdir(cand) == 0) {
-            dr3_cwd_buf[0] = 0;
-            dr3_log("[dr3] chdir('%s') ok   ENGINE.BPA here: %s", cand, dr3_probe() ? "yes" : "NO");
-            if (dr3_probe()) return;
-        } else {
-            dr3_log("[dr3] chdir('%s') FAILED", cand);
+    /* 2) the documented homebrew folders, then the SD root */
+    {
+        static const char *const cands[] = {
+            "sdmc:/3ds/dRally_3ds",
+            "sdmc:/3ds/drally",
+            "sdmc:/dRally_3ds",
+            "sdmc:"
+        };
+        int ncands = (int)(sizeof(cands) / sizeof(cands[0]));
+        for (tries = 0; tries < ncands; ++tries) {
+            const char *cand = cands[tries];
+            if (chdir(cand) == 0) {
+                dr3_cwd_buf[0] = 0;
+                dr3_log("[dr3] chdir('%s') ok   ENGINE.BPA here: %s", cand, dr3_probe() ? "yes" : "NO");
+                if (dr3_probe()) return;
+            } else {
+                dr3_log("[dr3] chdir('%s') FAILED", cand);
+            }
         }
     }
 

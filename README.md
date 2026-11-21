@@ -1,82 +1,76 @@
-# dRally-3ds
+# Death Rally — Nintendo 3DS (30th Anniversary Edition)
 
-The main goal of this project is to create a port of Death Rally (1996) running natively on Linux and BSD based operating systems.
+A native Nintendo 3DS port of **Death Rally (1996)** built with devkitARM, libctru, and SDL2 — featuring a brand-new **30th Anniversary** championship mode alongside all classic difficulties.
 
-Credits for the full decomp go to [urxp](https://github.com/urxp)
+Based on the [urxp/dRally](https://github.com/urxp/dRally) decompilation.
 
-#### Nintendo 3DS port (branch `3ds`)
+---
 
-Native port with devkitARM, libctru and SDL2's own n3ds backend.  Renders straight into the 400x240
-framebuffer (no SDL renderer), DSP audio at the DAC's native rate, pad remappable through
-`dr3_controls.txt`.  The bottom screen shows the standings and, during a race, the track map with every
-car and the lap times.
+## 30th Anniversary Modes
 
-The branch also adds a fourth very hard difficulty ("30th Anniversary") and you can purchase the Adversarys vehicle.
+Pick **30th Anniversary** (Normal) or **30th Anniv EXTREME** (Very Hard) on the driver licence screen:
 
-Install: copy the release folder to `sdmc:/3ds/drally/` so that `dRally_3ds.3dsx` sits next to the game
-data (all `*.BPA`, `CDROM.INI`, `CINEM/*.HAF`), then start it from the Homebrew Launcher.  Sound needs
-`sdmc:/3ds/dspfirm.cdc` (Luma3DS creates it on real hardware).  The first start asks for a driver name -
-SELECT opens the software keyboard, A accepts it.
+- **30th Anniversary (Normal — Rising Chaos)**: Grids start at **8 speed-matched cars** in Vagabond/Dervish and grow through **12 → 16 → full 20 cars** as you climb the standings and upgrade, with progressive AI pace and unlocking Adversary invasions.
+- **30th Anniv EXTREME (Very Hard)**: All **20 cars from Race 1** (16 in Arena), boosted AI speed/acceleration/armor on top of full Anniversary pace, heavily armed rivals (mines, spikes, rocket fuel), 45–60% Adversary invasions, longer 1v1 duels (4–6 laps), 2× Arena storm drain, a beefed-up 3-Phase Boss Gauntlet (4× HP Giant Boss), and higher Underdog Bounties (`+$200`/class gap).
+- **4-Mode Shuffle Wheel**: Rotates all four event types with no back-to-back repeats:
+  - **Race** — Large-grid street racing with extra off-line street cash drops (kept even if lapped).
+  - **Challenge 1v1** — High-stakes head-to-head duel against a close rival for Elo rank points.
+  - **Destroy 'Em All** — Street Last Car Standing with aggressive combat AI, mine crates, ammo, and sudden death.
+  - **Battle Arena** — Custom free-for-all arena (`TRA.BPA`) with closing storm ring, grudge rivals, and top-3 survivor payouts.
+- **Live In-Race Radio & Underdog Bounties**: Dynamic pit radio, rival trash-talk overlays, and extra cash bonuses for wrecking higher-class cars.
+- **3-Phase Final Boss Gauntlet**: Reach the top of the standings to face **The Swarm** (1v20 Vagabonds) → **The Escort** (12-car elite oval race) → **The Adversary** (1v1 Giant Boss with enrage phase).
+- **Purchasable Anniversary Car**: Buy the Adversary's supercar in the shop — complete with custom obsidian GT graphics, chrome nameplate, and live color slider.
 
-| | |
-|---|---|
-| D-pad, circle pad | steer, up/down also gas and brake |
-| R, L | gas, brake |
-| A, B | front end: confirm, select - race: horn, boost |
-| Y, X | race: shoot, drop a mine |
-| X / ZL, Y / ZR | front end: quick save, quick load (`DR.SG7`) |
-| START | pause |
-| SELECT | 3DS software keyboard |
-| L + R + START | quit |
+### 3DS Port Highlights
+- **Native 400×240 widescreen** race viewport on the top screen
+- **Live bottom screen**: interactive track minimap, car positions, standings, and lap times
+- **DSP hardware audio**, **hold-to-slide car color picker**, quick save/load, and remappable controls (`dr3_controls.txt`)
 
-`dr3_controls.txt` rebinds any of that (`GAS = R, UP, STICK_UP, B`); typos go to `sdmc:/drally_3ds.log`.
+---
 
-This branch contains no game data and is not affiliated with Remedy Entertainment.
+## Installation
 
-#### Linux requirements
-* GCC/Clang C compiler
-* GNU/Make
-* SDL2
+> **Requires original Death Rally game files** (not included). The custom Battle Arena track (`TRA.BPA`) is included in the release zip.
 
+1. Place your original Death Rally files (`ENGINE.BPA`, `IBFILES.BPA`, `MENU.BPA`, `MUSICS.BPA`, `TR0.BPA`–`TR9.BPA`, `CDROM.INI`, and `CINEM/`) plus `TRA.BPA` from the release into:
+   - `sdmc:/3ds/dRally_3ds/`
+2. Launch using either:
+   - **CIA**: Install `dRally_3ds.cia` with FBI and launch from the Home Menu.
+   - **3DSX**: Copy `dRally_3ds.3dsx` into `sdmc:/3ds/dRally_3ds/` and launch via Homebrew Launcher.
+3. Audio requires `sdmc:/3ds/dspfirm.cdc` (dump once via Luma3DS Rosalina menu).
 
-#### Building
+---
+
+## Controls
+
+| Button | Front End | In Race |
+|---|---|---|
+| **D-Pad / Circle Pad** | Navigate / hold to slide colors | Steer (Up/Down = gas/brake) |
+| **R / L** | — | Accelerate / Brake |
+| **A / B** | Confirm / Back | Turbo / Horn |
+| **Y / X** | Quick Load / Quick Save | Machine Gun / Drop Mine |
+| **START / SELECT** | Pause / 3DS Keyboard | Pause / — |
+| **L + R + Y** | — | Cycle race mode manually |
+| **L + R + START** | Quit to Home/HBL | Quit to Home/HBL |
+
+Rebind any control via `dr3_controls.txt` next to the game data.
+
+---
+
+## Building from Source
+
+Requires devkitPro (`devkitARM` + `3ds-dev`) and SDL2 built for 3DS (see [doc/3ds.md](doc/3ds.md)):
 
 ```sh
-FLAGS="YOUR CFLAGS" make
+make -f Makefile.3ds -j6
+powershell -ExecutionPolicy Bypass -File scripts/3ds/build_cia.ps1
 ```
 
-#### Installation - needs original game assets
+Project layout: `src/` (engine C sources), `platform_3ds/` (3DS port & 30th Anniversary systems), `assets/` (CIA icon/banner/RSF), `scripts/` (build & packaging), `tests/` (host unit tests), `doc/` (technical notes).
 
-* [Death Rally registered free windows version CHIP](https://www.chip.de/downloads/Death-Rally-Vollversion_38550689.html)
+---
 
-```sh
-7z e -o drally DeathRallyWin_10.exe
-cd drally && mkdir CINEM && mv ENDANI* CINEM && mv SANIM* CINEM
-echo "./CINEM" &> CDROM.INI
-```
+## Credits & Legal
 
-Only versions including the DR.IDF file are able to use the `FLAGS += -DDR_CDCHECK`
-
-    dRally
-    |--CINEM
-    |  |--DR.IDF
-    |  |--ENDANI.HAF
-    |  |--ENDANI0.HAF
-    |  |--SANIM.HAF
-	|--CDROM.INI        [1]
-    |--ENGINE.BPA
-    |--IBFILES.BPA
-    |--MENU.BPA
-    |--MUSICS.BPA
-    |--TR[0-9].BPA
-
-    Make sure these file/dir names in dRally directory are in uppercase.
-
-    [1] CDROM.INI contains relative location of CINEM directory (./CINEM)
-
-#### Work in progress
-*   Multiplayer not available
-
-#### Legal Info
-This project contains __no game data__ and is __not affiliated with Remedy Entertainment__. It needs the data files of an original Death Rally copy that you own - exactly like the Linux port.
-
+Original game © Remedy Entertainment. Decompilation by [urxp](https://github.com/urxp/dRally).  
+This repository contains **no copyrighted game data** and is not affiliated with Remedy Entertainment.

@@ -1,0 +1,126 @@
+#include "drally.h"
+#include "drally_structs_fixed.h"
+#include "assets.h"
+#include "platform_3ds/dr3_anniv_gfx.h"
+
+	extern __BYTE__ ___1a1edch[];
+	extern __BYTE__ ___1a1ecch[];
+	extern __BYTE__ ___1a1ee8h[];
+	extern __BYTE__ ___1a1ef8h[];
+	extern __BYTE__ ___1a1ee0h[];
+	extern __BYTE__ ___1a1eech[];
+	extern __BYTE__ ___1a1ec0h[];
+	extern __BYTE__ ___1a1ec8h[];
+	extern __BYTE__ ___1a1ed0h[];
+	extern __BYTE__ ___1a01e0h[];
+	extern __BYTE__ ___1a1ec4h[];
+	extern __BYTE__ ___1a1ee4h[];
+	extern __POINTER__ ___1a1124h__VESA101h_ScreenBufferA;
+	extern __POINTER__ ___1a10e4h__VESA101h_DefaultScreenBufferA;
+	extern __POINTER__ ___1a1e80h;
+	extern __POINTER__ ___1a1e74h;
+	extern __POINTER__ ___1a1e84h;
+	extern __POINTER__ ___1a1e60h;
+	extern __POINTER__ ___1a1ed4h;
+	extern __POINTER__ ___1a1e90h;
+	extern __POINTER__ ___1a10b0h;
+	extern __POINTER__ ___1a1eb0h;
+	extern __POINTER__ ___1a1e78h;
+	extern __POINTER__ ___1a1eb8h;
+	extern __POINTER__ ___1a01b8h[7];
+	extern __POINTER__ ___1a0180h;
+	extern __POINTER__ ___1a01a8h[4];
+	extern __POINTER__ ___1a0198h[4];
+	extern __POINTER__ ___1a01d0h[4];
+	extern __POINTER__ ___1a1e8ch;
+	extern __POINTER__ ___1a1ea0h;
+	extern __POINTER__ ___1a1e7ch;
+	extern __POINTER__ ___1a1ebch;
+	extern __POINTER__ ___1a1eb4h;
+	extern __POINTER__ ___1a1e88h;
+	extern __POINTER__ ___1a1ea4h;
+	extern __POINTER__ ___1a1ea8h;
+	extern __POINTER__ ___1a1e6ch;
+	extern __POINTER__ ___1a1e98h;
+	extern __POINTER__ ___1a1e5ch;
+	extern __POINTER__ ___1a1e58h;
+	extern __POINTER__ ___1a1e54h;
+	extern __POINTER__ ___1a1e64h;
+
+__POINTER__ ___3f71ch__allocateMemory(__DWORD__);
+
+static __DWORD__ max_car(__DWORD__ val){ return (val <= (__DWORD__)DR3_LAST_CAR) ? val : (__DWORD__)DR3_LAST_CAR; }
+
+void ___24548h(void){
+
+	racer_t * 	s_6c;
+
+
+	s_6c = (racer_t *)___1a01e0h;
+	D(___1a1edch) = 0x64;
+	D(___1a1ecch) = 0;
+	D(___1a1ee8h) = 0;
+	D(___1a1ee0h) = 0;
+	D(___1a1eech) = 0;
+	D(___1a1ec0h) = 0;
+	D(___1a1ec8h) = 0;
+	D(___1a1ed0h) = 0;
+	D(___1a1ec4h) = 5;
+	D(___1a1ee4h) = max_car(s_6c[D(___1a1ef8h)].car+1);
+	___1a1124h__VESA101h_ScreenBufferA = ___1a10e4h__VESA101h_DefaultScreenBufferA = ___3f71ch__allocateMemory(0x4b000);
+
+	___1a1e7ch = ___3f71ch__allocateMemory(0x1800);
+
+	___1a01b8h[0] = dRally_Assets_loadRaw("MENU.BPA", "kupla.bpk", 0x1af00);
+	___1a01b8h[1] = dRally_Assets_loadRaw("MENU.BPA", "pickup.bpk", 0x1a77b);
+	___1a01b8h[2] = dRally_Assets_loadRaw("MENU.BPA", "sedan.bpk", 0x18f14);
+	___1a01b8h[3] = dRally_Assets_loadRaw("MENU.BPA", "camaro.bpk", 0x18f51);
+	___1a01b8h[4] = dRally_Assets_loadRaw("MENU.BPA", "porsche.bpk", 0x1a060);
+	___1a01b8h[5] = dRally_Assets_loadRaw("MENU.BPA", "lotus.bpk", 0x1bea2);
+
+	/* the Anniversary ("30th Anniversary", see doc/3ds.md): MENU.BPA has no picture of the SPECIAL, so
+	   it uses the Deliverator's - which is the same car under its black paint.  Not freed again in
+	   ___12200h.c, it is the same pointer as [5]. */
+	___1a01b8h[DR3_LAST_CAR] = ___1a01b8h[5];
+	___1a01a8h[0] = dRally_Assets_loadRaw("MENU.BPA", "engi1.bpk", 0xa235);
+	___1a01a8h[1] = dRally_Assets_loadRaw("MENU.BPA", "engi2.bpk", 0xae36);
+	___1a01a8h[2] = dRally_Assets_loadRaw("MENU.BPA", "engi3.bpk", 0xb413);
+	___1a01a8h[3] = dRally_Assets_loadRaw("MENU.BPA", "engi4.bpk", 0xd788);
+	___1a0198h[0] = dRally_Assets_loadRaw("MENU.BPA", "tire1.bpk", 0x511c);
+	___1a0198h[1] = dRally_Assets_loadRaw("MENU.BPA", "tire2.bpk", 0x52b8);
+	___1a0198h[2] = dRally_Assets_loadRaw("MENU.BPA", "tire3.bpk", 0x5724);
+	___1a0198h[3] = dRally_Assets_loadRaw("MENU.BPA", "tire4.bpk", 0x5f1e);
+	___1a01d0h[0] = dRally_Assets_loadRaw("MENU.BPA", "armor1.bpk", 0x5ffb);
+	___1a01d0h[1] = dRally_Assets_loadRaw("MENU.BPA", "armor2.bpk", 0x6dd9);
+	___1a01d0h[2] = dRally_Assets_loadRaw("MENU.BPA", "armor3.bpk", 0x7922);
+	___1a01d0h[3] = dRally_Assets_loadRaw("MENU.BPA", "armor4.bpk", 0x7801);
+	___1a1e8ch = dRally_Assets_loadRaw("MENU.BPA", "repaani.bpk", 0x878b);
+	___1a1ea0h = dRally_Assets_loadRaw("MENU.BPA", "contani.bpk", 0x8ae9);
+
+	___1a1ed4h = dRally_Assets_loadDecode("MENU.BPA", "statbas7.bpk", 0x5400);
+	___1a1e90h = dRally_Assets_loadDecode("MENU.BPA", "statpop4.bpk", 0x4b0);
+	___1a10b0h = dRally_Assets_loadDecode("MENU.BPA", "f-sma3f.bpk", 0x8f0);
+	___1a1e6ch = dRally_Assets_loadDecode("MENU.BPA", "carbas2.bpk", 0x2400);
+	___1a1e74h = dRally_Assets_loadDecode("MENU.BPA", "spons1b.bpk", 0x3400);
+	___1a1e80h = dRally_Assets_loadDecode("MENU.BPA", "drugdeal.bpk", 0x3400);
+	___1a1e84h = dRally_Assets_loadDecode("MENU.BPA", "event_2.bpk", 0x3400);
+	___1a1e60h = dRally_Assets_loadDecode("MENU.BPA", "reaper_x.bpk", 0x3400);
+	___1a1e54h = dRally_Assets_loadDecode("MENU.BPA", "blacktx1.bpk", 0x2800);
+	___1a1e64h = dRally_Assets_loadDecode("MENU.BPA", "blacktx2.bpk", 0x2800);
+	___1a1e58h = dRally_Assets_loadDecode("MENU.BPA", "dealer2b.bpk", 0x2400);
+	___1a1e5ch = dRally_Assets_loadDecode("MENU.BPA", "market1e.bpk", 0x1b000);
+	___1a1e98h = dRally_Assets_loadDecode("MENU.BPA", "bases4.bpk", 0xb400);
+	___1a0180h = dRally_Assets_loadDecode("MENU.BPA", "scenecar.bpk", 7 * 0x1800);
+	dr3_anniv_build_scenecar((const uint8_t *)___1a0180h + 5 * 0x1800,
+	                         (uint8_t *)___1a0180h + DR3_ADVERSARY_CAR * 0x1800);
+	___1a1eb0h = dRally_Assets_loadDecode("MENU.BPA", "choo2.bpk", 0x900);
+	___1a1e78h = dRally_Assets_loadDecode("MENU.BPA", "arrows1d.bpk", 0x1000);
+	___1a1eb8h = dRally_Assets_loadDecode("MENU.BPA", "maxi1f.bpk", 0x12000);
+	___1a1ea8h = dRally_Assets_loadDecode("MENU.BPA", "carname.bpk", 7 * 0x600);
+	dr3_anniv_build_carname((const uint8_t *)___1a1ea8h,
+	                        (uint8_t *)___1a1ea8h + DR3_ADVERSARY_CAR * 0x600);
+	___1a1ea4h = dRally_Assets_loadDecode("MENU.BPA", "slidmus2.bpk", 0x1020);
+	___1a1eb4h = dRally_Assets_loadDecode("MENU.BPA", "slidcur3.bpk", 0xf0);
+	___1a1ebch = dRally_Assets_loadDecode("MENU.BPA", "volcur2.bpk", 0xf0);
+	___1a1e88h = dRally_Assets_loadDecode("MENU.BPA", "slidcop2.bpk", 0x1260);
+}

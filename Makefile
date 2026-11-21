@@ -2,7 +2,9 @@ CC := gcc
 MSBUILD := MSBuild.exe
 
 DEFINES := -DDR_MULTIPLAYER -DIPXNET -DDR_LETTERBOX #-DDR_CDCHECK
-INCLUDES := -I/usr/include/SDL2
+INCLUDES := -I. -Isrc -I/usr/include/SDL2
+vpath %.c src
+vpath %.h src
 FLAGS ?= -O3
 FLAGS += -Werror -Wno-unused-result
 LDFLAGS := -lm -lSDL2 -lSDL2_net

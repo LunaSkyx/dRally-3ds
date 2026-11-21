@@ -17,6 +17,9 @@ static int      dr3_map_w, dr3_map_h;
 static int      dr3_map_step;
 static int      dr3_map_mask_w, dr3_map_mask_h;   /* size of the track the map was built from */
 static int      dr3_map_ready;
+static int      dr3_map_drawn;   /* a full draw happened for the current map (see dr3_minimap_draw_incremental) */
+static int      dr3_map_ring_r;        /* arena closing ring radius in track px, 0 = off */
+static int      dr3_map_drawn_ring_r;  /* ring radius currently painted on the canvas    */
 static int      dr3_map_counts[4];
 
 /*
@@ -29,12 +32,20 @@ static int      dr3_map_counts[4];
 
 void dr3_minimap_reset(void)
 {
-    dr3_map_ready  = 0;
-    dr3_map_w      = 0;
-    dr3_map_h      = 0;
-    dr3_map_step   = 0;
-    dr3_map_mask_w = 0;
-    dr3_map_mask_h = 0;
+    dr3_map_ready        = 0;
+    dr3_map_drawn        = 0;
+    dr3_map_ring_r       = 0;
+    dr3_map_drawn_ring_r = 0;
+    dr3_map_w            = 0;
+    dr3_map_h            = 0;
+    dr3_map_step         = 0;
+    dr3_map_mask_w       = 0;
+    dr3_map_mask_h       = 0;
+}
+
+void dr3_minimap_set_ring(int radius_px)
+{
+    dr3_map_ring_r = (radius_px > 0) ? radius_px : 0;
 }
 
 int  dr3_minimap_ready(void) { return dr3_map_ready; }
@@ -237,6 +248,7 @@ int dr3_minimap_build(const uint8_t *mask, const uint8_t *image, const uint8_t *
     dr3_map_mask_w = mask_w;
     dr3_map_mask_h = mask_h;
     dr3_map_ready  = 1;
+    dr3_map_drawn  = 0;          /* a new map has not been painted yet */
 
     return 1;
 }
@@ -372,7 +384,7 @@ static void dr3_map_repaint_px(const dr3_canvas_t *c, int dx, int dy, int dw, in
 /* ---------------------------------------------------------------------- markers --- */
 
 /* the markers remembered from the last draw, so an update can erase exactly those pixels */
-#define DR3_MARKER_MAX 4
+#define DR3_MARKER_MAX 24      /* every car of a chaos field (20) - the map used to hold four markers */
 
 static int dr3_marker_n;
 static int dr3_marker_box[DR3_MARKER_MAX][4];      /* x, y, w, h in canvas pixels */
@@ -393,6 +405,23 @@ static void dr3_canvas_blob(const dr3_canvas_t *c, int x, int y, int size, uint3
 }
 
 /*
+ * A marker colour a person can see on the map: the car colours of the engine are palette values (the dark ramps of
+ * the cars), a 3 pixel dot in them is nearly black on the dark red road.  Same hue, brightest channel at full.
+ * Black (or nothing) stays 0 - the caller then takes the default colour.
+ */
+uint32_t dr3_minimap_marker_colour(uint32_t rgb)
+{
+    const uint32_t r = (rgb >> 16) & 0xffu, g = (rgb >> 8) & 0xffu, b = rgb & 0xffu;
+    uint32_t       m = r;
+
+    if (g > m) m = g;
+    if (b > m) m = b;
+    if (m == 0) return 0u;
+
+    return (((r * 255u) / m) << 16) | (((g * 255u) / m) << 8) | ((b * 255u) / m);
+}
+
+/*
  * The player gets a rounded marker in his own car colour (the engine's per-driver colours live in
  * menu_main.c's ___1a0fb8h table) with a dark outline; the others stay red and smaller.
  */
@@ -402,8 +431,9 @@ static void dr3_minimap_draw_car(const dr3_canvas_t *c, int dx, int dy, int dw, 
     const int player_size = 5;
     const int other_size  = 3;
     const int outline     = car->is_player ? 1 : 0;
-    uint32_t  rgb         = car->color ? car->color
-                                       : (car->is_player ? DR3_MAP_COL_PLAYER : DR3_MAP_COL_CAR);
+    const uint32_t seen   = car->is_player ? car->color : dr3_minimap_marker_colour(car->color);
+    uint32_t  rgb         = seen ? seen
+                                : (car->is_player ? DR3_MAP_COL_PLAYER : DR3_MAP_COL_CAR);
     int       mx, my, cx, cy, size;
 
     dr3_minimap_project(car->x, car->y, &mx, &my);
@@ -451,6 +481,54 @@ static void dr3_minimap_draw_cars(const dr3_canvas_t *c, int dx, int dy, int dw,
 
 /* ---------------------------------------------------------------- full and partial --- */
 
+/* One pixel of the arena closing ring on the minimap: clipped to the map band, either drawn in
+   DR3_MAP_COL_RING or restored back to the underlying map pixel when the ring shrinks. */
+static void dr3_map_ring_pt(const dr3_canvas_t *c, int dx, int dy, int dw, int dh, int px, int py, int erase)
+{
+    if ((px < dx) || (py < dy) || (px >= (dx + dw)) || (py >= (dy + dh))) return;
+
+    if (erase) dr3_map_repaint_px(c, dx, dy, dw, dh, px, py);
+    else       dr3_canvas_px(c, px, py, DR3_MAP_COL_RING);
+}
+
+static void dr3_map_ring_circle(const dr3_canvas_t *c, int dx, int dy, int dw, int dh, int cx, int cy, int r, int erase)
+{
+    int x = r, y = 0, err = 1 - r;
+
+    if (r <= 0) return;
+
+    while (x >= y) {
+        dr3_map_ring_pt(c, dx, dy, dw, dh, cx + x, cy + y, erase);
+        dr3_map_ring_pt(c, dx, dy, dw, dh, cx + y, cy + x, erase);
+        dr3_map_ring_pt(c, dx, dy, dw, dh, cx - y, cy + x, erase);
+        dr3_map_ring_pt(c, dx, dy, dw, dh, cx - x, cy + y, erase);
+        dr3_map_ring_pt(c, dx, dy, dw, dh, cx - x, cy - y, erase);
+        dr3_map_ring_pt(c, dx, dy, dw, dh, cx - y, cy - x, erase);
+        dr3_map_ring_pt(c, dx, dy, dw, dh, cx + y, cy - x, erase);
+        dr3_map_ring_pt(c, dx, dy, dw, dh, cx + x, cy - y, erase);
+        ++y;
+        if (err < 0) err += 2 * y + 1;
+        else { --x; err += 2 * (y - x) + 1; }
+    }
+}
+
+static void dr3_map_paint_ring(const dr3_canvas_t *c, int dx, int dy, int dw, int dh, int radius_px, int erase)
+{
+    int cx, cy, r;
+
+    if (!dr3_map_ready || (dr3_map_mask_w <= 0) || (dr3_map_mask_h <= 0) || (radius_px <= 0)) return;
+
+    cx = dx + dw / 2;
+    cy = dy + dh / 2;
+    r  = (int)(((long)radius_px * (long)dw) / (long)dr3_map_mask_w);
+
+    dr3_map_ring_circle(c, dx, dy, dw, dh, cx, cy, r, erase);
+    if (r > 1) dr3_map_ring_circle(c, dx, dy, dw, dh, cx, cy, r - 1, erase);
+}
+
+/* dr3_map_drawn (above): the incremental draw only repaints what moved after a full draw, and must not paint the
+   whole band a second time on its first call - that was a second visible repaint right after the page came up */
+
 int dr3_minimap_draw(const dr3_canvas_t *c, int x0, int y0, int w, int h,
                      const dr3_map_car_t *cars, int n_cars)
 {
@@ -476,28 +554,28 @@ int dr3_minimap_draw(const dr3_canvas_t *c, int x0, int y0, int w, int h,
         }
     }
 
+    dr3_map_drawn_ring_r = dr3_map_ring_r;
+    if ((dr3_map_drawn_ring_r > 0) && dr3_map_ready) dr3_map_paint_ring(c, dx, dy, dw, dh, dr3_map_drawn_ring_r, 0);
+
     dr3_marker_n = 0;
     if (cars && (n_cars > 0) && dr3_map_ready) dr3_minimap_draw_cars(c, dx, dy, dw, dh, cars, n_cars);
 
+    dr3_map_drawn = 1;
     return 1;
 }
 
 int dr3_minimap_draw_incremental(const dr3_canvas_t *c, int x0, int y0, int w, int h,
                                  const dr3_map_car_t *cars, int n_cars)
 {
-    static int have_state;
     int        i, dx, dy, dw, dh;
 
     if (!c || !c->px || (w <= 0) || (h <= 0)) return 0;
 
-    if (!have_state || !dr3_map_ready) {
-        have_state = 1;
-        return dr3_minimap_draw(c, x0, y0, w, h, cars, n_cars);
-    }
+    if (!dr3_map_drawn || !dr3_map_ready) return dr3_minimap_draw(c, x0, y0, w, h, cars, n_cars);
 
     dr3_map_band(x0, y0, w, h, &dx, &dy, &dw, &dh);
 
-    /* put the map back where the markers were, then draw them at their new place */
+    /* put the map back where the markers were, then update the ring and draw markers at their new place */
     for (i = 0; i < dr3_marker_n; ++i) {
         int px, py;
 
@@ -507,6 +585,12 @@ int dr3_minimap_draw_incremental(const dr3_canvas_t *c, int x0, int y0, int w, i
             }
         }
     }
+
+    if (dr3_map_ring_r != dr3_map_drawn_ring_r) {
+        if (dr3_map_drawn_ring_r > 0) dr3_map_paint_ring(c, dx, dy, dw, dh, dr3_map_drawn_ring_r, 1);
+        dr3_map_drawn_ring_r = dr3_map_ring_r;
+    }
+    if (dr3_map_drawn_ring_r > 0) dr3_map_paint_ring(c, dx, dy, dw, dh, dr3_map_drawn_ring_r, 0);
 
     dr3_marker_n = 0;
     if (cars && (n_cars > 0) && dr3_map_ready) dr3_minimap_draw_cars(c, dx, dy, dw, dh, cars, n_cars);

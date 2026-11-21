@@ -16,6 +16,8 @@
 #ifndef DR3_BOTTOM_H
 #define DR3_BOTTOM_H
 
+#include <stddef.h>
+
 #define DR3_BOTTOM_LINE_LEN 64
 #define DR3_BOTTOM_LINES    26          /* controls + standings need at most this many rows */
 
@@ -33,6 +35,9 @@ int  dr3_bottom_build_lines(char out[DR3_BOTTOM_LINES][DR3_BOTTOM_LINE_LEN]);
 void dr3_bottom_touch(void);
 void dr3_bottom_touch_ex(int ignore_y0, int ignore_y1);
 
+/* Programmatically toggles the darkened/hidden state (used by touch and scenario "bottom tap"). */
+void dr3_bottom_toggle_hidden(void);
+
 /* 1 while the player switched the information off. */
 int  dr3_bottom_is_hidden(void);
 
@@ -41,6 +46,18 @@ void dr3_bottom_update(void);
 
 /* Flush + swap the bottom screen after printing. */
 void dr3_bottom_flush(void);
+
+/*
+ * Flicker measurement (scenario steps "bprobe start|report", "bottom legacy on|off"): a thread samples the real
+ * bottom framebuffer every millisecond and counts the samples in which the page is blank or half drawn.  The legacy
+ * switch restores the old redraw behaviour so the same probe measures before and after.  Not used by the game.
+ */
+void dr3_bottom_set_legacy(int on);
+void dr3_bottom_probe_start(void);
+void dr3_bottom_probe_report(const char *name, char *out, size_t out_size);
+
+/* Saves what the bottom screen shows right now as a 24 bit BMP; 0 when it cannot (scenario harness). */
+int  dr3_bottom_save_bmp(const char *path);
 
 /*
  * Minimap hooks.  The race code hands over the track mask as soon as a track is decoded

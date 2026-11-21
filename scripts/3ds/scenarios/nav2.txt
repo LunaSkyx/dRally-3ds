@@ -1,0 +1,15 @@
+# nav2.txt - front end -> Start Racing -> Load Game, screenshot each step.
+# (greyed menu entries are skipped by the cursor: one Down from "Start A New Game" is "Load Game")
+atms 3000 key Return tap
+atms 6000 key Return tap
+atms 12000 key Return tap
+atms 34000 key Return tap
+atms 38000 key Down tap
+atms 40000 screenshot l2_loadgame_selected.bmp
+atms 40500 key Return tap
+atms 45000 screenshot l3.bmp
+atms 46000 key Return tap
+atms 51000 screenshot l4.bmp
+atms 52000 key Return tap
+atms 57000 screenshot l5.bmp
+quit_after_ms 59000

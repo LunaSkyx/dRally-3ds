@@ -1,0 +1,16 @@
+# flicker_frontend.txt - bottom screen flicker, front end idle: the fix against the OLD redraw behaviour, same binary.
+#   az_run.ps1 -Scenario scenarios\flicker_frontend.txt -Grep 'probe'
+# The probe thread samples the real bottom framebuffer every ms; "blank or half drawn" = fewer than 60% of the lit
+# pixels of the settled page. "bottom legacy on" switches the old redraw logic back on (never used by the game).
+until ready spam Return every 150 timeout 40000
+sleep 1500
+bprobe start
+sleep 8000
+bprobe report AFTER_fix_frontend_idle
+bottom legacy on
+sleep 1500
+bprobe start
+sleep 8000
+bprobe report BEFORE_legacy_frontend_idle
+bottom legacy off
+quit

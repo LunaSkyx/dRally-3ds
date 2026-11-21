@@ -1,0 +1,13 @@
+# explore.txt - first look: tap Return through the intro and screenshot what the screen shows every 8 s.
+# Triggers are "atms <ms>" (menus present no frame while they wait) or "at <frame>" (presented frames).
+atms 100 log explore start
+atms 3000 key Return tap
+atms 6000 key Return tap
+atms 8000 screenshot e1.bmp
+atms 12000 key Return tap
+atms 16000 screenshot e2.bmp
+atms 24000 screenshot e3.bmp
+atms 32000 screenshot e4.bmp
+atms 40000 screenshot e5.bmp
+atms 48000 screenshot e6.bmp
+quit_after_ms 52000

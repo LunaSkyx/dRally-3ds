@@ -3,11 +3,17 @@
  * SPDX-License-Identifier: MIT (see LICENSE and THIRD_PARTY.md)
  */
 #include "dr3_fb.h"
+#include "dr3_blit.h"      /* dr3_carcolour_* - the colour of every car of a race (chaos build) */
 #include "dr3_log.h"
 #include "dr3_prof.h"
+#include "dr3_scenario.h"
+#if defined(DR3_CHAOS)
+#include "dr3_chaos.h"     /* dr3_chaos_car_screen / dr3_chaos_car_col - the cars of the frame */
+#endif
 
 #include <3ds.h>
 #include <stddef.h>
+#include <string.h>
 
 static uint32_t *dr3_fb;
 static int       dr3_fb_w;
@@ -28,6 +34,51 @@ static uint16_t dr3_sy[DR3_MAP_MAX];    /* target y -> source row (nearest)     
 static uint16_t dr3_fx0[DR3_MAP_MAX];   /* filtered: first source column of target x  */
 static uint16_t dr3_fx1[DR3_MAP_MAX];   /* filtered: end column (exclusive)           */
 static uint32_t dr3_finv[DR3_MAP_MAX];  /* filtered: 65536 / (fx1 - fx0) - must hold 65536! */
+
+#if defined(DR3_CHAOS)
+/*
+ * The colours of the cars (dr3_chaos.h).  The palette has room for four colour ramps of ten entries
+ * and the chaos build races up to twenty cars, so every car sprite keeps the palette's own ramp - all
+ * ten shades - and the pixels the car sprites wrote are coloured here with the colour of that car's
+ * driver.  *Where* those pixels are comes from the engine's own sprite blit (dr3_chaos_car_screen,
+ * filled in race___4f300h.c, copied with the image in race_main.c), so no position is worked out here.
+ */
+/*
+ * The colours of the cars, into the rotated framebuffer of the top screen.
+ *
+ * The pass itself (mask, shade ramps, colouring) is shared - it lives in platform_3ds/dr3_blit.c
+ * because the PC window wants the very same thing (dr3_blit.h: dr3_carcolour_tint_cars).  What is
+ * special about the 3DS here is only the target: the hardware framebuffer is stored rotated, so x
+ * runs along a row (stride = the row width) and y runs backwards from its last row (stride -1).
+ */
+static void dr3_fb_tint_cars(const uint8_t *src, int sw, int sh, int src_pitch, int dw, int dh,
+                             int row_off, const dr3_lut32_t *lut)
+{
+    dr3_carcolour_tint_cars(dr3_fb + (dh - 1), dw, dh, dr3_fb_w, -1,
+                            src, sw, sh, src_pitch, row_off, lut);
+}
+
+/*
+ * The car mask is the engine's race screen (race_main.c copies it from BACKBUFFER together with the
+ * image), so only a present of that very buffer may use it.  A present of anything else - the front
+ * end, a screen the engine keeps around - would otherwise spend the mask on the wrong picture.  This
+ * says which buffer was presented and what the mask held, the first few times.
+ */
+void dr3_fb_tint_log_present(const uint8_t *src, int sw, int sh, int src_pitch, int is_race)
+{
+    static int dr3_present_logged;
+    int        marked = 0, k;
+
+    if (!dr3_log_enabled() || (dr3_present_logged >= 12)) return;
+
+    for (k = 0; k < DR3_CAR_MASK_W * DR3_CAR_MASK_H; ++k) if (dr3_chaos_car_screen[k]) ++marked;
+
+    dr3_log("[dr3] chaos: present %d: %s (%p, %dx%d pitch %d), %d mark(s)",
+            dr3_present_logged, is_race ? "the race screen" : "NOT the race screen",
+            (const void *)src, sw, sh, src_pitch, marked);
+    ++dr3_present_logged;
+}
+#endif
 
 static void dr3_fb_build_maps(int sw, int sh, int dw, int dh)
 {
@@ -111,6 +162,7 @@ void dr3_fb_present(const uint8_t *src, int sw, int sh, int src_pitch,
     /* the skip-blit variant measures the floor we cannot avoid (flush + swap only) */
     if (!dr3_prof_skip_blit()) {
         const uint64_t blit_t0 = dr3_prof_tick();
+        const unsigned long long dr3_t_blit = dr3_chaos_tick();
 
         if (filter) {
             /* average the source columns a target pixel covers - the game's dither patterns alias into
@@ -160,6 +212,21 @@ void dr3_fb_present(const uint8_t *src, int sw, int sh, int src_pitch,
                 }
             }
         }
+        else if ((sw == dw) && (sh == dh)) {
+            /* native 1:1 400x240 race framebuffer: zero scaling, zero stretching, rotated direct copy */
+            for (x = 0; x < dw; ++x) {
+                uint32_t *      drow = fb + (size_t)x * (size_t)dr3_fb_w + (dh - 1);
+                const uint8_t * sptr = src + x;
+                for (y = 0; y < dh; ++y) {
+                    *drow-- = lutpx[*sptr];
+                    sptr += src_pitch;
+                }
+            }
+        }
+        else if ((sw == 320) && (dw == 400) && (sh == dh)) {
+            /* 320x240 VGA13 (cutscenes / info): 320 -> 400 columns, rows 1:1 */
+            dr3_blit_rot_5_4(fb, dr3_fb_w, dh, src, sw, src_pitch, lutpx);
+        }
         else {
             for (x = 0; x < dw; ++x) {
                 const int       sx     = dr3_sx[x];
@@ -177,18 +244,68 @@ void dr3_fb_present(const uint8_t *src, int sw, int sh, int src_pitch,
                 }
             }
         }
+        dr3_chaos_time(DR3_CT_BLIT, dr3_t_blit);
+#if defined(DR3_CHAOS)
+        /*
+         * The cars of the chaos build are coloured here (dr3_chaos.h).  Only the race's own screen may
+         * use the car mask - the mask is copied from BACKBUFFER together with that image - so the
+         * present of any other buffer (the front end's 640x480, a leftover screen) leaves it alone.
+         * The filtered path is the front end as well: it has no cars.
+         */
+        {
+            extern unsigned char VGA13_ACTIVESCREEN_2[];
+            extern unsigned char * VGA13_ACTIVESCREEN;   /* the game's own screen inside that buffer */
+#if defined(__3DS__) && defined(DR3_USE_GFX) && !defined(DR3_HOST)
+            extern unsigned char RACE400_ACTIVESCREEN[];
+            const int             is_r400  = (sw == 400) && (sh == 240) && (src == (const uint8_t *)RACE400_ACTIVESCREEN);
+#else
+            const int             is_r400  = 0;
+#endif
+            const uint8_t * const vga13_lo = (const uint8_t *)VGA13_ACTIVESCREEN_2;
+            const uint8_t * const vga13_hi = vga13_lo + 320 * 240;
+            const int             is_race  = is_r400 || ((sw == 320) && (src >= vga13_lo) && (src < vga13_hi));
+            int                   row_off  = 0;
+
+            /*
+             * Where the game's own screen sits inside what is presented.  Native 400x240 has row_off = 0.
+             * Classic VGA13 (320x200 inside 320x240) starts 20 rows down.
+             */
+            if (!is_r400 && is_race && (src_pitch > 0) && ((const uint8_t *)VGA13_ACTIVESCREEN > src)) {
+                const int off = (int)(((const uint8_t *)VGA13_ACTIVESCREEN - src) / src_pitch);
+
+                if ((off > 0) && (off < DR3_CAR_MASK_H)) row_off = off;
+            }
+
+            dr3_fb_tint_log_present(src, sw, sh, src_pitch, is_race);
+            if (!filter && is_race) {
+
+                const unsigned long long dr3_t = dr3_chaos_tick();
+
+                dr3_fb_tint_cars(src, sw, sh, src_pitch, dw, dh, row_off, lut);
+                dr3_chaos_time(DR3_CT_TINT, dr3_t);
+            }
+        }
+#endif
         dr3_prof_add(DR3_SLOT_BLIT, dr3_prof_us(blit_t0));
     }
 
 
+    dr3_scenario_present(dr3_fb, dr3_fb_w, dr3_fb_h, lut);   /* frame counter + scripted screenshots */
+
     {
-        const uint64_t t = dr3_prof_tick();
+        const uint64_t           t      = dr3_prof_tick();
+        const unsigned long long dr3_t  = dr3_chaos_tick();
+
         GSPGPU_FlushDataCache(dr3_fb, (u32)(dr3_fb_w * dr3_fb_h * 4));
         dr3_prof_add(DR3_SLOT_FLUSH, dr3_prof_us(t));
+        dr3_chaos_time(DR3_CT_FLUSH, dr3_t);
     }
     {
-        const uint64_t t = dr3_prof_tick();
+        const uint64_t           t      = dr3_prof_tick();
+        const unsigned long long dr3_t  = dr3_chaos_tick();
+
         gfxScreenSwapBuffers(GFX_TOP, false);
         dr3_prof_add(DR3_SLOT_SWAP, dr3_prof_us(t));
+        dr3_chaos_time(DR3_CT_SWAP, dr3_t);
     }
 }

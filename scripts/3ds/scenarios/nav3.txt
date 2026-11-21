@@ -1,0 +1,17 @@
+# nav3.txt - Start Racing -> Load Game -> slot 2 (MILLIONS), then see where the game lands.
+atms 3000 key Return tap
+atms 6000 key Return tap
+atms 12000 key Return tap
+atms 34000 key Return tap
+atms 38000 key Down tap
+atms 40500 key Return tap
+atms 45000 key Down tap
+atms 46000 key Return tap
+atms 54000 screenshot m1.bmp
+atms 55000 key Return tap
+atms 61000 screenshot m2.bmp
+atms 62000 key Return tap
+atms 68000 screenshot m3.bmp
+atms 69000 key Return tap
+atms 75000 screenshot m4.bmp
+quit_after_ms 77000

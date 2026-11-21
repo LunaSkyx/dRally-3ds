@@ -1,0 +1,10 @@
+# flicker_race.txt - bottom screen flicker while a race starts (the map page comes up): the fix.
+#   az_run.ps1 -Scenario scenarios\flicker_race.txt -Grep 'probe|map page'      (flicker_race_legacy.txt = the old behaviour)
+until ready spam Return every 150 timeout 40000
+sleep 1500
+bprobe start
+quickrace track 4
+until event race_start spam Return every 150 timeout 30000
+until race_frames 400 timeout 40000
+bprobe report race_start_AFTER_fix
+quit

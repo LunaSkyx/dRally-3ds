@@ -45,6 +45,7 @@ $header = @'
 #   export DEVKITPRO=/opt/devkitpro
 #   make -f Makefile.3ds -j4                       # -> build/3ds/dRally_3ds.3dsx
 #   make -f Makefile.3ds -j4 DR3_DEBUG=1           # -> build/3ds_debug/dRally_3ds_debug.3dsx (profiler)
+#   make -f Makefile.3ds -j4 DR3_CHAOS=1           # -> build/3ds_chaos/dRally_3ds_chaos.3dsx (test build)
 #
 # Notes
 #   * only SDL2's software renderer exists on the 3DS (framebuffer driver)
@@ -76,7 +77,7 @@ LIBDIRS  := -L$(SDL2_3DS_LIB) -L$(CTRULIB)/lib
 
 # DR_MULTIPLAYER/IPXNET are kept: menus, race code and the chat box reference multiplayer symbols
 # unconditionally (verified: dropping them produces 20 unresolved externals on Windows/MSVC).
-DEFINES  := -D__3DS__ -DDR_LETTERBOX -DDR_MULTIPLAYER -DIPXNET -DDR3_LOG_KEYS -DDR3_USE_GFX
+DEFINES  := -D__3DS__ -DDR_LETTERBOX -DDR_MULTIPLAYER -DIPXNET -DDR3_LOG_KEYS -DDR3_USE_GFX -DDR3_CHAOS
 
 # Profiling build (platform_3ds/dr3_prof.h):   make -f Makefile.3ds DR3_DEBUG=1
 # It measures the frame budget, rotates measurement variants on its own and writes the results to
@@ -90,9 +91,20 @@ DEFINES  += -DDR3_PROFILE
 APP_TITLE := dRally 3DS (profile)
 endif
 
+# Chaos test build (drally.h, doc/3ds.md): eight extra cars on the grid.  Its own object tree as well,
+# so a check of the normal build never recompiles everything and the two can sit next to each other.
+DR3_CHAOS ?= 0
+ifeq ($(DR3_CHAOS),1)
+BUILD    := build/3ds_chaos
+TARGET   := dRally_3ds_chaos
+DEFINES  += -DDR3_CHAOS
+APP_TITLE := dRally 3DS (chaos)
+endif
+
 OUTPUT   := $(BUILD)/$(TARGET)
 
 INCLUDES := -I$(CURDIR) \
+            -I$(CURDIR)/src \
             -I$(CURDIR)/platform_3ds \
             -I$(CURDIR)/platform_3ds/sdl2_net_stub/include \
             -I$(SDL2_3DS_PREFIX)/include \
@@ -122,15 +134,29 @@ LIBS     := -lSDL2main -lSDL2 -lctru -lm
 EXTRA_OBJS := platform_3ds/dr3_input.o \
               platform_3ds/dr3_input_map.o \
               platform_3ds/dr3_blit.o \
+              platform_3ds/dr3_dm.o \
+              platform_3ds/dr3_arena.o \
+              platform_3ds/dr3_cash.o \
+              platform_3ds/dr3_anniv_gfx.o \
+              platform_3ds/dr3_anniv_prog.o \
+              platform_3ds/dr3_boss.o \
               platform_3ds/dr3_minimap.o \
               platform_3ds/dr3_laptime.o \
+              platform_3ds/dr3_payout.o \
+              platform_3ds/dr3_results.o \
               platform_3ds/dr3_log.o \
               platform_3ds/dr3_paths.o \
               platform_3ds/dr3_files.o \
               platform_3ds/dr3_fb.o \
               platform_3ds/dr3_prof.o \
               platform_3ds/dr3_bottom.o \
+              platform_3ds/dr3_bottom_ui.o \
               platform_3ds/sdl2_net_stub/sdl2_net_stub.o
+
+# Where the extra cars of the Chaos level stand and how they are ordered (platform_3ds/dr3_grid.c).
+# That is not a test build any more: the licence screen's fifth difficulty puts twenty cars on the
+# grid, so every build links it (drally.h, dr3_chaos.h).
+EXTRA_OBJS += platform_3ds/dr3_grid.o platform_3ds/dr3_scenario.o platform_3ds/dr3_quick.o
 
 '@
 
@@ -142,11 +168,11 @@ ALL_OBJS := $(addprefix $(BUILD)/, $(UNI_OBJS) $(LINUX_OBJS) $(RACE_OBJS) $(MENU
 
 .PHONY: all clean
 
-# home screen metadata (icon + title shown by the Homebrew Launcher)
-APP_TITLE   ?= dRally 3DS
-APP_DESC    := Death Rally (1996) engine port
-APP_AUTHOR  := LunaSkyx - dRally 3DS port
-APP_ICON    ?= $(CTRULIB)/default_icon.png
+# home screen metadata (icon + title shown by the Homebrew Launcher & CIA Home Menu)
+APP_TITLE   ?= Death Rally
+APP_DESC    := Death Rally - 30th Anniversary Edition
+APP_AUTHOR  := LunaSkyx / Remedy
+APP_ICON    ?= assets/3ds/icon.png
 
 all: $(OUTPUT).3dsx
 
@@ -164,6 +190,11 @@ $(OUTPUT).3dsx: $(OUTPUT).elf $(OUTPUT).smdh
 $(OUTPUT).elf: $(ALL_OBJS)
 	@echo "  LINK   $(notdir $@)"
 	@$(CC) $(ALL_OBJS) $(LIBDIRS) $(LIBS) $(LDFLAGS) -o $@
+
+$(BUILD)/%.o: src/%.c
+	@mkdir -p $(@D)
+	@echo "  CC     $<"
+	@$(CC) -c $(CFLAGS) $< -o $@
 
 $(BUILD)/%.o: %.c
 	@mkdir -p $(@D)

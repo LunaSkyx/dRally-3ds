@@ -1,0 +1,14 @@
+# nav1.txt - walk the front end: intro skip, then Start Racing, one screenshot after every step.
+atms 3000 key Return tap
+atms 6000 key Return tap
+atms 12000 key Return tap
+atms 33000 screenshot n0_menu.bmp
+atms 34000 key Return tap
+atms 38000 screenshot n1.bmp
+atms 39000 key Return tap
+atms 43000 screenshot n2.bmp
+atms 44000 key Return tap
+atms 48000 screenshot n3.bmp
+atms 49000 key Return tap
+atms 53000 screenshot n4.bmp
+quit_after_ms 56000
