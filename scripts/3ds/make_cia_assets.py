@@ -9,13 +9,14 @@ Generates authentic Death Rally 30th Anniversary Nintendo 3DS icon, banner PNG, 
 import math
 import os
 import struct
+import sys
 import wave
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 
-REPO = r"C:\Users\M-PC\rally\dRally-3ds"
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 OUT_DIR = os.path.join(REPO, "assets", "3ds")
-EMBLEM_SRC = r"C:\Users\M-PC\.gemini\antigravity-cli\brain\6bd6fafa-12b1-40cd-87ee-b9232f7b47ed\dr_emblem_v2_1795270271202.jpg"
-LOGO_SHOT = os.path.join(REPO, "logs", "az_runs", "verify_shop_loaded", "01_loaded_shop.png")
+EMBLEM_SRC = sys.argv[1] if len(sys.argv) > 1 else os.path.join(OUT_DIR, "icon.png")
+LOGO_SHOT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(REPO, "logs", "az_runs", "verify_shop_loaded", "01_loaded_shop.png")
 
 os.makedirs(OUT_DIR, exist_ok=True)
 

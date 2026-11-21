@@ -260,8 +260,8 @@ when the chaos log switch (`sdmc:/chaos_log.txt`) is 0.
 MSYSTEM=MSYS /c/devkitPro/msys2/usr/bin/bash.exe -lc '
   export DEVKITPRO=/opt/devkitpro DEVKITARM=/opt/devkitpro/devkitARM
   export PATH=$DEVKITARM/bin:$DEVKITPRO/tools/bin:$PATH
-  cd /c/Users/M-PC/rally/dRally-3ds &&
-  make -f Makefile.3ds -j8 SDL2_3DS_PREFIX=/c/Users/M-PC/rally/third_party/SDL2-3ds-install'
+  cd <repo> &&
+  make -f Makefile.3ds -j8 SDL2_3DS_PREFIX=../third_party/SDL2-3ds-install'
 # add  DR3_CHAOS=1  for build/3ds_chaos/dRally_3ds_chaos.3dsx  (az_run.ps1 -Build chaos)
 ```
 

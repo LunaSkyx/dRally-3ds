@@ -12,8 +12,8 @@
 $ErrorActionPreference = 'Stop'
 
 $outDirs = @(
-    'C:\Users\M-PC\AppData\Roaming\Azahar\sdmc\3ds\drally',
-    'C:\Users\M-PC\rally\3ds-release\dRally_3ds',
+    (Join-Path $env:APPDATA 'Azahar\sdmc\3ds\drally'),
+    (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '3ds-release\dRally_3ds'),
     (Join-Path (Split-Path -Parent $PSScriptRoot) 'build\3ds')
 )
 
