@@ -1,0 +1,13 @@
+# arena_full.txt - an ARENA race all the way: until the race is decided and the payout is logged (doc/arena.md).
+#   powershell -File scripts\3ds\az_run.ps1 -Scenario scripts\3ds\scenarios\arena_full.txt -Mode arena -Extras 11 -Grep 'arena|kill bonus|report|points'
+until ready spam Return every 150 timeout 40000
+quickrace track 4
+autopilot on
+until event race_start spam Return every 150 timeout 30000
+until race_frames 300 timeout 20000
+screenshot f0.bmp
+until race_frames 1500 timeout 60000
+screenshot f1.bmp
+until event race_over spam Return every 400 timeout 300000
+screenshot f_over.bmp
+quit

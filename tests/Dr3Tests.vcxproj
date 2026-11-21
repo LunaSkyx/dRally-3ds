@@ -31,7 +31,7 @@
       <CompileAs>CompileAsC</CompileAs>
       <Optimization>MaxSpeed</Optimization>
       <WarningLevel>Level3</WarningLevel>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\platform_3ds;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..;$(ProjectDir)..\src;$(ProjectDir)..\platform_3ds;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -40,8 +40,18 @@
   <ItemGroup>
     <ClCompile Include="test_dr3.c" />
     <ClCompile Include="..\platform_3ds\dr3_blit.c" />
+<ClCompile Include="..\platform_3ds\dr3_dm.c" />
+<ClCompile Include="..\platform_3ds\dr3_arena.c" />
+    <ClCompile Include="..\platform_3ds\dr3_cash.c" />
+    <ClCompile Include="..\platform_3ds\dr3_anniv_gfx.c" />
+    <ClCompile Include="..\platform_3ds\dr3_anniv_prog.c" />
+    <ClCompile Include="..\platform_3ds\dr3_boss.c" />
+    <ClCompile Include="..\platform_3ds\dr3_grid.c" />
     <ClCompile Include="..\platform_3ds\dr3_minimap.c" />
+    <ClCompile Include="..\platform_3ds\dr3_bottom_ui.c" />
     <ClCompile Include="..\platform_3ds\dr3_laptime.c" />
+    <ClCompile Include="..\platform_3ds\dr3_payout.c" />
+    <ClCompile Include="..\platform_3ds\dr3_results.c" />
     <ClCompile Include="..\platform_3ds\dr3_input_map.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

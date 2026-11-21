@@ -1,0 +1,42 @@
+# duel_offer.txt - the career flow with the duel mode armed (run with -Mode duel): the sign-up screen must NAME a rival
+# ("X wants a duel - ENTER: fight, ESC: race on"). ENTER signs up and the race is the two car duel.
+until ready spam Return every 150 timeout 40000
+sleep 800
+key Return tap
+sleep 1200
+key Return tap
+sleep 2500
+key Return tap
+sleep 2000
+key B tap
+sleep 250
+key O tap
+sleep 250
+key B tap
+sleep 400
+key Return tap
+sleep 1800
+key Return tap
+sleep 2000
+key Down tap
+sleep 300
+key Down tap
+sleep 300
+key Down tap
+sleep 300
+key Down tap
+sleep 500
+key Return tap
+sleep 2500
+screenshot d0_welcome.bmp
+key Return tap
+sleep 2500
+screenshot d1_signup.bmp
+sleep 1500
+screenshot d2_signup_later.bmp
+# ENTER = fight: the race must be the duel against the driver the line named
+key Return tap
+until event race_start spam Return every 150 timeout 40000
+until race_frames 250 timeout 30000
+screenshot d3_duel_race.bmp
+quit

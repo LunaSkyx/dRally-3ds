@@ -1,0 +1,11 @@
+# perf_race.txt - frame time of a race: percentiles, stutter frames and what causes them.
+#   powershell -File scripts\3ds\az_run.ps1 -Scenario scripts\3ds\scenarios\perf_race.txt -Perf -Mode standard -Extras 18
+# The first 150 frames (fade-in, start sequence) are not measured; then ~900 frames are recorded.
+until ready spam Return every 150 timeout 40000
+quickrace track 4
+until event race_start spam Return every 150 timeout 30000
+until race_frames 150 timeout 20000
+perf start
+until race_frames 1050 timeout 120000
+perf report race
+quit

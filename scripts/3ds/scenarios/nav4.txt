@@ -1,0 +1,21 @@
+# nav4.txt - front end -> load slot 2 (MILLIONS) -> shop -> market -> sign up -> race, screenshots on the way.
+atms 3000 key Return tap
+atms 6000 key Return tap
+atms 12000 key Return tap
+atms 34000 key Return tap
+atms 38000 key Down tap
+atms 40500 key Return tap
+atms 45000 key Down tap
+atms 46000 key Return tap
+atms 54000 key Return tap
+atms 61000 key Return tap
+atms 68000 key Return tap
+atms 75000 screenshot r0_signup.bmp
+atms 76000 key Return tap
+atms 85000 screenshot r1.bmp
+atms 95000 screenshot r2.bmp
+atms 105000 screenshot r3.bmp
+atms 115000 screenshot r4.bmp
+atms 125000 screenshot r5.bmp
+atms 135000 screenshot r6.bmp
+quit_after_ms 137000

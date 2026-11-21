@@ -77,9 +77,14 @@ int      dr3_prof_force_filter(void);         /* -1 engine decides, 0 nearest, 1
 
 #else
 
+/*
+ * The no-op variants consume their arguments on purpose: the call sites hand variables that only exist
+ * for the profiler, and a build without -DDR3_PROFILE would report every one of them as unused.  A
+ * warning in the port code fails the build check here.
+ */
 #define dr3_prof_init()                ((void)0)
-#define dr3_prof_add(slot, us)         ((void)0)
-#define dr3_prof_count(c, n)           ((void)0)
+#define dr3_prof_add(slot, us)         ((void)(slot), (void)(us))
+#define dr3_prof_count(c, n)           ((void)(c), (void)(n))
 #define dr3_prof_frame(us, skip)       ((void)(us), (void)(skip))
 static inline uint32_t dr3_prof_frame_delta(void) { return 0; }
 #define dr3_prof_phase(p)              ((void)0)

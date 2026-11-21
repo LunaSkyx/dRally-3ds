@@ -1,0 +1,42 @@
+# wheel.txt - the career flow with the random selector (run with -Mode random): the sign-up screen spins twice;
+# round 1 draws the MODE over four cards (RACE / CHALLENGE 1V1 / DESTROY 'EM ALL / ARENA), round 2 the race. Needs a career that has raced
+# (dr3_chaos_raced) - the log line "sign up screen: the selector is armed/off" says whether the wheel runs.
+until ready spam Return every 150 timeout 40000
+sleep 800
+key Return tap
+sleep 1200
+key Return tap
+sleep 2500
+key Return tap
+sleep 2000
+key B tap
+sleep 250
+key O tap
+sleep 250
+key B tap
+sleep 400
+key Return tap
+sleep 1800
+key Return tap
+sleep 2000
+raced
+key Down tap
+sleep 300
+key Down tap
+sleep 300
+key Down tap
+sleep 300
+key Down tap
+sleep 500
+key Return tap
+sleep 2200
+key Return tap
+# the wheel spins: round 1 (four cards), 3 s hold, round 2
+sleep 9000
+screenshot wr_landed.bmp
+# ENTER signs up for what the wheel drew
+key Return tap
+until event race_start spam Return every 150 timeout 60000
+until race_frames 400 timeout 40000
+screenshot wr_race.bmp
+quit

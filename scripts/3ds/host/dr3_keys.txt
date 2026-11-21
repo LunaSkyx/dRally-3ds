@@ -1,0 +1,31 @@
+# dr3_keys.txt - <ms> <key> down|up
+#
+# Die Tasten werden in das echte SDL-Event-Queue gelegt und laufen durch denselben Pfad wie eine
+# gedrueckte Taste (IO_Loop -> dRally_Keyboard_make/break), also laufen die Menues so, als haette man sie
+# von Hand bedient.  Die Zeit laeuft ab dem Start des Harness.
+#
+# Das Intro des Spiels (sanim.haf, gut 80 s) bricht beim ersten Tastendruck ab - ohne diese Taste ist das
+# Hauptmenue erst nach rund eineinviertel Minute da, und der Direktstart wartet so lange (er laeuft nicht
+# los, solange das Menue seine Grafik nicht geladen hat, siehe dr3_host.c / dr3_host_menu_ready).  Ein
+# Puls von 180 ms ist lang genug: die Menues dieses Spiels lesen die gehaltene Taste in eigenen Schleifen,
+# ein zu kurzer Puls kann zwischen zwei Abfragen fallen.
+#
+# Diese Vorlage ist der Intro-Skip plus die Rennfahrt: die Route waehlt kein Menue (der Direktstart
+# --quickrace faehrt das Rennen von selbst), aber ohne Gas und Maschinengewehr steht das Auto des Spielers
+# still - und damit gibt es keinen Rammstoss und keinen Schuss, also auch keinen Killbonus zu pruefen.
+#
+# Gas, Turbo und Maschinengewehr werden gehalten und *nicht* mehr losgelassen: race___40164h.c liest sie
+# als Dauerzustand (kmap), ein Loslassen faellt sofort auf.  Nicht gelenkt wird absichtlich - das Auto
+# startet als letzter und faehrt mit Turbo in das Feld vor ihm, und ein Rammstoss auf ein Auto vor ihm ist
+# der sicherste Killbonus (race___4dcach.c).  Laengere Lenkimpulse drehen das Auto dagegen im Kreis: bei
+# 200 Sachen ist schon eine Sekunde Lenken eine Kehre, damit kommt kein Rammstoss zustande.
+#
+# Das Maschinengewehr braucht Munition (race___4ff50h.c prueft sie, bevor geschossen wird) - die Taste
+# allein schiesst nicht.  Sie bleibt trotzdem gehalten, damit ein aufgesammeltes Gewehr sofort feuert.
+
+9000  return down
+9180  return up
+
+21000 up down
+21060 lshift down
+21120 lctrl down

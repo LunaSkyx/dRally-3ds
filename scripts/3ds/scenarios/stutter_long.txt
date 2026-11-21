@@ -1,0 +1,28 @@
+# stutter_long.txt - a long race with the AI driving the player, measured in 1500-frame windows.
+#   powershell -File scripts\3ds\az_run.ps1 -Scenario scripts\3ds\scenarios\stutter_long.txt -Perf -Mode standard -Extras 18 -TimeoutSec 500
+# One "[perf] wN" block per window: compare them - a window that is worse than its neighbours points at what
+# happened there (a pile-up, weapons, a lap boundary). The window ring holds 2048 frames, so windows stay <= 1500.
+until ready spam Return every 150 timeout 40000
+autopilot on
+quickrace track 4
+until event race_start spam Return every 150 timeout 30000
+until race_frames 150 timeout 20000
+perf start
+until race_frames 1650 timeout 150000
+perf report w1
+perf start
+until race_frames 3150 timeout 150000
+perf report w2
+perf start
+until race_frames 4650 timeout 150000
+perf report w3
+perf start
+until race_frames 6150 timeout 150000
+perf report w4
+perf start
+until race_frames 7650 timeout 150000
+perf report w5
+perf start
+until race_frames 9150 timeout 150000
+perf report w6
+quit

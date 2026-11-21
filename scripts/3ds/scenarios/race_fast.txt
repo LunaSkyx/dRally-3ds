@@ -1,0 +1,13 @@
+# race_fast.txt - the FAST route into a race: no fixed waits, every step goes on when its condition holds.
+#   powershell -File scripts\3ds\az_run.ps1 -Scenario scripts\3ds\scenarios\race_fast.txt -Mode duel -Extras 18
+# Return is tapped every 150 ms from the very start: it skips the intro the moment it can be skipped.
+until ready spam Return every 150 timeout 40000
+quickrace track 4
+until event race_start spam Return every 150 timeout 30000
+until race_frames 100 timeout 20000
+screenshot s0_start.bmp
+until race_frames 200 timeout 20000
+screenshot s1.bmp
+until race_frames 300 timeout 30000
+screenshot s2.bmp
+quit

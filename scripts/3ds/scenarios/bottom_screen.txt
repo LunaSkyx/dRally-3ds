@@ -1,0 +1,14 @@
+# bottom_screen.txt - the bottom screen of the front end (idle for 5 s: must be drawn ONCE, not every 500 ms) and of a race.
+# Every "screenshot" also saves the bottom screen as <name>_bottom.png.
+until ready spam Return every 150 timeout 40000
+sleep 600
+screenshot b0_frontend.bmp
+sleep 5000
+screenshot b1_frontend_5s.bmp
+quickrace track 4
+until event race_start spam Return every 150 timeout 30000
+until race_frames 100 timeout 20000
+screenshot b2_race.bmp
+until race_frames 700 timeout 40000
+screenshot b3_race_later.bmp
+quit

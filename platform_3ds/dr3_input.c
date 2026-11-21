@@ -8,6 +8,7 @@
 #include "dr3_input.h"
 #include "dr3_input_map.h"
 #include "dr3_log.h"
+#include "dr3_scenario.h"
 #if defined(DR3_CHAOS)
 #include "dr3_chaos.h"      /* dr3_chaos_extra_cars_toggle() - the chaos build's extra car switch */
 #endif
@@ -351,11 +352,27 @@ void dr3_input_inject_key(int scancode, int pressed)
     if (pressed) dr3_push_release(scancode, SDL_GetTicks());
 }
 
+/* Press or release without the automatic release of dr3_input_inject_key (scripted runs hold keys). */
+void dr3_input_inject_raw(int scancode, int pressed)
+{
+    if (!dr3_ready) dr3_input_init();
+    if ((scancode < 0) || (scancode >= SDL_NUM_SCANCODES)) return;
+
+    dr3_queue_push(scancode, pressed ? 1 : 0);
+}
+
 int dr3_poll_event(SDL_Event *e)
 {
     static unsigned int dr3_last_poll_ms;
 
     if (!dr3_ready) dr3_input_init();
+
+    dr3_scenario_tick();        /* scripted run (sdmc:/dr3_scenario.txt) - inert without the file */
+    if (dr3_scenario_quit_requested()) {
+        memset(e, 0, sizeof(*e));
+        e->type = SDL_QUIT;
+        return 1;
+    }
 
     dr3_service_pending();      /* release typed keys that have been held long enough */
     dr3_service_text();         /* deliver the next typed character */
@@ -391,6 +408,20 @@ int dr3_poll_event(SDL_Event *e)
 
             if (((st.held & dr3_combo) == dr3_combo) && ((dr3_prev_held & dr3_combo) != dr3_combo))
                 dr3_chaos_skip_cycle();
+
+            /*
+             * The race mode (drally.h: DR3_CHAOS_MODE_...): L + R + Y steps through the four settings -
+             * standard (whole field), duel (1v1), destroy 'em all (last car standing) and random (the sign
+             * up screen spins for a race and a mode).  The switch writes the number to the SD card as well,
+             * so it survives the next boot, and the sign up screen reads it again when it opens
+             * (___3266ch.c) - so the mode takes effect with the next race the player signs up for.
+             */
+            {
+                const uint32_t dr3_mode_combo = DR3_PAD_L | DR3_PAD_R | DR3_PAD_Y;
+
+                if (((st.held & dr3_mode_combo) == dr3_mode_combo) && ((dr3_prev_held & dr3_mode_combo) != dr3_mode_combo))
+                    dr3_chaos_mode_toggle();
+            }
         }
 #endif
 

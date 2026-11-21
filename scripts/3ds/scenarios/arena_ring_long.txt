@@ -1,0 +1,11 @@
+# arena_ring_long.txt - the player does not move: the ring has to catch him ("GET INSIDE THE RING") and wreck him.
+until ready spam Return every 150 timeout 40000
+quickrace track 4
+until event race_start spam Return every 150 timeout 30000
+until race_frames 4200 timeout 90000
+screenshot g1.bmp
+until race_frames 4700 timeout 40000
+screenshot g2.bmp
+until race_frames 6500 timeout 90000
+screenshot g3.bmp
+quit

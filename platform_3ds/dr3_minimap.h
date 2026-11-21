@@ -98,6 +98,15 @@ void dr3_canvas_fill(const dr3_canvas_t *c, int x0, int y0, int w, int h, uint32
 void dr3_canvas_rect(const dr3_canvas_t *c, int x0, int y0, int w, int h, uint32_t color);
 void dr3_canvas_px(const dr3_canvas_t *c, int x, int y, uint32_t color);
 
+/* Scales a marker colour (0xRRGGBB) so its brightest channel is 255, same hue; 0 stays 0 (tests/test_dr3.c). */
+uint32_t dr3_minimap_marker_colour(uint32_t rgb);
+
+/*
+ * Optional closing-ring overlay (arena mode): radius in track pixels round the centre of the track,
+ * 0 = off.  Updated incrementally without repainting the whole map band.
+ */
+void dr3_minimap_set_ring(int radius_px);
+
 /*
  * Draws the map into the rectangle (x0, y0, w, h) of the canvas and puts the cars on top.
  * Returns 1 when something was drawn.
@@ -126,5 +135,6 @@ int  dr3_minimap_ascii(char *out, int out_size, int cols, int rows);
 #define DR3_MAP_COL_PLAYER     0x00FFE020u
 #define DR3_MAP_COL_CAR        0x00E03030u
 #define DR3_MAP_COL_OUTLINE    0x00101010u
+#define DR3_MAP_COL_RING       0x00FF2828u
 
 #endif /* DR3_MINIMAP_H */

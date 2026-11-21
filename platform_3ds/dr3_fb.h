@@ -29,4 +29,13 @@ int  dr3_fb_init(void);
 void dr3_fb_present(const uint8_t *src, int sw, int sh, int src_pitch,
                     const dr3_palette_t *pal, const dr3_lut32_t *lut, int filter);
 
+#if defined(DR3_CHAOS)
+/*
+ * Says which buffer a present handed over and what the car mask held at that moment (dr3_chaos.h).
+ * The mask belongs to the race screen; only a present of that buffer may colour cars, and this is how
+ * a present that is not the race screen becomes visible in the log instead of silently eating the mask.
+ */
+void dr3_fb_tint_log_present(const uint8_t *src, int sw, int sh, int src_pitch, int is_race);
+#endif
+
 #endif /* DR3_FB_H */

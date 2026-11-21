@@ -19,4 +19,7 @@ void dr3_input_describe(void);        /* log the pad/joystick name and the butto
 /* Inject a key as if the pad had produced it (used by the on-screen buttons of the bottom screen). */
 void dr3_input_inject_key(int scancode, int pressed);
 
+/* Same, but a press stays down until the matching release (scripted runs: dr3_scenario.h). */
+void dr3_input_inject_raw(int scancode, int pressed);
+
 #endif /* DR3_INPUT_H */

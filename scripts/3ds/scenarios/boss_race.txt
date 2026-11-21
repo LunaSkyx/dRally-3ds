@@ -1,0 +1,12 @@
+# boss_race.txt - Chaos Standard race with the Adversary joining at the front of the pack.
+#   powershell -File scripts\3ds\az_run.ps1 -Scenario scripts\3ds\scenarios\boss_race.txt -Mode standard -Extras 18 -Boss 100 -Grep 'adversary|roster row|grid place|picture'
+until ready spam Return every 150 timeout 40000
+quickrace track 4
+until frames 66 timeout 20000
+screenshot boss_roster.bmp
+until event race_start spam Return every 150 timeout 30000
+until race_frames 115 timeout 20000
+screenshot boss_grid.bmp
+until race_frames 400 timeout 30000
+screenshot boss_race.bmp
+quit

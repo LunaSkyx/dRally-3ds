@@ -1,0 +1,17 @@
+# arena_ring.txt - the closing ring of the ARENA (doc/arena.md): the player sits in his corner (no autopilot), so the ring
+# reaches him; screenshots of the announcement, the ring line and the "GET INSIDE THE RING" warning.
+#   powershell -File scripts\3ds\az_run.ps1 -Scenario scripts\3ds\scenarios\arena_ring.txt -Mode arena -Extras 11 -Grep 'arena: (the ring|ring)'
+until ready spam Return every 150 timeout 40000
+quickrace track 4
+until event race_start spam Return every 150 timeout 30000
+until race_frames 880 timeout 40000
+screenshot r0_announce.bmp
+until race_frames 1300 timeout 40000
+screenshot r1.bmp
+until race_frames 1550 timeout 40000
+screenshot r2.bmp
+until race_frames 1800 timeout 40000
+screenshot r3.bmp
+until race_frames 2400 timeout 60000
+screenshot r4.bmp
+quit

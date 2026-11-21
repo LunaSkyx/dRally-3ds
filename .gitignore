@@ -11,22 +11,44 @@ x64
 z_regex*
 *.o
 *.obj
+*.pyc
+__pycache__/
 *_asm.c
 *_ok.c
 *.zip
 *_32b.c
-# Nintendo 3DS port (branch 3ds)
-build
+
+# Nintendo 3DS port
+build/
 *.3dsx
+*.cia
+*.bnr
 *.elf
 *.smdh
 *.map
-tests/x64
+tests/bin/
+tests/obj/
+tests/x64/
 tests/dRally3DSCheck.vcxproj
 
-# the port's local extras - never publish these
+# Local release/test folders & logs - never publish
 3ds-release/
+release-github/
+run_host/
+tests/host/
+tests/dRally3DSHost.vcxproj
 logs/
+frames/
+killbonus_demo/
 *.log
 dr3_controls.txt
 
+# Original copyrighted Death Rally data & saves - never commit
+*.BPA
+*.bpa
+*.HAF
+*.haf
+CINEM/
+CDROM.INI
+DR.CFG
+DR.SG*
