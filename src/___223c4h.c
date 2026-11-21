@@ -147,7 +147,10 @@ void ___223c4h(void){
 			___12e78h_v3(___1a10b8h___185c7ah, esp, x, y);
 		}
 
-		strcpy(esp, ___18768ah[D(___1a0e28h+0x14*n+0x10)]);
+		{
+			__DWORD__ dr3_hd = D(___1a0e28h+0x14*n+0x10);
+			strcpy(esp, ___18768ah[(dr3_hd < 6u) ? dr3_hd : 4u]);
+		}
 		x = 8109+0x3700*(n+6);
 		y = x/0x280;
 		x = x%0x280;

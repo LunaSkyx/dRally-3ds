@@ -634,14 +634,14 @@ static void dr3_bottom_build_race_state(dr3_ui_race_t *st)
 #if defined(DR3_CHAOS)
         if (dr3_chaos_hp_max[i] > 0) hmax = dr3_chaos_hp_max[i];
         if (dr3_boss_is_final_duel() && (i == 0)) {
-            hmax         = DR3_BOSS_P3_HP_MAX;
+            hmax         = dr3_boss_p3_hp_max();
             dst->is_boss = 1;
         }
         else if (i == dr3_chaos_boss_car()) {
             dst->is_boss = 1;
         }
         if (dr3_boss_is_swarm() && (i != me)) {
-            hmax = DR3_BOSS_P1_ENEMY_HP;
+            hmax = dr3_boss_p1_enemy_hp();
         }
         if (st->mode_kind == DR3_UI_RACE_DM) {
             dst->lap = dr3_dm_laps(i) + 1;
@@ -720,8 +720,8 @@ static void dr3_bottom_build_race_state(dr3_ui_race_t *st)
 
 static void dr3_bottom_build_menu_state(dr3_ui_menu_t *st)
 {
-    static const char *const diff_names[5] = {
-        "SPEED FREAK", "PETROL HEAD", "FULL THROTTLE", "30TH ANNIV", "30TH CHAOS"
+    static const char *const diff_names[6] = {
+        "SPEED FREAK", "PETROL HEAD", "FULL THROTTLE", "30TH ANNIV", "30TH ANNIV", "30TH EXTREME"
     };
     dr3_standing_t list[20];
     const racer_t *r  = (const racer_t *)___1a01e0h;
@@ -743,7 +743,7 @@ static void dr3_bottom_build_menu_state(dr3_ui_menu_t *st)
     /* Difficulty & Mode badges */
     {
         const unsigned int d = (unsigned int)___196a94h_difficulty;
-        snprintf(st->badge, sizeof(st->badge), "%s", (d < 5u) ? diff_names[d] : "DEATH RALLY");
+        snprintf(st->badge, sizeof(st->badge), "%s", (d < 6u) ? diff_names[d] : "DEATH RALLY");
     }
 
 #if defined(DR3_CHAOS)

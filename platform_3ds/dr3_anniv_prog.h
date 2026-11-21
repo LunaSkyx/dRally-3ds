@@ -32,17 +32,21 @@ extern "C" {
 /* Progression tier 0..3 from player's car model (0..6) and championship rank (1..20). */
 int dr3_anniv_tier(int player_car, int player_rank);
 
-/* Target grid size for the tier: 8 -> 12 -> 16 -> 20 (capped to 16 in Arena). */
+/* Target grid size for the tier: Normal 8 -> 12 -> 16 -> 20 (16 Arena); Extreme = 20 (16 Arena) always. */
 int dr3_anniv_field_size(int tier, int is_arena);
+int dr3_anniv_field_size_ex(int tier, int is_arena, int extreme);
 
-/* AI speed/difficulty table row (race___3f970h.c): 1 (Live to Ride) -> 2 (Petrol) -> 3 (Anniversary). */
+/* AI speed/difficulty table row (race___3f970h.c): Normal 1 -> 2 -> 3; Extreme = 3 (Anniversary) always. */
 int dr3_anniv_ai_difficulty_row(int tier);
+int dr3_anniv_ai_difficulty_row_ex(int tier, int extreme);
 
-/* Default random Adversary invasion percent chance: 0% -> 10% -> 18% -> 25%. */
+/* Default random Adversary invasion percent chance: Normal 0/10/18/25%; Extreme 45/45/60/60%. */
 int dr3_anniv_boss_chance(int tier);
+int dr3_anniv_boss_chance_ex(int tier, int extreme);
 
-/* 1v1 Challenge duel lap count by progression tier: 3 (early) -> 4 (mid-late) -> 5 (top tier). */
+/* 1v1 Challenge duel lap count: Normal 3/3/4/5; Extreme 4/5/5/6. */
 int dr3_anniv_duel_laps(int tier);
+int dr3_anniv_duel_laps_ex(int tier, int extreme);
 
 /* Tier-weighted wheel mode pick (returns DR3_CHAOS_MODE_* 0..3/4). roll100 in 0..99. */
 int dr3_anniv_pick_mode(int tier, int roll100);
@@ -55,8 +59,9 @@ int dr3_anniv_pick_mode(int tier, int roll100);
 void dr3_anniv_mode_bag_reset(int last_mode);
 int  dr3_anniv_mode_bag_next(int (*rng_fn)(void));
 
-/* Extra cash bonus for wrecking a strictly higher-class car (0 if victim_car <= player_car). */
+/* Extra cash bonus for wrecking a strictly higher-class car (Normal $150/gap, Extreme $200/gap). */
 int dr3_anniv_underdog_bonus(int player_car, int victim_car);
+int dr3_anniv_underdog_bonus_ex(int player_car, int victim_car, int extreme);
 
 /*
  * Select target_cars seats from the 20-driver roster: out_seats[0] = player_seat, followed by

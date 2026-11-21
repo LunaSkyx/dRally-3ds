@@ -223,11 +223,11 @@ static int dr3_chaos_field(__BYTE__ * seats, int num_cars, int * out)
 		                                         : dr3_chaos_extra_cars();
 		int       target = dr3_chaos_extra_cars_override()
 		                 ? (num_cars + dr3_extras)
-		                 : dr3_anniv_field_size(tier, dr3_chaos_arena());
+		                 : dr3_anniv_field_size_ex(tier, dr3_chaos_arena(), dr3_extreme_active());
 		int       cars[20], ranks[20], matched[20];
 		int       m_cnt, m_idx = 1;
 
-		if(dr3_chaos_arena() && target > DR3_ARENA_CARS) target = DR3_ARENA_CARS;
+		if(dr3_chaos_arena() && target > DR3_ARENA_CARS_MAX) target = DR3_ARENA_CARS_MAX;
 		if(target > DR3_CHAOS_RACERS) target = DR3_CHAOS_RACERS;
 		if(target < num_cars) target = num_cars;
 		if(pslot < 0 || pslot >= num_cars) pslot = 0;
@@ -251,10 +251,11 @@ static int dr3_chaos_field(__BYTE__ * seats, int num_cars, int * out)
 		}
 
 		dr3_anniv_set_active_field(m_cnt);
-		dr3_log("[dr3] anniv: tier %d (car %d, rank %d) -> %d speed-matched car(s), AI pace row %d (override=%d)",
+		dr3_log("[dr3] anniv%s: tier %d (car %d, rank %d) -> %d car(s), AI pace row %d (override=%d)",
+		        dr3_extreme_active() ? " EXTREME" : "",
 		        tier, (me >= 0 && me < 20) ? (int)s_6c[me].car : 0,
 		        (me >= 0 && me < 20) ? (int)s_6c[me].rank : 20,
-		        m_cnt, dr3_anniv_ai_difficulty_row(tier), dr3_chaos_extra_cars_override());
+		        m_cnt, dr3_anniv_ai_difficulty_row_ex(tier, dr3_extreme_active()), dr3_chaos_extra_cars_override());
 		return m_cnt;
 	}
 
@@ -677,7 +678,7 @@ void ___33010h_cdecl(int NumCars){
 		if ((int)D(___1a103ch) != 0) D(___1a103ch) = 0;
 
 		NumCars = 2;
-		NUM_OF_LAPS = dr3_anniv_duel_laps(dr3_anniv_tier((int)s_6c[dr3_player_seat].car, dr3_player_rank));
+		NUM_OF_LAPS = dr3_anniv_duel_laps_ex(dr3_anniv_tier((int)s_6c[dr3_player_seat].car, dr3_player_rank), dr3_extreme_active());
 
 		dr3_chaos_duel_rival_set(dr3_rival);
 
@@ -745,7 +746,7 @@ void ___33010h_cdecl(int NumCars){
 		                     : 0;
 		const int dr3_chance = dr3_chaos_boss_override()
 		                     ? dr3_chaos_boss_chance()
-		                     : dr3_anniv_boss_chance(dr3_tier_b);
+		                     : dr3_anniv_boss_chance_ex(dr3_tier_b, dr3_extreme_active());
 
 		if (dr3_m == DR3_CHAOS_MODE_DUEL) {
 			dr3_log("[dr3] chaos: adversary: skipped (mode DUEL)");
@@ -1091,7 +1092,7 @@ void ___33010h_cdecl(int NumCars){
 				const int dr3_td   = (dr3_me_d >= 0 && dr3_me_d < 20)
 				                   ? dr3_anniv_tier((int)s_6c[dr3_me_d].car, (int)s_6c[dr3_me_d].rank)
 				                   : 0;
-				D(___1de7d0h+0x54*n+0x44) = dr3_anniv_ai_difficulty_row(dr3_td);
+				D(___1de7d0h+0x54*n+0x44) = dr3_anniv_ai_difficulty_row_ex(dr3_td, dr3_extreme_active());
 			}
 			else
 #endif
@@ -1117,9 +1118,17 @@ void ___33010h_cdecl(int NumCars){
 				D(___1de7d0h+0x54*n+0x28) = 0;
 				D(___1de7d0h+0x54*n+0x24) = 0;
 				D(___1de7d0h+0x54*n+0x20) = 0;
-				if(((rand_watcom106()%5) == 0)&&(D(___185a14h_UseWeapons) != 0)) D(___1de7d0h+0x54*n+0x20) = 1;
-				if(((rand_watcom106()%5) == 0)&&(D(___185a14h_UseWeapons) != 0)) D(___1de7d0h+0x54*n+0x24) = 1;
-				if(((rand_watcom106()%5) == 0)&&(D(___185a14h_UseWeapons) != 0)) D(___1de7d0h+0x54*n+0x28) = 8;
+				if(D(___185a14h_UseWeapons) != 0){
+					if(dr3_extreme_active()){
+						if((rand_watcom106()%2) == 0) D(___1de7d0h+0x54*n+0x20) = 1;
+						if((rand_watcom106()%2) == 0) D(___1de7d0h+0x54*n+0x24) = 1;
+						if((rand_watcom106()%5) <  3) D(___1de7d0h+0x54*n+0x28) = 8;
+					} else {
+						if((rand_watcom106()%5) == 0) D(___1de7d0h+0x54*n+0x20) = 1;
+						if((rand_watcom106()%5) == 0) D(___1de7d0h+0x54*n+0x24) = 1;
+						if((rand_watcom106()%5) == 0) D(___1de7d0h+0x54*n+0x28) = 8;
+					}
+				}
 #if defined(DR_MULTIPLAYER)	
 			}
 #endif // DR_MULTIPLAYER
@@ -1226,6 +1235,11 @@ void ___33010h_cdecl(int NumCars){
 			D(___1de7d0h + 0x54 * dr3_n + 0x20) = s_6c[dr3_racer].rocket_fuel;
 			D(___1de7d0h + 0x54 * dr3_n + 0x24) = s_6c[dr3_racer].spikes;
 			D(___1de7d0h + 0x54 * dr3_n + 0x28) = s_6c[dr3_racer].mines;
+			if(dr3_extreme_active() && (D(___185a14h_UseWeapons) != 0)){
+				if((rand_watcom106()%2) == 0) D(___1de7d0h + 0x54 * dr3_n + 0x20) = 1;
+				if((rand_watcom106()%2) == 0) D(___1de7d0h + 0x54 * dr3_n + 0x24) = 1;
+				if((rand_watcom106()%5) <  3) D(___1de7d0h + 0x54 * dr3_n + 0x28) = 8;
+			}
 			D(___1de7d0h + 0x54 * dr3_n + 0x30) = s_6c[dr3_racer].car;
 			D(___1de7d0h + 0x54 * dr3_n + 0x34) = B(___1a0fe0h + 3 * s_6c[dr3_racer].color);
 			D(___1de7d0h + 0x54 * dr3_n + 0x38) = B(___1a0fe0h + 3 * s_6c[dr3_racer].color + 1);
@@ -1236,7 +1250,7 @@ void ___33010h_cdecl(int NumCars){
 				                   ? dr3_anniv_tier((int)s_6c[dr3_me_e].car, (int)s_6c[dr3_me_e].rank)
 				                   : 0;
 				D(___1de7d0h + 0x54 * dr3_n + 0x44) = (dr3_chaos_active() && (D(___1a1028h) != 3))
-				                                    ? dr3_anniv_ai_difficulty_row(dr3_te)
+				                                    ? dr3_anniv_ai_difficulty_row_ex(dr3_te, dr3_extreme_active())
 				                                    : DR3_DIFFICULTY_ROW(___196a94h_difficulty);
 			}
 
@@ -1340,14 +1354,16 @@ void ___33010h_cdecl(int NumCars){
 				strcpy((char *)(___1de7d0h + 0x54 * c), s_6c[r].name);
 				strupr_watcom106((char *)(___1de7d0h + 0x54 * c));
 				D(___1de7d0h + 0x54 * c + 0x10) = 0;
-				D(___1de7d0h + 0x54 * c + 0x14) = (idx < 3) ? 3 : 2;
-				D(___1de7d0h + 0x54 * c + 0x18) = (idx < 3) ? 3 : 2;
-				D(___1de7d0h + 0x54 * c + 0x1c) = (idx < 7) ? 2 : 1;
-				D(___1de7d0h + 0x54 * c + 0x20) = 0;
-				D(___1de7d0h + 0x54 * c + 0x24) = (idx < 5) ? 1 : 0;
-				D(___1de7d0h + 0x54 * c + 0x28) = ((idx < 5) ? 2 : 1) * !!D(___185a14h_UseWeapons);
+				D(___1de7d0h + 0x54 * c + 0x14) = dr3_extreme_active() ? 3 : ((idx < 3) ? 3 : 2);
+				D(___1de7d0h + 0x54 * c + 0x18) = dr3_extreme_active() ? 3 : ((idx < 3) ? 3 : 2);
+				D(___1de7d0h + 0x54 * c + 0x1c) = dr3_extreme_active() ? 3 : ((idx < 7) ? 2 : 1);
+				D(___1de7d0h + 0x54 * c + 0x20) = dr3_extreme_active() ? !!D(___185a14h_UseWeapons) : 0;
+				D(___1de7d0h + 0x54 * c + 0x24) = (dr3_extreme_active() || (idx < 5)) ? 1 : 0;
+				D(___1de7d0h + 0x54 * c + 0x28) = (dr3_extreme_active() ? 4 : ((idx < 5) ? 2 : 1)) * !!D(___185a14h_UseWeapons);
 				D(___1de7d0h + 0x54 * c + 0x2c) = D(___185a14h_UseWeapons);
-				D(___1de7d0h + 0x54 * c + 0x30) = (idx < 3) ? 5 : ((idx < 7) ? 4 : 3);  /* Deliverators, Wraiths & Shriekers */
+				D(___1de7d0h + 0x54 * c + 0x30) = dr3_extreme_active()
+				                                ? ((idx < 6) ? 5 : 4)
+				                                : ((idx < 3) ? 5 : ((idx < 7) ? 4 : 3));  /* Deliverators, Wraiths & Shriekers */
 				D(___1de7d0h + 0x54 * c + 0x34) = B(___1a0fe0h + 3 * s_6c[r].color);
 				D(___1de7d0h + 0x54 * c + 0x38) = B(___1a0fe0h + 3 * s_6c[r].color + 1);
 				D(___1de7d0h + 0x54 * c + 0x3c) = B(___1a0fe0h + 3 * s_6c[r].color + 2);

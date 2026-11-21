@@ -344,6 +344,7 @@ int dr3_adversary_wanted;
  * silently switch the twenty car race off.
  */
 int dr3_chaos_wanted;
+int dr3_extreme_wanted;
 __BYTE__ ___24387ch[4];
 __BYTE__ ___243880h[4];
 __BYTE__ ___243884h[4];

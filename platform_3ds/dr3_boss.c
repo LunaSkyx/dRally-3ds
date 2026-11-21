@@ -176,6 +176,16 @@ static int dr3_boss_p3_boom_idx;    /* explosion pattern counter                
 static int dr3_boss_p3_hail_done;   /* 1 once SFX_HAIL_TO_THE_KING has been played       */
 static int dr3_boss_cheat_on;       /* 1 when loaded from a dedicated cheat test save    */
 
+int dr3_boss_p1_enemy_hp(void)
+{
+    return dr3_extreme_active() ? DR3_BOSS_P1_ENEMY_HP_EXT : DR3_BOSS_P1_ENEMY_HP;
+}
+
+int dr3_boss_p3_hp_max(void)
+{
+    return dr3_extreme_active() ? DR3_BOSS_P3_HP_MAX_EXT : DR3_BOSS_P3_HP_MAX;
+}
+
 int  dr3_boss_cheat_active(void) { return dr3_boss_cheat_on; }
 
 int  dr3_boss_phase(void) { return dr3_boss_cur_phase; }
@@ -330,8 +340,9 @@ void dr3_boss_tick(void)
         return;
     }
 
-    if (!dr3_boss_p3_enrage_on && dr3_boss_p3_enraged(hp_now, DR3_BOSS_P3_HP_MAX)) {
-        const float boost = DR3_BOSS_P3_ENRAGE_MULT / DR3_BOSS_P3_SPEED_MULT;
+    if (!dr3_boss_p3_enrage_on && dr3_boss_p3_enraged(hp_now, dr3_boss_p3_hp_max())) {
+        const float enrage_m = dr3_extreme_active() ? DR3_BOSS_P3_ENRAGE_MULT_EXT : DR3_BOSS_P3_ENRAGE_MULT;
+        const float boost    = enrage_m / DR3_BOSS_P3_SPEED_MULT;
 
         dr3_boss_p3_enrage_on   = 1;
         dr3_boss_p3_enrage_tick = (int)getCounter(1);
@@ -339,12 +350,12 @@ void dr3_boss_tick(void)
         *(float *)(void *)(___1de580h + 4) = dr3_boss_p3_base_spd * boost;
         *(float *)(void *)(___1de580h + 8) = dr3_boss_p3_base_spd * boost;
 
-        /* Top up the Boss's ammo and grant 4 extra mines on enrage */
+        /* Top up the Boss's ammo and grant 4 extra mines on enrage (6 on EXTREME) */
         *(int32_t *)(void *)(___1de580h + 0x30) = DR3_ARENA_AMMO_MAX;
-        *(int32_t *)(void *)(___1de580h + 0x28) += 4;
+        *(int32_t *)(void *)(___1de580h + 0x28) += dr3_extreme_active() ? 6 : 4;
 
         dr3_log("[dr3] boss: PHASE 3 ADVERSARY ENRAGED at tick %d (hp %d/%d) - speed boosted & closing ring started!",
-                dr3_boss_p3_enrage_tick, hp_now, DR3_BOSS_P3_HP_MAX);
+                dr3_boss_p3_enrage_tick, hp_now, dr3_boss_p3_hp_max());
     }
 }
 
@@ -417,7 +428,7 @@ int dr3_boss_hud_bar(int *hp_now, int *hp_max, int *enraged)
     if (hp < 0) hp = 0;
 
     if (hp_now)  *hp_now  = hp;
-    if (hp_max)  *hp_max  = DR3_BOSS_P3_HP_MAX;
+    if (hp_max)  *hp_max  = dr3_boss_p3_hp_max();
     if (enraged) *enraged = dr3_boss_p3_enrage_on;
     return 1;
 }

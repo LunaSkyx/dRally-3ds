@@ -154,7 +154,7 @@ void dr3_chaos_kill_bonus(int victim, const char * cause){
 	if (model < 0)  model = 0;
 	if (model > 6)  model = 6;
 	if (dr3_chaos_active()) {
-		underdog = dr3_anniv_underdog_bonus(player_model, model);
+		underdog = dr3_anniv_underdog_bonus_ex(player_model, model, dr3_extreme_active());
 	}
 	amount = reward[model] + underdog;
 

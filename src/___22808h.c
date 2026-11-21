@@ -189,7 +189,8 @@ static void dr3_boss_victory_celebration(void)
 		}
 
 		/* Staggered dramatic triumph text reveal */
-		if (frame >= 6)   dr3_draw_centered(___1a10cch___185ba9h, FONTPROPS01, "30TH ANNIVERSARY CHAMPION!", 118);
+		if (frame >= 6)   dr3_draw_centered(___1a10cch___185ba9h, FONTPROPS01,
+		                                    dr3_extreme_active() ? "30TH ANNIV EXTREME CHAMPION!" : "30TH ANNIVERSARY CHAMPION!", 118);
 		if (frame >= 24)  dr3_draw_centered(___1a1108h___185c0bh, FONTPROPS02, sub_line, 156);
 		if (frame >= 48)  dr3_draw_centered(___1a1108h___185c0bh, FONTPROPS02, "PHASE 1: THE SWARM     - 20 VAGABONDS CRUSHED", 196);
 		if (frame >= 74)  dr3_draw_centered(___1a1108h___185c0bh, FONTPROPS02, "PHASE 2: THE ESCORT    - 11 ELITES OUTRACED", 220);

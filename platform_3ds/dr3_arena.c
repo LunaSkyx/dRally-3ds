@@ -588,10 +588,13 @@ void dr3_arena_ring_tick(void)
     for (n = 0; n < NUM_OF_CARS; ++n) {
 
         int hp = S94(n, 0x18);
+        int drain;
 
         if ((hp <= 0) || !dr3_arena_ring_outside(s[n].XLocation, s[n].YLocation, cx, cy, r)) continue;
 
-        S94(n, 0x18) = hp - dr3_arena_ring_drain(DR3_ARENA_HP_MAX);
+        drain = dr3_arena_ring_drain(DR3_ARENA_HP_MAX);
+        if (dr3_extreme_active()) drain *= 2;
+        S94(n, 0x18) = hp - drain;
         if (S94(n, 0x18) < 0) S94(n, 0x18) = 0;
 
         if (S94(n, 0x18) == 0) dr3_chaos_wreck(n, hp, "the closing ring");
@@ -720,14 +723,14 @@ void dr3_arena_setup(void)
                 if (S94(n, 0x28) < 5) S94(n, 0x28) = 5;
             }
             else {
-                S94(n, 0x18) = DR3_BOSS_P1_ENEMY_HP;
-                S94(n, 0x28) = 1;
+                S94(n, 0x18) = dr3_boss_p1_enemy_hp();
+                S94(n, 0x28) = dr3_extreme_active() ? 2 : 1;
             }
         }
         else if (dr3_boss_is_final_duel()) {
             if (n == 0) {
-                /* Giant Boss Deliverator: 3x HP, full ammo/turbo, 8 starting mines */
-                S94(n, 0x18) = DR3_BOSS_P3_HP_MAX;
+                /* Giant Boss Deliverator: 3x HP (4x EXTREME), full ammo/turbo, 8+ starting mines */
+                S94(n, 0x18) = dr3_boss_p3_hp_max();
                 S94(n, 0x34) = DR3_ARENA_AMMO_MAX;
                 if (S94(n, 0x28) < DR3_BOSS_P3_START_MINES) S94(n, 0x28) = DR3_BOSS_P3_START_MINES;
             }
@@ -818,8 +821,8 @@ static int dr3_arena_pick_item(int car, float tdist)
     const int is_grudge = (car == dr3_grudge_car) && dr3_arena_alive((int)MY_CAR_IDX);
     const int ammo_low  = (S94(car, 0x30) < DR3_ARENA_AMMO_MAX * (is_grudge ? 20 : 55) / 100);
     const int now       = (int)getCounter(1);
-    const int hp_max_ref = dr3_boss_is_giant_car(car) ? DR3_BOSS_P3_HP_MAX
-                         : (dr3_boss_is_swarm() && (car != (int)MY_CAR_IDX)) ? DR3_BOSS_P1_ENEMY_HP
+    const int hp_max_ref = dr3_boss_is_giant_car(car) ? dr3_boss_p3_hp_max()
+                         : (dr3_boss_is_swarm() && (car != (int)MY_CAR_IDX)) ? dr3_boss_p1_enemy_hp()
                          : DR3_ARENA_HP_MAX;
     const int hp_low    = (S94(car, 0x18) < hp_max_ref * (is_grudge ? 25 : 50) / 100);
     const int mines_low = (S94(car, 0x28) <= (is_grudge ? 0 : 1));

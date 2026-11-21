@@ -95,12 +95,15 @@ extern int       dr3_adversary_wanted;
  * the AI tables have a row per difficulty, and "Chaos" reuses the hardest one (DR3_DIFFICULTY_ROW),
  * so only the number of cars is new.
  */
-#define DR3_DIFFICULTY_CHAOS        4      /* the fifth entry in the licence screen's list */
+#define DR3_DIFFICULTY_CHAOS        4      /* 30th Anniversary (Rising Chaos progression) */
+#define DR3_DIFFICULTY_EXTREME      5      /* 30th Anniversary EXTREME (very hard, full grid from Race 1) */
 #define DR3_DIFFICULTY_ROW(d)       (((d) > DR3_DIFFICULTY_ADVERSARY) ? DR3_DIFFICULTY_ADVERSARY : (d))
 
 extern int dr3_chaos_wanted;
+extern int dr3_extreme_wanted;
 
-#define dr3_chaos_active()          (dr3_chaos_wanted || (___196a94h_difficulty == DR3_DIFFICULTY_CHAOS))
+#define dr3_extreme_active()        (dr3_extreme_wanted || (___196a94h_difficulty == DR3_DIFFICULTY_EXTREME))
+#define dr3_chaos_active()          (dr3_chaos_wanted || (___196a94h_difficulty == DR3_DIFFICULTY_CHAOS) || dr3_extreme_active())
 
 /*
  * Wrecking an opponent pays on the Chaos difficulty (race___4dcach.c).  The payout pops up over the

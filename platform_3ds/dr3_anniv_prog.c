@@ -24,9 +24,14 @@ int dr3_anniv_tier(int player_car, int player_rank)
     return 0;
 }
 
-int dr3_anniv_field_size(int tier, int is_arena)
+int dr3_anniv_field_size_ex(int tier, int is_arena, int extreme)
 {
     int sz;
+
+    if (extreme) {
+        sz = is_arena ? 16 : 20;
+        return sz;
+    }
 
     if (tier <= 0)      sz = 8;
     else if (tier == 1) sz = 12;
@@ -37,26 +42,55 @@ int dr3_anniv_field_size(int tier, int is_arena)
     return sz;
 }
 
-int dr3_anniv_ai_difficulty_row(int tier)
+int dr3_anniv_field_size(int tier, int is_arena)
 {
+    return dr3_anniv_field_size_ex(tier, is_arena, 0);
+}
+
+int dr3_anniv_ai_difficulty_row_ex(int tier, int extreme)
+{
+    if (extreme) return 3;   /* full ANNIVERSARY (+ EXTREME boost in race___3f970h.c) */
     if (tier <= 0) return 1; /* I_LIVE_TO_RIDE */
     if (tier <= 2) return 2; /* PETROL_IN_MY_VEINS */
     return 3;                /* ANNIVERSARY */
 }
 
-int dr3_anniv_boss_chance(int tier)
+int dr3_anniv_ai_difficulty_row(int tier)
 {
+    return dr3_anniv_ai_difficulty_row_ex(tier, 0);
+}
+
+int dr3_anniv_boss_chance_ex(int tier, int extreme)
+{
+    if (extreme) {
+        return (tier >= 2) ? 60 : 45;
+    }
     if (tier <= 0)      return 0;
     if (tier == 1)      return 10;
     if (tier == 2)      return 18;
     return 25;
 }
 
-int dr3_anniv_duel_laps(int tier)
+int dr3_anniv_boss_chance(int tier)
 {
+    return dr3_anniv_boss_chance_ex(tier, 0);
+}
+
+int dr3_anniv_duel_laps_ex(int tier, int extreme)
+{
+    if (extreme) {
+        if (tier <= 0) return 4;
+        if (tier <= 2) return 5;
+        return 6;
+    }
     if (tier <= 1) return 3;
     if (tier == 2) return 4;
     return 5;
+}
+
+int dr3_anniv_duel_laps(int tier)
+{
+    return dr3_anniv_duel_laps_ex(tier, 0);
 }
 
 int dr3_anniv_pick_mode(int tier, int roll100)
@@ -140,13 +174,19 @@ int dr3_anniv_mode_bag_next(int (*rng_fn)(void))
     return picked;
 }
 
-int dr3_anniv_underdog_bonus(int player_car, int victim_car)
+int dr3_anniv_underdog_bonus_ex(int player_car, int victim_car, int extreme)
 {
+    const int per_gap = extreme ? 200 : 150;
     if (player_car < 0) player_car = 0;
     if (victim_car > player_car) {
-        return 150 * (victim_car - player_car);
+        return per_gap * (victim_car - player_car);
     }
     return 0;
+}
+
+int dr3_anniv_underdog_bonus(int player_car, int victim_car)
+{
+    return dr3_anniv_underdog_bonus_ex(player_car, victim_car, 0);
 }
 
 int dr3_anniv_select_field(int player_seat, int target_cars,
@@ -431,7 +471,9 @@ void dr3_anniv_radio_tick(void)
                     "I HEARD YOU WERE GETTING FAST...",
                     "LET'S SEE IF YOU CAN KEEP UP!"
                 };
-                dr3_anniv_radio_push("ADVERSARY:", boss_lines[dr3_r_seed & 1],
+                dr3_anniv_radio_push("ADVERSARY:",
+                                     dr3_extreme_active() ? "EXTREME MODE? YOU'VE GOT A DEATH WISH!"
+                                                          : boss_lines[dr3_r_seed & 1],
                                      DR3_ANNIV_RADIO_ADVERSARY, 1, ticks);
             }
             else if (dr3_r_mode == DR3_CHAOS_MODE_DUEL) {
@@ -440,11 +482,16 @@ void dr3_anniv_radio_tick(void)
                     "LET'S SETTLE THIS ONE ON ONE!"
                 };
                 snprintf(spk, sizeof(spk), "%.22s:", dr3_r_rival);
-                dr3_anniv_radio_push(spk, duel_lines[dr3_r_seed & 1],
+                dr3_anniv_radio_push(spk,
+                                     dr3_extreme_active() ? "EXTREME DUEL! NO MERCY OUT HERE!"
+                                                          : duel_lines[dr3_r_seed & 1],
                                      DR3_ANNIV_RADIO_RIVAL, 0, ticks);
             }
             else if (dr3_r_mode == DR3_CHAOS_MODE_DM) {
-                if (dr3_r_seed & 1) {
+                if (dr3_extreme_active()) {
+                    snprintf(msg, sizeof(msg), "EXTREME! %d ARMED KILLERS! SURVIVE!", dr3_r_field_n);
+                    dr3_anniv_radio_push("PIT RADIO:", msg, DR3_ANNIV_RADIO_GOLD, 0, ticks);
+                } else if (dr3_r_seed & 1) {
                     snprintf(msg, sizeof(msg), "%d CARS! LAST ONE STANDING WINS!", dr3_r_field_n);
                     dr3_anniv_radio_push("PIT RADIO:", msg, DR3_ANNIV_RADIO_PIT, 0, ticks);
                 } else {
@@ -453,12 +500,29 @@ void dr3_anniv_radio_tick(void)
                 }
             }
             else if (dr3_r_mode == DR3_CHAOS_MODE_ARENA) {
-                snprintf(msg, sizeof(msg), "%d-CAR ARENA! TOP 3 GET PAID!", dr3_r_field_n);
-                dr3_anniv_radio_push("PIT RADIO:", msg, DR3_ANNIV_RADIO_PIT, 0, ticks);
+                if (dr3_extreme_active()) {
+                    snprintf(msg, sizeof(msg), "EXTREME ARENA! 2X STORM DRAIN!", dr3_r_field_n);
+                    dr3_anniv_radio_push("PIT RADIO:", msg, DR3_ANNIV_RADIO_GOLD, 0, ticks);
+                } else {
+                    snprintf(msg, sizeof(msg), "%d-CAR ARENA! TOP 3 GET PAID!", dr3_r_field_n);
+                    dr3_anniv_radio_push("PIT RADIO:", msg, DR3_ANNIV_RADIO_PIT, 0, ticks);
+                }
             }
             else {
-                /* Standard Race: escalates with tier! */
-                if (dr3_r_tier == 0) {
+                /* Standard Race: EXTREME throws all 20 killers in immediately; Normal escalates with tier! */
+                if (dr3_extreme_active()) {
+                    if ((dr3_r_seed % 3) == 0) {
+                        dr3_anniv_radio_push("PIT RADIO:", "EXTREME! 20 KILLERS. GOOD LUCK!",
+                                             DR3_ANNIV_RADIO_GOLD, 0, ticks);
+                    } else if ((dr3_r_seed % 3) == 1) {
+                        snprintf(spk, sizeof(spk), "%.22s:", dr3_r_rival);
+                        dr3_anniv_radio_push(spk, "YOU PICKED EXTREME? BIG MISTAKE!",
+                                             DR3_ANNIV_RADIO_RIVAL, 0, ticks);
+                    } else {
+                        dr3_anniv_radio_push("PIT RADIO:", "MINES, SPIKES, NO MERCY! DRIVE!",
+                                             DR3_ANNIV_RADIO_GOLD, 0, ticks);
+                    }
+                } else if (dr3_r_tier == 0) {
                     if ((dr3_r_seed % 3) == 0) {
                         snprintf(msg, sizeof(msg), "%d CARS ON THE GRID. STAY SHARP!", dr3_r_field_n);
                         dr3_anniv_radio_push("PIT RADIO:", msg, DR3_ANNIV_RADIO_PIT, 0, ticks);

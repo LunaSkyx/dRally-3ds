@@ -2995,33 +2995,42 @@ static void test_anniv_prog(void)
     CHECK(dr3_anniv_tier(4, 10) == 3, "Wraith -> tier 3 (Full Mayhem)");
     CHECK(dr3_anniv_tier(0, 5)  == 3, "Top 6 -> tier 3 (Full Mayhem)");
 
-    /* Escalating grid size: 8 -> 12 -> 16 -> 20 (capped at 16 in Arena) */
+    /* Escalating grid size: 8 -> 12 -> 16 -> 20 (capped at 16 in Arena); EXTREME = full 20 (16 Arena) always */
     CHECK(dr3_anniv_field_size(0, 0) == 8  && dr3_anniv_field_size(0, 1) == 8,  "Tier 0: 8 cars (Race/DM/Arena)");
     CHECK(dr3_anniv_field_size(1, 0) == 12 && dr3_anniv_field_size(1, 1) == 12, "Tier 1: 12 cars (Race/DM/Arena)");
     CHECK(dr3_anniv_field_size(2, 0) == 16 && dr3_anniv_field_size(2, 1) == 16, "Tier 2: 16 cars (Race/DM/Arena)");
     CHECK(dr3_anniv_field_size(3, 0) == 20 && dr3_anniv_field_size(3, 1) == 16, "Tier 3: 20 cars (16 Arena)");
+    CHECK(dr3_anniv_field_size_ex(0, 0, 1) == 20 && dr3_anniv_field_size_ex(0, 1, 1) == 16, "EXTREME Tier 0: 20 cars (16 Arena)");
+    CHECK(dr3_anniv_field_size_ex(3, 0, 1) == 20 && dr3_anniv_field_size_ex(3, 1, 1) == 16, "EXTREME Tier 3: 20 cars (16 Arena)");
 
-    /* Progressive AI pace & Boss invasion chance */
+    /* Progressive AI pace & Boss invasion chance (Normal vs EXTREME) */
     CHECK(dr3_anniv_ai_difficulty_row(0) == 1, "Tier 0 AI pace = I Live to Ride");
     CHECK(dr3_anniv_ai_difficulty_row(1) == 2 && dr3_anniv_ai_difficulty_row(2) == 2, "Tier 1-2 AI pace = Petrol");
     CHECK(dr3_anniv_ai_difficulty_row(3) == 3, "Tier 3 AI pace = full Anniversary");
-    CHECK(dr3_anniv_boss_chance(0) == 0,  "Tier 0: 0% Adversary invasion");
-    CHECK(dr3_anniv_boss_chance(1) == 10, "Tier 1: 10% Adversary invasion");
-    CHECK(dr3_anniv_boss_chance(2) == 18, "Tier 2: 18% Adversary invasion");
-    CHECK(dr3_anniv_boss_chance(3) == 25, "Tier 3: 25% Adversary invasion");
+    CHECK(dr3_anniv_ai_difficulty_row_ex(0, 1) == 3 && dr3_anniv_ai_difficulty_row_ex(2, 1) == 3, "EXTREME AI pace = full Anniversary always");
+    CHECK(dr3_anniv_boss_chance(0) == 0,  "Tier 0: 0%% Adversary invasion");
+    CHECK(dr3_anniv_boss_chance(1) == 10, "Tier 1: 10%% Adversary invasion");
+    CHECK(dr3_anniv_boss_chance(2) == 18, "Tier 2: 18%% Adversary invasion");
+    CHECK(dr3_anniv_boss_chance(3) == 25, "Tier 3: 25%% Adversary invasion");
+    CHECK(dr3_anniv_boss_chance_ex(0, 1) == 45 && dr3_anniv_boss_chance_ex(1, 1) == 45, "EXTREME Tier 0-1: 45%% Adversary invasion");
+    CHECK(dr3_anniv_boss_chance_ex(2, 1) == 60 && dr3_anniv_boss_chance_ex(3, 1) == 60, "EXTREME Tier 2-3: 60%% Adversary invasion");
 
-    /* 1v1 Challenge duel laps: 3 early -> 4 mid-late -> 5 top tier */
+    /* 1v1 Challenge duel laps: Normal 3/3/4/5, EXTREME 4/5/5/6 */
     CHECK(dr3_anniv_duel_laps(0) == 3, "Tier 0 duel = 3 laps");
     CHECK(dr3_anniv_duel_laps(1) == 3, "Tier 1 duel = 3 laps");
     CHECK(dr3_anniv_duel_laps(2) == 4, "Tier 2 duel = 4 laps");
     CHECK(dr3_anniv_duel_laps(3) == 5, "Tier 3 duel = 5 laps");
+    CHECK(dr3_anniv_duel_laps_ex(0, 1) == 4 && dr3_anniv_duel_laps_ex(1, 1) == 5 &&
+          dr3_anniv_duel_laps_ex(2, 1) == 5 && dr3_anniv_duel_laps_ex(3, 1) == 6,
+          "EXTREME duel laps = 4/5/5/6");
     CHECK(DR3_CASH_MAX == 10, "Off-line street cash cap halved to 10");
 
-    /* Underdog bounty */
+    /* Underdog bounty (Normal $150/gap, EXTREME $200/gap) */
     CHECK(dr3_anniv_underdog_bonus(0, 0) == 0,   "Same class -> $0 underdog bonus");
     CHECK(dr3_anniv_underdog_bonus(2, 1) == 0,   "Lower class -> $0 underdog bonus");
     CHECK(dr3_anniv_underdog_bonus(0, 1) == 150, "Vagabond vs Dervish -> +$150");
     CHECK(dr3_anniv_underdog_bonus(0, 5) == 750, "Vagabond vs Deliverator -> +$750");
+    CHECK(dr3_anniv_underdog_bonus_ex(0, 5, 1) == 1000, "EXTREME Vagabond vs Deliverator -> +$1000");
 
     /* Speed/class-matched field selection: Vagabond Tier 0 gets 8 matched cars (0 Deliverators, 0 Wraiths!) */
     n = dr3_anniv_select_field(19, 8, cars, ranks, 20, out);

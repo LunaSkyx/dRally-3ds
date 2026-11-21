@@ -6,11 +6,12 @@ Based on the [urxp/dRally](https://github.com/urxp/dRally) decompilation.
 
 ---
 
-## 30th Anniversary Mode
+## 30th Anniversary Modes
 
-Select **30th Anniversary** on the driver licence screen for a remixed, escalating championship:
+Pick **30th Anniversary** (Normal) or **30th Anniv EXTREME** (Very Hard) on the driver licence screen:
 
-- **Rising Chaos Progression**: Grids start at **8 speed-matched cars** in Vagabond/Dervish and grow through **12 → 16 → full 20 cars** as you climb the standings and upgrade, with progressive AI pace and unlocking Adversary invasions.
+- **30th Anniversary (Normal — Rising Chaos)**: Grids start at **8 speed-matched cars** in Vagabond/Dervish and grow through **12 → 16 → full 20 cars** as you climb the standings and upgrade, with progressive AI pace and unlocking Adversary invasions.
+- **30th Anniv EXTREME (Very Hard)**: All **20 cars from Race 1** (16 in Arena), boosted AI speed/acceleration/armor on top of full Anniversary pace, heavily armed rivals (mines, spikes, rocket fuel), 45–60% Adversary invasions, longer 1v1 duels (4–6 laps), 2× Arena storm drain, a beefed-up 3-Phase Boss Gauntlet (4× HP Giant Boss), and higher Underdog Bounties (`+$200`/class gap).
 - **4-Mode Shuffle Wheel**: Rotates all four event types with no back-to-back repeats:
   - **Race** — Large-grid street racing with extra off-line street cash drops (kept even if lapped).
   - **Challenge 1v1** — High-stakes head-to-head duel against a close rival for Elo rank points.

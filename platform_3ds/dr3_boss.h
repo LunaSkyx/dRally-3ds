@@ -24,22 +24,25 @@
 #define DR3_BOSS_PHASE_3         3
 
 /* Phase 1: 1 player + 20 Vagabonds = 21 cars total */
-#define DR3_BOSS_P1_ENEMIES      20
-#define DR3_BOSS_P1_CARS         21
-#define DR3_BOSS_P1_ENEMY_HP     44000   /* ~43% of full Arena HP so 1v20 is intense & doable */
-#define DR3_BOSS_P1_BONUS        5000
+#define DR3_BOSS_P1_ENEMIES         20
+#define DR3_BOSS_P1_CARS            21
+#define DR3_BOSS_P1_ENEMY_HP        44000   /* ~43% of full Arena HP so 1v20 is intense & doable */
+#define DR3_BOSS_P1_ENEMY_HP_EXT    62000   /* EXTREME: ~60% HP Vagabonds */
+#define DR3_BOSS_P1_BONUS           5000
 
 /* Phase 2: 9-lap high-speed race on TR0 vs 11 elite rivals = 12 cars */
-#define DR3_BOSS_P2_CARS         12
-#define DR3_BOSS_P2_LAPS         9
-#define DR3_BOSS_P2_BONUS        8000
+#define DR3_BOSS_P2_CARS            12
+#define DR3_BOSS_P2_LAPS            9
+#define DR3_BOSS_P2_BONUS           8000
 
-/* Phase 3: 1 vs 1 Giant Boss Deliverator (1.5x visual & hitbox scale, 3x HP) */
-#define DR3_BOSS_P3_CARS         2
-#define DR3_BOSS_P3_HP_MAX       307200  /* 3x standard Arena HP (102400) */
-#define DR3_BOSS_P3_SPEED_MULT   1.14f
-#define DR3_BOSS_P3_ENRAGE_MULT  1.22f
-#define DR3_BOSS_P3_STEER_MULT   1.10f
+/* Phase 3: 1 vs 1 Giant Boss Deliverator (1.5x visual & hitbox scale, 3x HP / 4x EXTREME) */
+#define DR3_BOSS_P3_CARS            2
+#define DR3_BOSS_P3_HP_MAX          307200  /* 3x standard Arena HP (102400) */
+#define DR3_BOSS_P3_HP_MAX_EXT      409600  /* EXTREME: 4x standard Arena HP */
+#define DR3_BOSS_P3_SPEED_MULT      1.14f
+#define DR3_BOSS_P3_ENRAGE_MULT     1.22f
+#define DR3_BOSS_P3_ENRAGE_MULT_EXT 1.28f
+#define DR3_BOSS_P3_STEER_MULT      1.10f
 #define DR3_BOSS_P3_START_MINES  8
 #define DR3_BOSS_P3_RING_START_R 620
 #define DR3_BOSS_P3_RING_END_R   185     /* keeps the 4 inner ammo/repair/mine pads inside the ring */
@@ -108,9 +111,15 @@ int   dr3_boss_hud_bar(int *hp_now, int *hp_max, int *enraged);
 void  dr3_boss_save_sync(void);
 void  dr3_boss_load_sync(void);
 
+/* Active Boss HP scaling (Normal vs EXTREME) */
+int   dr3_boss_p1_enemy_hp(void);
+int   dr3_boss_p3_hp_max(void);
+
 /* 1 when loaded from a dedicated cheat test save (unk0[3] == 'C'): God Mode + Infinite Ammo/Turbo/Mines + 5x Gun */
 int   dr3_boss_cheat_active(void);
 #else
+static __inline int dr3_boss_p1_enemy_hp(void) { return DR3_BOSS_P1_ENEMY_HP; }
+static __inline int dr3_boss_p3_hp_max(void) { return DR3_BOSS_P3_HP_MAX; }
 static __inline int dr3_boss_phase(void) { return 0; }
 static __inline int dr3_boss_in_race(void) { return 0; }
 static __inline int dr3_boss_is_arena_phase(void) { return 0; }

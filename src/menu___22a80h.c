@@ -93,7 +93,10 @@ void menu___22a80h(void){
 			___12e78h_cdecl(___1a10b8h, (font_props_t *)___185c7ah, esp, 0x16948+0x3700*n);
 		}
 
-		strcpy(esp, ___18768ah[D(___1a0e28h+0x14*n+0x10)]);
+		{
+			__DWORD__ dr3_hd = D(___1a0e28h+0x14*n+0x10);
+			strcpy(esp, ___18768ah[(dr3_hd < 6u) ? dr3_hd : 4u]);
+		}
 		___12e78h_cdecl(___1a10b8h, (font_props_t *)___185c7ah, strupr_watcom106(esp), 0x169ad+0x3700*n);
 	}
 

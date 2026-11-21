@@ -123,7 +123,8 @@ __DWORD__ ___18924h(void){
 		D(___185a14h_UseWeapons) = B(___1a0f9ch+2);
 		___196a94h_difficulty = B(___1a0f9ch+3);
 		dr3_adversary_wanted = (___196a94h_difficulty == DR3_DIFFICULTY_ADVERSARY);
-		dr3_chaos_wanted     = (___196a94h_difficulty == DR3_DIFFICULTY_CHAOS);
+		dr3_extreme_wanted   = (___196a94h_difficulty == DR3_DIFFICULTY_EXTREME);
+		dr3_chaos_wanted     = (___196a94h_difficulty == DR3_DIFFICULTY_CHAOS) || dr3_extreme_wanted;
 #if defined(DR3_CHAOS)
 		dr3_chaos_mode_clear_roll();
 #endif

@@ -133,6 +133,7 @@ static void menu___194a8h(void){
 				D(___185a5ch+0x34) = 0;
 				dr3_adversary_wanted = 0;
 				dr3_chaos_wanted     = 0;
+				dr3_extreme_wanted   = 0;
 #if defined(DR3_CHAOS)
 				dr3_chaos_mode_clear_roll();
 				dr3_boss_reset();

@@ -340,6 +340,15 @@ void race___3f970h(void){
 		D(___1de580h[n].raw+0x1c) = ___3f610h_ints[___1de7d0h[n].dfclty][car]+___3f670h_ints[___1de7d0h[n].dfclty][D(___1de7d0h[n].raw+0x1c)];
 
 		if(D(MY_CAR_IDX) == n) D(___1de580h[n].raw+0x1c) += 0x64;
+#if defined(DR3_CHAOS)
+		/* 30th Anniversary EXTREME: faster, grippier, tougher AI opponents on top of full Anniversary row */
+		else if(dr3_extreme_active()){
+			F32(___1de580h[n].raw+4)    *= 1.06f;
+			F32(___1de580h[n].raw+8)     = F32(___1de580h[n].raw+4);
+			F32(___1de580h[n].raw+0x14) *= 1.08f;
+			D(___1de580h[n].raw+0x1c)   += 60;
+		}
+#endif
 
 		if(strcmp(___1de7d0h[n].raw, "DUKE NUKEM") == 0) D(___1de580h[n].raw+0x1c) = (int)(2.2*(double)D(___1de580h[n].raw+0x1c));
 

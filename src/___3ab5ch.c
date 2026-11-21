@@ -56,14 +56,16 @@ static const __DWORD__ dr3_diff_menu_id[] = {
     SPEED_MAKES_ME_DIZZY,
     I_LIVE_TO_RIDE,
     PETROL_IN_MY_VEINS,
-    DR3_DIFFICULTY_CHAOS
+    DR3_DIFFICULTY_CHAOS,
+    DR3_DIFFICULTY_EXTREME
 };
 
 static const char *const dr3_diff_menu_label[] = {
     "speed makes me dizzy",
     "i live to ride",
     "petrol in my veins",
-    "30th Anniversary"
+    "30th Anniversary",
+    "30th Anniv EXTREME"
 };
 
 #define NUM_OF_DIFFICULTIES ((int)(sizeof(dr3_diff_menu_id) / sizeof(dr3_diff_menu_id[0])))
@@ -331,10 +333,10 @@ __DWORD__ ___3ab5ch_cdecl(__DWORD__ A1){
 			if(L(eax) != 0){
 
 				ebp = ebp+0x1e;
-				D(esp+0x44) += 0x1e;
+				D(esp+0x44) += 0x0c;
 				memcpy(___1a112ch__VESA101_ACTIVESCREEN_PTR+0x280*84, ___1a1138h__VESA101_BACKGROUND+0x280*84, 0x2c380);
 				___13710h(0, 0);
-				___13248h_cdecl(ebp, D(esp+0x44), 0x1b8, 0x0d6, 1);	/* 0xd6: four difficulty rows */
+				___13248h_cdecl(ebp, D(esp+0x44), 0x1b8, 0x0f2, 1);	/* 0xf2: five difficulty rows */
 				___12e78h_v3(___1a10cch___185ba9h, "Select difficulty:", ebp+0x50, D(esp+0x44)+0x12);
 
 				edi = I_LIVE_TO_RIDE;
@@ -383,7 +385,7 @@ __DWORD__ ___3ab5ch_cdecl(__DWORD__ A1){
 					if(L(eax) != 0){
 
 						n = -1;
-						while(++n < 0x1c*NUM_OF_DIFFICULTIES) memset(___1a112ch__VESA101_ACTIVESCREEN_PTR+0x280*(n+D(esp+0x28))+ebp+0x16, 0xc4, 0x163);
+						while(++n < 0x1c*NUM_OF_DIFFICULTIES) memset(___1a112ch__VESA101_ACTIVESCREEN_PTR+0x280*(n+D(esp+0x28))+ebp+0x16, 0xc4, 0x18c);
 
 						for(n = 0; n < NUM_OF_DIFFICULTIES; ++n){
 							___12e78h_v3((edi != (__DWORD__)n)?___1a10e0h___185ba9h:___1a10cch___185ba9h,
@@ -398,9 +400,10 @@ __DWORD__ ___3ab5ch_cdecl(__DWORD__ A1){
 
 						___196a94h_difficulty = dr3_diff_menu_id[edi];
 
-						/* the old adversary-only level is gone from the menu; row 3 is now 30th Anniversary (former Chaos) */
+						/* row 3 = 30th Anniversary (Rising Chaos), row 4 = 30th Anniversary EXTREME */
 						dr3_adversary_wanted = 0;
-						dr3_chaos_wanted = (___196a94h_difficulty == DR3_DIFFICULTY_CHAOS);
+						dr3_extreme_wanted   = (___196a94h_difficulty == DR3_DIFFICULTY_EXTREME);
+						dr3_chaos_wanted     = (___196a94h_difficulty == DR3_DIFFICULTY_CHAOS) || dr3_extreme_wanted;
 #if defined(DR3_CHAOS)
 						dr3_chaos_mode_clear_roll();
 						dr3_anniv_mode_bag_reset(DR3_CHAOS_MODE_STANDARD);
@@ -419,7 +422,8 @@ __DWORD__ ___3ab5ch_cdecl(__DWORD__ A1){
 							break;
 						case ANNIVERSARY:
 						case DR3_DIFFICULTY_CHAOS:
-							/* the game has no jingle of its own for the fourth level - "let's rock" fits */
+						case DR3_DIFFICULTY_EXTREME:
+							/* the game has no jingle of its own for the anniversary levels - "let's rock" fits */
 							dRally_Sound_pushEffect(5, SFX_LETS_ROCK, 0, ___24cc54h_sfx_volume, 0x24000, 0x8000);
 							break;
 						default:

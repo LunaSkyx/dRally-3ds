@@ -98,8 +98,8 @@ void race___526ach(void){
 					case 4:
 						D(___1f2488h+0x120*n+0x1c) = (rand_watcom106()%4)+2;
 						D(___1de580h+0x94*D(___243c60h)+0x18) += 0x400*D(___1f2488h+0x120*n+0x1c);
-						if((int)D(___1de580h+0x94*D(___243c60h)+0x18) > (dr3_boss_is_giant_car((int)D(___243c60h)) ? DR3_BOSS_P3_HP_MAX : 0x19000))
-							D(___1de580h+0x94*D(___243c60h)+0x18) = dr3_boss_is_giant_car((int)D(___243c60h)) ? DR3_BOSS_P3_HP_MAX : 0x19000;
+						if((int)D(___1de580h+0x94*D(___243c60h)+0x18) > (dr3_boss_is_giant_car((int)D(___243c60h)) ? dr3_boss_p3_hp_max() : 0x19000))
+							D(___1de580h+0x94*D(___243c60h)+0x18) = dr3_boss_is_giant_car((int)D(___243c60h)) ? dr3_boss_p3_hp_max() : 0x19000;
 						break;
 					case 5:
 						if(D(MY_CAR_IDX) == D(___243c60h)) s_54[0].__4c = 1;
@@ -110,8 +110,8 @@ void race___526ach(void){
 					case 7:
 						D(___1f2488h+0x120*n+0x1c) = 0x14;
 						D(___1de580h+0x94*D(___243c60h)+0x18) += 0x14*0x400;
-						if((int)D(___1de580h+0x94*D(___243c60h)+0x18) > (dr3_boss_is_giant_car((int)D(___243c60h)) ? DR3_BOSS_P3_HP_MAX : 0x19000))
-							D(___1de580h+0x94*D(___243c60h)+0x18) = dr3_boss_is_giant_car((int)D(___243c60h)) ? DR3_BOSS_P3_HP_MAX : 0x19000;
+						if((int)D(___1de580h+0x94*D(___243c60h)+0x18) > (dr3_boss_is_giant_car((int)D(___243c60h)) ? dr3_boss_p3_hp_max() : 0x19000))
+							D(___1de580h+0x94*D(___243c60h)+0x18) = dr3_boss_is_giant_car((int)D(___243c60h)) ? dr3_boss_p3_hp_max() : 0x19000;
 						break;
 					case 9:
 						/* DR3_ITEM_MINE_CRATE (kind 10): adds +3 real droppable land mines (s_94 +0x28) */

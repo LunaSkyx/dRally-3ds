@@ -152,7 +152,8 @@ const char ___18768ah[][0x18] = {
     [1] = "i live to ride",
     [2] = "petrol in my veins",
     [3] = "30th Anniversary",    /* legacy fourth difficulty (kept for older Hall of Fame entries) */
-    [4] = "30th Anniversary"     /* 30th Anniversary (formerly Chaos: 20 cars, wheel, Arena, etc.) */
+    [4] = "30th Anniversary",    /* 30th Anniversary (Rising Chaos: 8 -> 20 cars, wheel, Arena, Boss) */
+    [5] = "30th Anniv EXTREME"   /* 30th Anniversary EXTREME (very hard: 20 cars from Race 1, boosted AI) */
 };
 
 const char ___18d492h[][0xf] = {
