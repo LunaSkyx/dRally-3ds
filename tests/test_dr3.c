@@ -3010,6 +3010,13 @@ static void test_anniv_prog(void)
     CHECK(dr3_anniv_boss_chance(2) == 18, "Tier 2: 18% Adversary invasion");
     CHECK(dr3_anniv_boss_chance(3) == 25, "Tier 3: 25% Adversary invasion");
 
+    /* 1v1 Challenge duel laps: 3 early -> 4 mid-late -> 5 top tier */
+    CHECK(dr3_anniv_duel_laps(0) == 3, "Tier 0 duel = 3 laps");
+    CHECK(dr3_anniv_duel_laps(1) == 3, "Tier 1 duel = 3 laps");
+    CHECK(dr3_anniv_duel_laps(2) == 4, "Tier 2 duel = 4 laps");
+    CHECK(dr3_anniv_duel_laps(3) == 5, "Tier 3 duel = 5 laps");
+    CHECK(DR3_CASH_MAX == 10, "Off-line street cash cap halved to 10");
+
     /* Underdog bounty */
     CHECK(dr3_anniv_underdog_bonus(0, 0) == 0,   "Same class -> $0 underdog bonus");
     CHECK(dr3_anniv_underdog_bonus(2, 1) == 0,   "Lower class -> $0 underdog bonus");

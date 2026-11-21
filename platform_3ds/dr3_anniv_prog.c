@@ -52,6 +52,13 @@ int dr3_anniv_boss_chance(int tier)
     return 25;
 }
 
+int dr3_anniv_duel_laps(int tier)
+{
+    if (tier <= 1) return 3;
+    if (tier == 2) return 4;
+    return 5;
+}
+
 int dr3_anniv_pick_mode(int tier, int roll100)
 {
     int r = roll100 % 100;

@@ -41,6 +41,9 @@ int dr3_anniv_ai_difficulty_row(int tier);
 /* Default random Adversary invasion percent chance: 0% -> 10% -> 18% -> 25%. */
 int dr3_anniv_boss_chance(int tier);
 
+/* 1v1 Challenge duel lap count by progression tier: 3 (early) -> 4 (mid-late) -> 5 (top tier). */
+int dr3_anniv_duel_laps(int tier);
+
 /* Tier-weighted wheel mode pick (returns DR3_CHAOS_MODE_* 0..3/4). roll100 in 0..99. */
 int dr3_anniv_pick_mode(int tier, int roll100);
 

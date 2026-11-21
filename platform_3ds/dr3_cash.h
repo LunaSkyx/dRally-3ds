@@ -14,11 +14,11 @@
 #ifndef DR3_CASH_H
 #define DR3_CASH_H
 
-#define DR3_CASH_MAX           20    /* extra off-line street $ pickups placed around a circuit */
-#define DR3_CASH_MIN_SEP       92    /* minimum px between two off-line cash spots              */
+#define DR3_CASH_MAX           10    /* extra off-line street $ pickups placed around a circuit */
+#define DR3_CASH_MIN_SEP       118   /* minimum px between two off-line cash spots              */
 #define DR3_CASH_PAD_CLEAR     36    /* minimum px from any standard track powerup pad          */
 #define DR3_CASH_CAR_CLEAR     60    /* minimum px from any car on the starting grid            */
-#define DR3_CASH_RESPAWN_TICKS 840   /* ~12 seconds (70 ticks/s) before a collected $ respawns  */
+#define DR3_CASH_RESPAWN_TICKS 1050  /* ~15 seconds (70 ticks/s) before a collected $ respawns  */
 
 #ifdef __cplusplus
 extern "C" {

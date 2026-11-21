@@ -191,7 +191,7 @@ void dr3_chaos_kill_bonus(int victim, const char * cause);
 #define DR3_CHAOS_ELO_BASE          4
 #define DR3_CHAOS_ELO_STEP          2
 #define DR3_CHAOS_ELO_MAX_DIFF      6
-#define DR3_CHAOS_DUEL_LAPS         2
+#define DR3_CHAOS_DUEL_LAPS         3
 
 /*
  * What a duel pays (___33010h.c).  Only a *win* pays, and the pot follows the rank of the rival - beating

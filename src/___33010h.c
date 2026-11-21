@@ -677,7 +677,7 @@ void ___33010h_cdecl(int NumCars){
 		if ((int)D(___1a103ch) != 0) D(___1a103ch) = 0;
 
 		NumCars = 2;
-		NUM_OF_LAPS = DR3_CHAOS_DUEL_LAPS;
+		NUM_OF_LAPS = dr3_anniv_duel_laps(dr3_anniv_tier((int)s_6c[dr3_player_seat].car, dr3_player_rank));
 
 		dr3_chaos_duel_rival_set(dr3_rival);
 
