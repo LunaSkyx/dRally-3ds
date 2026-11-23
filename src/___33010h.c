@@ -666,7 +666,8 @@ void ___33010h_cdecl(int NumCars){
 		 * nobody named, a rival outside the window, the player's own seat - is drawn from the standings
 		 * (dr3_log.c: dr3_chaos_duel_pick, the same rule the screen offers with).
 		 */
-		if (!dr3_chaos_duel_rival_ok(dr3_player_seat, dr3_rival))
+		if (!dr3_chaos_duel_rival_ok(dr3_player_seat, dr3_rival) &&
+		    !((dr3_rival >= 0) && (dr3_rival < 0x14) && (dr3_rival != dr3_player_seat) && (s_6c[dr3_rival].damage > 0)))
 			dr3_rival = dr3_chaos_duel_pick(dr3_player_seat);
 
 		/* nothing left to draw from (a one-entry standings): the seat next to the player */
