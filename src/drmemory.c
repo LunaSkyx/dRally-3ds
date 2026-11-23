@@ -10,7 +10,7 @@ typedef enum MEM_TYPE {
 
 #pragma pack(1)
 
-#if defined(DR3_CHAOS)
+#if defined(DR3_HEAP_DEBUG)
 #include "platform_3ds/dr3_log.h"
 /*
  * The caller a block was freed from, for the quarantine report below.  GCC has __builtin_return_address,
@@ -24,11 +24,11 @@ typedef enum MEM_TYPE {
 #endif
 
 /*
- * Chaos test build (see doc/3ds.md): every block gets four magic bytes behind it and they are checked
- * before each new allocation.  A race with twelve cars can run a buffer over that the original - sized
- * for four - was written against, and a wrecked malloc block only shows up much later, as a hang inside
- * malloc (or as "ESP Fatal Error").  The report names the block whose guard is gone and the block right
- * in front of it, which is the one the write came out of.
+ * Opt-in heap debugger (-DDR3_HEAP_DEBUG): every block gets four magic bytes + slack behind it and freed
+ * blocks are parked in a bounded quarantine ring to catch overruns and use-after-free writes.
+ *
+ * NOTE: This must NOT be gated on DR3_CHAOS.  DR3_CHAOS is enabled in every shipping 3DS build, and
+ * holding tens of MB of freed blocks in quarantine exhausts the 3DS heap after a few races.
  */
 #define DR3_HEAP_GUARD_BYTES    4
 /* behind the guard: an overrun stops in here instead of wrecking malloc's chunk header */
@@ -79,11 +79,15 @@ int dr3_drheap_overrun(const void *p, unsigned nbytes)
  * A block that is given back is parked here instead of being freed.  Writing into a block *after* it was
  * freed is what corrupts malloc's free list, and that shows up as a hang inside malloc, far away from
  * the code that did it - with the guard bytes unable to see it, because the block is not the engine's
- * any more.  Parked blocks are filled with a pattern and watched, and the ring keeps the extra memory
- * bounded: the oldest parked block is freed for real once the ring wraps.
+ * any more.  Parked blocks are filled with a pattern and watched, and the FIFO ring keeps the extra memory
+ * bounded: the oldest parked block is freed for real whenever the ring is full or over budget.
  */
 #define DR3_HEAP_QUARANTINE     512
-#define DR3_HEAP_QUAR_BUDGET    0x2000000u    /* at most 32 MB of parked blocks */
+#if defined(__3DS__)
+#define DR3_HEAP_QUAR_BUDGET    0x400000u     /* at most 4 MB of parked blocks on 3DS */
+#else
+#define DR3_HEAP_QUAR_BUDGET    0x2000000u    /* at most 32 MB of parked blocks on PC */
+#endif
 #define DR3_HEAP_QUAR_FILL      0xdd
 #define DR3_HEAP_QUAR_FILL_MAX  0x10000       /* park big blocks, but only wipe their first 64 KB */
 #define DR3_HEAP_QUAR_CHECK     0x400         /* how much of a parked block the check looks at */
@@ -95,7 +99,9 @@ typedef struct {
 } dr3_quar_t;
 
 static dr3_quar_t dr3_quar[DR3_HEAP_QUARANTINE];
-static int        dr3_quar_next;
+static int        dr3_quar_head;
+static int        dr3_quar_tail;
+static int        dr3_quar_count;
 static __DWORD__  dr3_quar_bytes;
 #endif
 
@@ -120,42 +126,44 @@ static AllocBase ___24ccb0h;
 
 void ___58b20h(unsigned int err_n, ...);
 
-#if defined(DR3_CHAOS)
+#if defined(DR3_HEAP_DEBUG)
 /*
  * Parks a block the engine gave back (see the quarantine notes above) and reports writes into parked
  * blocks, which is what a damaged malloc free list comes from.
  */
 static void dr3_drheap_park(__POINTER__ mem, __DWORD__ nbytes, __POINTER__ freed_by){
 
-    dr3_quar_t * slot = &dr3_quar[dr3_quar_next];
     __DWORD__    fill = (nbytes < DR3_HEAP_QUAR_FILL_MAX) ? nbytes : DR3_HEAP_QUAR_FILL_MAX;
 
-    /* keep the ring inside its budget: give up the oldest parked blocks for real */
-    while((slot->linear != (__POINTER__)0) && ((dr3_quar_bytes + nbytes) > DR3_HEAP_QUAR_BUDGET)){
+    /* Blocks larger than the entire quarantine budget are freed immediately. */
+    if(nbytes > DR3_HEAP_QUAR_BUDGET){
 
-        dr3_quar_bytes -= slot->nbytes;
-        free(slot->linear);
-        slot->linear = (__POINTER__)0;
-        slot->nbytes = 0;
-
-        /* the oldest is the ring's *next* slot once it wraps - walk on until room is free */
-        dr3_quar_next = (dr3_quar_next + 1) % DR3_HEAP_QUARANTINE;
-        slot = &dr3_quar[dr3_quar_next];
+        free(mem);
+        return;
     }
 
-    if(slot->linear != (__POINTER__)0){                  /* the oldest one goes for real */
+    /* Keep the FIFO ring inside its slot and byte budgets by evicting from the oldest (head) slot. */
+    while((dr3_quar_count > 0) && ((dr3_quar_count >= DR3_HEAP_QUARANTINE) || ((dr3_quar_bytes + nbytes) > DR3_HEAP_QUAR_BUDGET))){
 
-        dr3_quar_bytes -= slot->nbytes;
-        free(slot->linear);
+        dr3_quar_t * old = &dr3_quar[dr3_quar_head];
+
+        dr3_quar_bytes -= old->nbytes;
+        free(old->linear);
+        old->linear   = (__POINTER__)0;
+        old->nbytes   = 0;
+        old->freed_by = (__POINTER__)0;
+
+        dr3_quar_head = (dr3_quar_head + 1) % DR3_HEAP_QUARANTINE;
+        --dr3_quar_count;
     }
 
-    slot->linear   = mem;
-    slot->nbytes   = nbytes;
-    slot->freed_by = freed_by;
+    dr3_quar[dr3_quar_tail].linear   = mem;
+    dr3_quar[dr3_quar_tail].nbytes   = nbytes;
+    dr3_quar[dr3_quar_tail].freed_by = freed_by;
 
     dr3_quar_bytes += nbytes;
-
-    dr3_quar_next = (dr3_quar_next + 1) % DR3_HEAP_QUARANTINE;
+    dr3_quar_tail = (dr3_quar_tail + 1) % DR3_HEAP_QUARANTINE;
+    ++dr3_quar_count;
 
     if(mem != (__POINTER__)0) memset(mem, DR3_HEAP_QUAR_FILL, fill);
 }
@@ -238,6 +246,8 @@ void dr3_drheap_guard(const char * where){
         return;
     }
 }
+#elif defined(DR3_CHAOS)
+void dr3_drheap_guard(const char * where){ (void)where; }
 #endif
 
 __POINTER__ dRMemory_alloc(size_t size){
@@ -248,7 +258,7 @@ __POINTER__ dRMemory_alloc(size_t size){
 
     ptr = (AllocEntry *)___24ccb0h.linear;
 
-#if defined(DR3_CHAOS)
+#if defined(DR3_HEAP_DEBUG)
     dr3_drheap_guard("alloc");
 #endif
 
@@ -263,7 +273,7 @@ __POINTER__ dRMemory_alloc(size_t size){
         size++;
     }
 
-#if defined(DR3_CHAOS)
+#if defined(DR3_HEAP_DEBUG)
     if((alloc = malloc(size + DR3_HEAP_GUARD_BYTES + DR3_HEAP_SLACK_BYTES)) != (__POINTER__)0){
 
         ptr[n].linear = alloc;
@@ -282,7 +292,7 @@ __POINTER__ dRMemory_alloc(size_t size){
     }
 #endif
 
-    return ptr[n].linear;
+    return alloc;
 }
 
 void dRMemory_free(__POINTER__ mem){
@@ -290,14 +300,14 @@ void dRMemory_free(__POINTER__ mem){
     __DWORD__           n;
     AllocEntry *    ptr;
 
-#if defined(DR3_CHAOS)
+#if defined(DR3_HEAP_DEBUG)
     dr3_drheap_guard("free");
 #endif
 
     ptr = (AllocEntry *)___24ccb0h.linear;
 
     n = 0;
-    while((n < (MEM_REGISTRY_SIZE/sizeof(AllocEntry)))&&(mem != ptr[n].linear)) n++;
+    while((n < (MEM_REGISTRY_SIZE/sizeof(AllocEntry)))&&((ptr[n].type == NO_MEMORY)||(mem != ptr[n].linear))) n++;
 
     if(n == (MEM_REGISTRY_SIZE/sizeof(AllocEntry))) ___58b20h(0xe);
 
@@ -306,7 +316,7 @@ void dRMemory_free(__POINTER__ mem){
         ___58b20h(0xe);
         break;
     case DOS4G_MEMORY:
-#if defined(DR3_CHAOS)
+#if defined(DR3_HEAP_DEBUG)
         dr3_drheap_park(ptr[n].linear, ptr[n].nbytes, DR3_FREED_BY());
 #else
         free(ptr[n].linear);
@@ -316,6 +326,8 @@ void dRMemory_free(__POINTER__ mem){
         break;
     }
 
+    ptr[n].linear = (__POINTER__)0;
+    ptr[n].nbytes = 0;
     ptr[n].type = NO_MEMORY;
 }
 
@@ -392,4 +404,23 @@ void dRally_Memory_clean(void){
         free(___24ccb0h.linear);
         memset(&___24ccb0h, 0, sizeof(AllocBase));
     }
+
+#if defined(DR3_HEAP_DEBUG)
+    while(dr3_quar_count > 0){
+
+        dr3_quar_t * old = &dr3_quar[dr3_quar_head];
+
+        dr3_quar_bytes -= old->nbytes;
+        free(old->linear);
+        old->linear   = (__POINTER__)0;
+        old->nbytes   = 0;
+        old->freed_by = (__POINTER__)0;
+
+        dr3_quar_head = (dr3_quar_head + 1) % DR3_HEAP_QUARANTINE;
+        --dr3_quar_count;
+    }
+    dr3_quar_head  = 0;
+    dr3_quar_tail  = 0;
+    dr3_quar_bytes = 0;
+#endif
 }
