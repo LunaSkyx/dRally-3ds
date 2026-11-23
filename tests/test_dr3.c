@@ -3204,6 +3204,121 @@ static void test_race_rank_positions(void)
         CHECK(dr3_race_update_checkpoint(1, 28, 28, 28, 28) == 1, "reversing from chk 1 onto VAI=28 cannot complete lap");
         CHECK(dr3_race_update_checkpoint(2, 28, 27, 28, 28) == 2, "reversing from chk 2 onto VAI=28 cannot complete lap");
     }
+
+    /* Case 6: Solid-wall ((TRX_MAS & 0xf) < 4) scan, tangential slide, deep ejection & 12-car Mega Chaos pileup */
+    {
+        unsigned char mas[128 * 128];
+        unsigned char sprite[40 * 40];
+        dr3_wall_hit_t init_hit, final_hit;
+        int x, y;
+
+        /* Build a 128x128 track mask with solid walls (1) outside [24..103] x [24..103] and open road (15) inside */
+        for (y = 0; y < 128; ++y) {
+            for (x = 0; x < 128; ++x) {
+                if ((x < 24) || (x >= 104) || (y < 24) || (y >= 104)) {
+                    mas[128 * y + x] = 1;
+                } else {
+                    mas[128 * y + x] = 0x0f;
+                }
+            }
+        }
+        /* Build a 24x24 solid car body inside the 40x40 sprite (rows 8..31, cols 8..31) */
+        for (y = 0; y < 40; ++y) {
+            for (x = 0; x < 40; ++x) {
+                sprite[40 * y + x] = ((x >= 8) && (x < 32) && (y >= 8) && (y < 32)) ? 16 : 0;
+            }
+        }
+
+        /* 6a: Angled wall hit at left barrier (x=24) slides tangentially along Y without sinking into X < 36 */
+        {
+            float cx = 37.0f, cy = 64.0f;
+            float vx = -6.0f, vy = 5.0f;
+            float fc = -3.0f, f100 = 1.0f;
+            float spd = 6.0f;
+
+            dr3_wall_resolve_step(sprite, mas, 128, 128, &cx, &cy, &vx, &vy, &fc, &f100, &spd, 0, &init_hit, &final_hit);
+            cx += vx;
+            cy += vy;
+            CHECK(init_hit.count > 0, "angled step into left wall detected overlap (%d px)", init_hit.count);
+            CHECK(final_hit.count == 0, "resolved step has 0 overlapping wall pixels (got %d)", final_hit.count);
+            CHECK(vy > 2.0f, "tangential slide along wall preserved (+Y velocity %.2f)", (double)vy);
+            CHECK(fc >= 0.0f, "inward knockback fc reflected away from left wall (fc=%.2f)", (double)fc);
+            CHECK(spd > 4.0f, "engine speed preserved on wall glance (spd=%.2f)", (double)spd);
+        }
+
+        /* 6b: Car deeply embedded 15 px inside top-left corner wall (old 4-px random walk could NEVER escape) */
+        {
+            float cx = 21.0f, cy = 22.0f;
+            float vx = -4.0f, vy = -4.0f;
+            float fc = -5.0f, f100 = -5.0f;
+            float spd = 5.0f;
+            int step;
+
+            for (step = 0; step < 3; ++step) {
+                dr3_wall_resolve_step(sprite, mas, 128, 128, &cx, &cy, &vx, &vy, &fc, &f100, &spd, 4, &init_hit, &final_hit);
+                cx += vx;
+                cy += vy;
+                if (final_hit.count == 0) break;
+            }
+            CHECK(final_hit.count == 0, "car embedded 15px deep in corner wall ejected completely (count=%d at %.1f,%.1f)",
+                  final_hit.count, (double)cx, (double)cy);
+            CHECK((cx >= 36.0f) && (cy >= 36.0f), "ejected car center is on open road (%.1f,%.1f)", (double)cx, (double)cy);
+        }
+
+        /* 6c: 12-car Mega Chaos pileup ramming Car 0 against the left wall for 60 consecutive frames */
+        {
+            float cx[12], cy[12], fcx[12], fcy[12];
+            int frame, i, j;
+
+            /* Car 0 is pinned right against the left wall (x=36.5), Cars 1..11 pile into it from the right */
+            cx[0] = 36.5f; cy[0] = 64.0f; fcx[0] = 0.0f; fcy[0] = 0.0f;
+            for (i = 1; i < 12; ++i) {
+                cx[i] = 38.0f + (float)(i * 2);
+                cy[i] = 64.0f + (float)((i % 3) - 1) * 3.0f;
+                fcx[i] = -4.0f;
+                fcy[i] = 0.0f;
+            }
+
+            for (frame = 0; frame < 60; ++frame) {
+                /* Each outer car drives hard left (-3.5 px/frame) into the pileup */
+                for (i = 0; i < 12; ++i) {
+                    float vx = (i == 0) ? fcx[i] : (-3.5f + fcx[i]);
+                    float vy = fcy[i];
+                    float spd = 4.0f;
+
+                    dr3_wall_resolve_step(sprite, mas, 128, 128, &cx[i], &cy[i], &vx, &vy, &fcx[i], &fcy[i], &spd, 2, &init_hit, &final_hit);
+                    cx[i] += vx;
+                    cy[i] += vy;
+                }
+                /* Pairwise car-to-car collisions across overlapping cars (|dx| < 24 && |dy| < 24) */
+                for (i = 0; i < 11; ++i) {
+                    for (j = i + 1; j < 12; ++j) {
+                        if ((fabsf(cx[i] - cx[j]) < 24.0f) && (fabsf(cy[i] - cy[j]) < 24.0f)) {
+                            dr3_wall_separate_pair(
+                                mas, 128, 128,
+                                &cx[i], &cy[i], &fcx[i], &fcy[i], 0, 0, 0,
+                                &cx[j], &cy[j], &fcx[j], &fcy[j], 0, 0, 0,
+                                1);
+                        }
+                    }
+                }
+                /* Post-collision wall clamp (as in race_main.c) */
+                for (i = 0; i < 12; ++i) {
+                    float zvx = 0.0f, zvy = 0.0f;
+                    dr3_wall_scan_sprite(sprite, mas, 128, 128, (int)(cx[i] - 20.0f), (int)(cy[i] - 20.0f), &final_hit);
+                    if (final_hit.count > 0) {
+                        dr3_wall_resolve_step(sprite, mas, 128, 128, &cx[i], &cy[i], &zvx, &zvy, &fcx[i], &fcy[i], NULL, 2, NULL, &final_hit);
+                    }
+                    CHECK(final_hit.count == 0, "12-car pileup frame %d car %d never pushed into wall (count=%d at %.1f,%.1f)",
+                          frame, i, final_hit.count, (double)cx[i], (double)cy[i]);
+                }
+            }
+            for (i = 0; i < 12; ++i) {
+                CHECK((cx[i] >= 36.0f) && (cx[i] < 93.0f) && (cy[i] >= 36.0f) && (cy[i] < 93.0f),
+                      "12-car pileup car %d stayed inside open road bounds (%.1f,%.1f)", i, (double)cx[i], (double)cy[i]);
+            }
+        }
+    }
 }
 
 int main(void)

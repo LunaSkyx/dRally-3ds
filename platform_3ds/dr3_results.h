@@ -92,4 +92,50 @@ void dr3_race_rank_positions(const dr3_race_car_t *cars, int count, int *out_pos
  */
 int dr3_race_update_checkpoint(int cur_chk, int nchk, int v1, int v2, int v_mid);
 
+/*
+ * Solid-wall ((TRX_MAS & 0xf) < 4) collision, tangential wall-slide, deterministic outward ejection,
+ * and rigid wall-backstop car-to-car separation for 10-20 car Mega Chaos pileups
+ * (race___4c434h.c, race___4dcach.c, race_main.c).
+ */
+typedef struct dr3_wall_hit_s {
+	int count;      /* number of car sprite pixels (> 3) overlapping solid wall ((trx_mas & 0xf) < 4) */
+	int first_val;  /* first (trx_mas & 0xf) < 4 value seen, or 0xf if count == 0 */
+	int first_i;    /* 0..39 column of first hit pixel */
+	int first_j;    /* 0..39 row of first hit pixel */
+	int mean_dx;    /* centroid X offset from car center (-20..+19), points from center toward wall */
+	int mean_dy;    /* centroid Y offset from car center (-20..+19), points from center toward wall */
+	int sum_dx;     /* raw sum of (i - 20) over all overlapping wall pixels */
+	int sum_dy;     /* raw sum of (j - 20) over all overlapping wall pixels */
+} dr3_wall_hit_t;
+
+void dr3_wall_scan_sprite(
+	const unsigned char *sprite,
+	const unsigned char *trx_mas,
+	int trx_w, int trx_h,
+	int top_left_x, int top_left_y,
+	dr3_wall_hit_t *out);
+
+int dr3_wall_resolve_step(
+	const unsigned char *sprite,
+	const unsigned char *trx_mas,
+	int trx_w, int trx_h,
+	float *io_x, float *io_y,
+	float *io_vx, float *io_vy,
+	float *io_fc, float *io_f100,
+	float *io_speed,
+	int stuck_counter,
+	dr3_wall_hit_t *out_initial_hit,
+	dr3_wall_hit_t *out_final_hit);
+
+void dr3_wall_separate_pair(
+	const unsigned char *trx_mas,
+	int trx_w, int trx_h,
+	float *io_xn, float *io_yn,
+	float *io_fcn, float *io_f100n,
+	int wall_n, int wall_dx_n, int wall_dy_n,
+	float *io_xk, float *io_yk,
+	float *io_fck, float *io_f100k,
+	int wall_k, int wall_dx_k, int wall_dy_k,
+	int do_nudge);
+
 #endif /* DR3_RESULTS_H */

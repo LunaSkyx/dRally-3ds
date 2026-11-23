@@ -1,6 +1,7 @@
 #include "drally.h"
 #include "drmath.h"
 #include "drally_structs_free.h"
+#include "platform_3ds/dr3_results.h"
 
 	extern __BYTE__ ___243c60h[];
 	extern __BYTE__ ___1e6ed0h[];
@@ -83,6 +84,15 @@ static void helper01(double d_sign){
 		F32(___243cfch) *= (float)(1.0+d_sign*(double)s_35e[D(___243c60h)].__bc/18.0);
 
 		if(s_35e[D(___243c60h)].__c0*d_sign < 36.0f) s_35e[D(___243c60h)].__c0 += (float)(2.0*d_sign);
+	}
+	else {
+		/*
+		 * In 10-20 car Mega Chaos packs, cars frequently rub bumpers for many consecutive frames
+		 * (__18 != 0 or __1c != 0).  Keep heading turn authority active so neither the player nor AI
+		 * gets steering-locked while in contact with a pack.
+		 */
+		s_35e[D(___243c60h)].Direction += (float)(0.75*d_sign*(double)s_35e[D(___243c60h)].__a8);
+		if(s_35e[D(___243c60h)].__c0*d_sign < 24.0f) s_35e[D(___243c60h)].__c0 += (float)(1.5*d_sign);
 	}
 }
 
@@ -320,202 +330,89 @@ void race___4c434h(void){
 	s_35e[D(___243c60h)].ImgIndex = (int)((double)s_35e[D(___243c60h)].Direction/3.75);
 #endif
 	s_35e[D(___243c60h)].ImgOffset = 0x25800*D(___243c60h)+0x640*s_35e[D(___243c60h)].ImgIndex;
-	ecx = (int)((double)s_35e[D(___243c60h)].__15e+(double)s_35e[D(___243c60h)].YLocation-20.0);
-	ebxp = ___243d74h+(int)s_35e[D(___243c60h)].ImgOffset;
-	edip = TRX_MAS+(int)(double)s_35e[D(___243c60h)].XLocation-0x14+TRX_WIDTH*(int)ecx+(int)(double)s_35e[D(___243c60h)].__15a;
-	esi = 0xf;
+	{
+		const int car_idx = (int)D(___243c60h);
+		dr3_wall_hit_t init_hit;
+		dr3_wall_hit_t final_hit;
+		int probes;
 
-	j = -1;
-	while(++j < 0x28){
+		ebxp = ___243d74h + (int)s_35e[car_idx].ImgOffset;
+		dr3_wall_scan_sprite(
+			(const unsigned char *)ebxp,
+			(const unsigned char *)TRX_MAS,
+			TRX_WIDTH, TRX_HEIGHT,
+			(int)((double)s_35e[car_idx].XLocation + (double)s_35e[car_idx].__15a - 20.0),
+			(int)((double)s_35e[car_idx].YLocation + (double)s_35e[car_idx].__15e - 20.0),
+			&init_hit);
 
-		breaker = 0;
-
-		i = -1;
-		while(++i < 0x28){
-
-			if(((signed char)B(ebxp+0x28*j+i) > 3)&&((signed char)(B(edip+TRX_WIDTH*j+i)&0xf) < 4)){
-
-				esi = B(edip+TRX_WIDTH*j+i)&0xf;
-				D(___243cb0h) = i;
-				D(___243cb4h) = j;
-				breaker = 1;
-				break;
-			}
-		}
-
-		if(breaker == 1) break;
-	}
-
-	s_35e[D(___243c60h)].__14 = esi;
-
-	if((int)esi >= 4){
-
-		s_35e[D(___243c60h)].__14 = 0;
-	}
-	else {
-
-		s_35e[D(___243c60h)].__172 = D(___243cb0h)-0x14;
-		edx = D(___243cb4h);
-		s_35e[D(___243c60h)].__18e = esi;
-		edx = edx-0x14;
-		ecx = s_35e[D(___243c60h)].__192;
-		s_35e[D(___243c60h)].__176 = edx;
-
-		if((int)ecx > 3){
-
-			s_35e[D(___243c60h)].__b0 = 0.0f;
-			s_35e[D(___243c60h)].__16a = 1;
-			s_35e[D(___243c60h)].__16e = 0;
-
+		if (init_hit.count == 0) {
+			esi = 0xf;
+			s_35e[car_idx].__14 = 0;
 #if defined(DR3_CHAOS)
 			dr3_chaos_spins = 0;
 #endif
-			while(1){
+		} else {
+			/*
+			 * Initial wall contact deflection (__192 == 0): when a front corner clips a wall while the
+			 * center nose probe (esp+0x2c) is on open road (>= 4), apply the classic +-20 deg deflection
+			 * BEFORE resolving the step and update ImgIndex/ImgOffset so the collision footprint matches
+			 * the deflected heading.
+			 */
+			if (s_35e[car_idx].__192 == 0) {
+				int deflected = 0;
 
-				if((int)s_35e[D(___243c60h)].__14 >= 4){
-
-					s_35e[D(___243c60h)].__14 = 0;
-					break;
+				if (((int)D(esp+0x48) < 4) || ((int)D(esp+0x4c) < 4)) {
+					if ((int)D(esp+0x2c) >= 4) {
+						s_35e[car_idx].Direction += 20.0f;
+						deflected = 1;
+					}
 				}
+				if (((int)D(esp+0x50) < 4) || ((int)D(esp+0x54) < 4)) {
+					if ((int)D(esp+0x2c) >= 4) {
+						s_35e[car_idx].Direction -= 20.0f;
+						deflected = 1;
+					}
+				}
+				if (deflected) {
+					int dr3_img;
+					while (s_35e[car_idx].Direction < 0.0f)    s_35e[car_idx].Direction += 360.0f;
+					while (s_35e[car_idx].Direction >= 360.0f) s_35e[car_idx].Direction -= 360.0f;
+					dr3_img = (int)((double)s_35e[car_idx].Direction / 3.75);
+					s_35e[car_idx].ImgIndex = (dr3_img < 0) ? 0 : ((dr3_img > 95) ? 95 : dr3_img);
+					s_35e[car_idx].ImgOffset = 0x25800 * car_idx + 0x640 * s_35e[car_idx].ImgIndex;
+					ebxp = ___243d74h + (int)s_35e[car_idx].ImgOffset;
+				}
+			}
+
+			probes = dr3_wall_resolve_step(
+				(const unsigned char *)ebxp,
+				(const unsigned char *)TRX_MAS,
+				TRX_WIDTH, TRX_HEIGHT,
+				&s_35e[car_idx].XLocation,
+				&s_35e[car_idx].YLocation,
+				&s_35e[car_idx].__15a,
+				&s_35e[car_idx].__15e,
+				&s_35e[car_idx].__fc,
+				&s_35e[car_idx].__100,
+				&s_35e[car_idx].__b0,
+				(int)s_35e[car_idx].__192,
+				&init_hit,
+				&final_hit);
 
 #if defined(DR3_CHAOS)
-				/*
-				 * Search attempts per frame (see dr3_chaos.h): every attempt scans the whole 40x40 sprite
-				 * against the track mask, so this loop is by far the most expensive thing a car does -
-				 * with twelve cars on a track full of soft ground (Rock Zone: 60% soft) the frame was
-				 * spent here (measured: 630 ms of every second in the per car loops).  A car that gives up
-				 * here simply tries again on the next frame, so a low bound costs nothing but a moment.
-				 */
-				if(++dr3_chaos_spins > 16){
-
-					s_35e[D(___243c60h)].__14 = 0;
-					break;
-				}
+			dr3_chaos_spins = probes;
 #endif
-
-				eax = rand_watcom106();
-				ebx = 2*s_35e[D(___243c60h)].__16a+1;
-				edx = (int)eax>>0x1f;
-				edx = (int)eax%(int)ebx;
-				edx = edx-s_35e[D(___243c60h)].__16a;
-				D(esp+0x5c) = edx;
-				s_35e[D(___243c60h)].__162 = (float)(double)(int)D(esp+0x5c);
-				eax = rand_watcom106();
-				ebx = 2*s_35e[D(___243c60h)].__16a+1;
-				edx = (int)eax>>0x1f;
-				edx = (int)eax%(int)ebx;
-				edi = s_35e[D(___243c60h)].__16e+1;
-				D(esp+0x5c) = edx-s_35e[D(___243c60h)].__16a;
-				eax = edi;
-				edx = (int)eax>>0x1f;
-				edx = (int)eax%5;
-				s_35e[D(___243c60h)].__16e = edi;
-				s_35e[D(___243c60h)].__166 = (float)(int)D(esp+0x5c);
-
-				if(edx == 0){
-										
-					if((int)s_35e[D(___243c60h)].__16a < 0x1e) s_35e[D(___243c60h)].__16a++; 
-				}
-
-				s_35e[D(___243c60h)].YLocation += s_35e[D(___243c60h)].__166;
-				D(esp+0x5c) = (int)((double)s_35e[D(___243c60h)].YLocation+(double)s_35e[D(___243c60h)].__15e-20.0);
-				edi = TRX_WIDTH*D(esp+0x5c);
-				s_35e[D(___243c60h)].XLocation += s_35e[D(___243c60h)].__162;
-				edip = TRX_MAS+(int)s_35e[D(___243c60h)].XLocation+(int)edi-0x14+(int)(double)s_35e[D(___243c60h)].__15a;
-				ebxp = ___243d74h+s_35e[D(___243c60h)].ImgOffset;
-				esi = 0xf;
-				edx = 0;
-				eax = 0;
-
-				ecx = 0;
-				while(1){
-
-					if((signed char)B(ebxp) <= 3){
-
-						edip++;
-						ebxp++;
-						ecx++;
-
-						if(ecx == 0x28){
-
-							edip = edip+TRX_WIDTH-0x28;
-							edx++;
-							if(edx == 0x28) break;
-							ecx = 0;
-						}
-					}
-					else {
-
-						L(eax) = B(edip)&0xf;
-
-						if((signed char)L(eax) >= 4){
-
-							edip++;
-							ebxp++;
-							ecx++;
-
-							if(ecx == 0x28){
-
-								edip = edip+TRX_WIDTH-0x28;
-								edx++;
-								if(edx == 0x28) break;
-								ecx = 0;
-							}
-						}
-						else {
-
-							esi = eax;
-							D(___243cb0h) = ecx;
-							D(___243cb4h) = edx;
-							break;
-						}
-					}
-				} // w
-
-				s_35e[D(___243c60h)].__14 = esi;
-
-				if((int)esi < 4){
-					
-					s_35e[D(___243c60h)].YLocation -= s_35e[D(___243c60h)].__166;
-					s_35e[D(___243c60h)].XLocation -= s_35e[D(___243c60h)].__162;
-				}
-			} // w
-		} // i
-
-		if((s_35e[D(___243c60h)].__192 != 0)&&((int)s_35e[D(___243c60h)].__192 <= 3)){
-
-			s_35e[D(___243c60h)].__fc = (float)(-1.0*(double)s_35e[D(___243c60h)].__15a);
-			s_35e[D(___243c60h)].__100 = (float)(-1.0*(double)s_35e[D(___243c60h)].__15e);
-			s_35e[D(___243c60h)].__b0 = 0.0f;
-			s_35e[D(___243c60h)].__14 = 1;
+			esi = init_hit.first_val;
+			D(___243cb0h) = init_hit.first_i;
+			D(___243cb4h) = init_hit.first_j;
+			s_35e[car_idx].__172 = init_hit.mean_dx;
+			s_35e[car_idx].__176 = init_hit.mean_dy;
+			s_35e[car_idx].__18e = esi;
+			s_35e[car_idx].__16a = probes;
+			s_35e[car_idx].__16e = final_hit.count;
+			s_35e[car_idx].__14  = 1;
 		}
-
-		if(s_35e[D(___243c60h)].__192 == 0){
-	
-			if(((int)D(esp+0x48) < 4)||((int)D(esp+0x4c) < 4)){
-
-				if((int)D(esp+0x2c) >= 4){
-					
-					s_35e[D(___243c60h)].Direction += 20.0f;
-				}
-			}
-
-			if(((int)D(esp+0x50) < 4)||((int)D(esp+0x54) < 4)){
-
-				if((int)D(esp+0x2c) >= 4){
-				
-					s_35e[D(___243c60h)].Direction -= 20.0f;
-				}
-			}
-
-			if(s_35e[D(___243c60h)].Direction < 0.0f) s_35e[D(___243c60h)].Direction += 360.0f;
-			if(s_35e[D(___243c60h)].Direction >= 360.0f) s_35e[D(___243c60h)].Direction -= 360.0f;
-
-			s_35e[D(___243c60h)].__b0 *= (float)(7.0/8.0);
-
-			s_35e[D(___243c60h)].__14 = 1;
-		} // i
-	} // i
+	}
 
 	if((D(esp+0x50) == 4)||(D(esp+0x48) == 4)||(D(esp+0x4c) == 4)||(D(esp+0x54) == 4)||(D(esp+0x40) == 4)||(D(esp+0x44) == 4)){
 

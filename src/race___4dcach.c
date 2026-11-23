@@ -4,10 +4,14 @@
 #include "platform_3ds/dr3_chaos.h"   /* DR3_MAX_CARS - the kill bonus' blame arrays */
 #include "platform_3ds/dr3_boss.h"
 #include "platform_3ds/dr3_anniv_prog.h"
+#include "platform_3ds/dr3_results.h"
 
 	extern __BYTE__ NUM_OF_CARS[];
 	extern __BYTE__ ___1e6ed0h[];
 	extern __POINTER__ ___243d74h;
+	extern int TRX_WIDTH;
+	extern int TRX_HEIGHT;
+	extern __POINTER__ TRX_MAS;
 	extern __BYTE__ ___1de580h[];
 	extern __BYTE__ ___2438cch[];
 	extern __BYTE__ ___1a01e0h[];        /* the racer table - the money lives there */
@@ -291,74 +295,81 @@ void race___4dcach(void){
 					 */
 					if(dr3_chaos_active()) dr3_chaos_player_contact(n, k);
 
-					D(esp+0x28) = (int)(((double)(int)(0-s_35e[n].__172)*((double)s_35e[k].YLocation-(double)s_35e[k].__152))+(((double)s_35e[k].XLocation-(double)s_35e[k].__14e)*(double)(int)s_35e[n].__176));
+					{
+						const int wall_n = (int)s_35e[n].__14;
+						const int wall_dx_n = (int)s_35e[n].__172;
+						const int wall_dy_n = (int)s_35e[n].__176;
+						const int wall_k = (int)s_35e[k].__14;
+						const int wall_dx_k = (int)s_35e[k].__172;
+						const int wall_dy_k = (int)s_35e[k].__176;
+						__DWORD__ h_n18, h_n1c, h_k18, h_k1c;
 
-					s_35e[n].__100 = (float)(0.7*(double)((float)(((double)s_35e[k].YLocation-(double)s_35e[k].__152)-((double)s_35e[n].YLocation-(double)s_35e[n].__152)))+(double)s_35e[n].__100);
+						D(esp+0x28) = (int)(((double)(int)(0-s_35e[n].__172)*((double)s_35e[k].YLocation-(double)s_35e[k].__152))+(((double)s_35e[k].XLocation-(double)s_35e[k].__14e)*(double)(int)s_35e[n].__176));
 
-					s_35e[n].__fc = (float)((0.7*(((double)s_35e[k].XLocation-(double)s_35e[k].__14e)-((double)s_35e[n].XLocation-(double)s_35e[n].__14e)))+(double)s_35e[n].__fc);
+						s_35e[n].__100 = (float)(0.7*(double)((float)(((double)s_35e[k].YLocation-(double)s_35e[k].__152)-((double)s_35e[n].YLocation-(double)s_35e[n].__152)))+(double)s_35e[n].__100);
 
-					D(esp+0x2c) = (int)((((double)s_35e[n].YLocation-(double)s_35e[n].__152)*(double)(int)(0-s_35e[k].__172))+(((double)s_35e[n].XLocation-(double)s_35e[n].__14e)*(double)(int)s_35e[k].__176));
+						s_35e[n].__fc = (float)((0.7*(((double)s_35e[k].XLocation-(double)s_35e[k].__14e)-((double)s_35e[n].XLocation-(double)s_35e[n].__14e)))+(double)s_35e[n].__fc);
 
-					s_35e[n].__18 = helper00(s_35e[n].__172, s_35e[n].__15a);
-					s_35e[n].__1c = helper00(s_35e[n].__176, s_35e[n].__15e);
-					
-					s_35e[k].__fc = (float)((0.7*(((double)s_35e[n].XLocation-(double)s_35e[n].__14e)-((double)s_35e[k].XLocation-(double)s_35e[k].__14e)))+(double)s_35e[k].__fc);
+						D(esp+0x2c) = (int)((((double)s_35e[n].YLocation-(double)s_35e[n].__152)*(double)(int)(0-s_35e[k].__172))+(((double)s_35e[n].XLocation-(double)s_35e[n].__14e)*(double)(int)s_35e[k].__176));
 
-					s_35e[k].__100 = (float)((0.7*(((double)s_35e[n].YLocation-(double)s_35e[n].__152)-((double)s_35e[k].YLocation-(double)s_35e[k].__152)))+(double)s_35e[k].__100);
-					
-					s_35e[k].__18 = helper00(s_35e[k].__172, s_35e[k].__15a);
-					s_35e[k].__1c = helper00(s_35e[k].__176, s_35e[k].__15e);
+						h_n18 = helper00(s_35e[n].__172, s_35e[n].__15a);
+						h_n1c = helper00(s_35e[n].__176, s_35e[n].__15e);
+						if (s_35e[n].__18 != 1) s_35e[n].__18 = h_n18;
+						if (s_35e[n].__1c != 1) s_35e[n].__1c = h_n1c;
+						
+						s_35e[k].__fc = (float)((0.7*(((double)s_35e[n].XLocation-(double)s_35e[n].__14e)-((double)s_35e[k].XLocation-(double)s_35e[k].__14e)))+(double)s_35e[k].__fc);
 
-					bl1 = !((s_35e[n].__18 != 1)||(s_35e[n].__18 != s_35e[k].__18));
-					bl2 = !((s_35e[n].__1c != 1)||(s_35e[n].__1c != s_35e[k].__1c));
+						s_35e[k].__100 = (float)((0.7*(((double)s_35e[n].YLocation-(double)s_35e[n].__152)-((double)s_35e[k].YLocation-(double)s_35e[k].__152)))+(double)s_35e[k].__100);
+						
+						h_k18 = helper00(s_35e[k].__172, s_35e[k].__15a);
+						h_k1c = helper00(s_35e[k].__176, s_35e[k].__15e);
+						if (s_35e[k].__18 != 1) s_35e[k].__18 = h_k18;
+						if (s_35e[k].__1c != 1) s_35e[k].__1c = h_k1c;
 
-					if(bl1||bl2){
+						bl1 = !((h_n18 != 1)||(h_n18 != h_k18));
+						bl2 = !((h_n1c != 1)||(h_n1c != h_k1c));
 
-						if((double)s_35e[n].Direction <= (double)s_35e[k].Direction){
+						if(bl1||bl2){
 
-							s_35e[n].__104 = (float)((double)s_35e[n].__104+2.0);
-							s_35e[k].__104 = (float)((double)s_35e[k].__104-2.0);
-						}
-						else {
-
-							F32(esp+0x54) = (float)((double)s_35e[n].Direction-(double)s_35e[k].Direction);
-							F32(esp+0x3c) = (0.0 <= (double)F32(esp+0x54))?F32(esp+0x54):(float)(-1.0*(double)F32(esp+0x54));
-
-							if((int)D(esp+0x3c) >= 0x42c80000){	// 100.0
+							if((double)s_35e[n].Direction <= (double)s_35e[k].Direction){
 
 								s_35e[n].__104 = (float)((double)s_35e[n].__104+2.0);
 								s_35e[k].__104 = (float)((double)s_35e[k].__104-2.0);
 							}
 							else {
 
-								s_35e[n].__104 = (float)((double)s_35e[n].__104-2.0);
-								s_35e[k].__104 = (float)((double)s_35e[k].__104+2.0);
+								F32(esp+0x54) = (float)((double)s_35e[n].Direction-(double)s_35e[k].Direction);
+								F32(esp+0x3c) = (0.0 <= (double)F32(esp+0x54))?F32(esp+0x54):(float)(-1.0*(double)F32(esp+0x54));
+
+								if((int)D(esp+0x3c) >= 0x42c80000){	// 100.0
+
+									s_35e[n].__104 = (float)((double)s_35e[n].__104+2.0);
+									s_35e[k].__104 = (float)((double)s_35e[k].__104-2.0);
+								}
+								else {
+
+									s_35e[n].__104 = (float)((double)s_35e[n].__104-2.0);
+									s_35e[k].__104 = (float)((double)s_35e[k].__104+2.0);
+								}
 							}
 						}
 
-
-						if((double)s_35e[n].XLocation < (double)s_35e[k].XLocation){
-
-							s_35e[n].XLocation = (float)((double)s_35e[n].XLocation-0.6);
-							s_35e[k].XLocation = (float)((double)s_35e[k].XLocation+0.6);
-						}
-						else {
-
-							s_35e[n].XLocation = (float)((double)s_35e[n].XLocation+0.6);
-							s_35e[k].XLocation = (float)((double)s_35e[k].XLocation-0.6);
-						}
-
-
-						if((double)s_35e[n].YLocation < (double)s_35e[k].YLocation){
-
-							s_35e[n].YLocation = (float)((double)s_35e[n].YLocation-0.6);
-							s_35e[k].YLocation = (float)((double)s_35e[k].YLocation+0.6);
-						}
-						else {
-
-							s_35e[n].YLocation = (float)((double)s_35e[n].YLocation+0.6);
-							s_35e[k].YLocation = (float)((double)s_35e[k].YLocation-0.6);
-						}
+						/*
+						 * Wall-aware car-to-car separation & rigid wall backstop reflection:
+						 * Even if (bl1 || bl2) is 0 (e.g. one car is pinned stationary against a wall while
+						 * 8 cars ram it), dr3_wall_separate_pair ensures the wall-pinned car cannot be
+						 * shoved into solid wall ((TRX_MAS & 0xf) < 4) and rebounds the outer car away.
+						 */
+						dr3_wall_separate_pair(
+							(const unsigned char *)TRX_MAS,
+							TRX_WIDTH, TRX_HEIGHT,
+							&s_35e[n].XLocation, &s_35e[n].YLocation,
+							&s_35e[n].__fc, &s_35e[n].__100,
+							wall_n, wall_dx_n, wall_dy_n,
+							&s_35e[k].XLocation, &s_35e[k].YLocation,
+							&s_35e[k].__fc, &s_35e[k].__100,
+							wall_k, wall_dx_k, wall_dy_k,
+							(bl1 || bl2));
 					}
 
 					F32(esp+0x30) = (float)dRMath_abs((double)s_35e[n].Direction-(double)s_35e[k].Direction);

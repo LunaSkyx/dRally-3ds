@@ -45,7 +45,7 @@ typedef struct {
 /* ---- sequential steps (run in file order; "until" blocks the sequence until its condition holds) ---- */
 enum { SEQ_KEY_TAP, SEQ_KEY_DOWN, SEQ_KEY_UP, SEQ_UNTIL, SEQ_SLEEP, SEQ_SHOT, SEQ_LOG, SEQ_QUIT, SEQ_QUICK,
        SEQ_PERF_START, SEQ_PERF_REPORT, SEQ_AUTOPILOT, SEQ_BPROBE_START, SEQ_BPROBE_REPORT, SEQ_BOTTOM_LEGACY, SEQ_RACED, SEQ_PLAYER_HP,
-       SEQ_QUICK_BOSS, SEQ_BOSS_HP, SEQ_BOTTOM_TAP, SEQ_PLAYER_DRUG, SEQ_PLAYER_RANK };
+       SEQ_QUICK_BOSS, SEQ_BOSS_HP, SEQ_BOTTOM_TAP, SEQ_PLAYER_DRUG, SEQ_PLAYER_RANK, SEQ_RECORD };
 enum { COND_READY, COND_EVENT, COND_RACE_FRAMES, COND_FRAMES };
 
 typedef struct {
@@ -82,6 +82,8 @@ static unsigned long  dr3_scn_t0;
 static int            dr3_scn_t0_set;
 static int            dr3_scn_shots;
 static char           dr3_scn_shot_pending[DR3_SCN_TEXT];
+static int            dr3_scn_rec_every;
+static int            dr3_scn_rec_frames;
 
 static unsigned long dr3_scn_now(void) { return dr3_scn_t0_set ? (unsigned long)(SDL_GetTicks() - dr3_scn_t0) : 0UL; }
 
@@ -246,6 +248,7 @@ static void dr3_seq_parse(char *p, int lineno)
     else if (sscanf(p, "playerdrug %lu", &n) == 1) { q = dr3_seq_new(SEQ_PLAYER_DRUG); if (q) q->arg = n; }
     else if (sscanf(p, "playerrank %lu", &n) == 1) { q = dr3_seq_new(SEQ_PLAYER_RANK); if (q) q->arg = n; }
     else if (sscanf(p, "bosshp %lu", &n) == 1)   { q = dr3_seq_new(SEQ_BOSS_HP);   if (q) q->arg = n; }
+    else if (sscanf(p, "record %lu", &n) == 1)   { q = dr3_seq_new(SEQ_RECORD);    if (q) q->arg = n; }
     else if (sscanf(p, "quickboss %lu", &n) == 1) { q = dr3_seq_new(SEQ_QUICK_BOSS); if (q) q->arg = n; }
     else if (strcmp(p, "raced") == 0)         dr3_seq_new(SEQ_RACED);      /* the career counts as raced: the wheel of the sign up screen is armed */
     else if (strcmp(p, "bprobe start") == 0)  dr3_seq_new(SEQ_BPROBE_START);
@@ -390,6 +393,7 @@ static void dr3_seq_tick(unsigned long now)
         case SEQ_PLAYER_DRUG: dr3_quick_set_player_drug((int)q->arg); dr3_log_write("[scn] %lu ms: playerdrug %lu", now, q->arg); ++dr3_seq_pc; continue;
         case SEQ_PLAYER_RANK: dr3_quick_set_player_rank((int)q->arg); dr3_log_write("[scn] %lu ms: playerrank %lu", now, q->arg); ++dr3_seq_pc; continue;
         case SEQ_BOSS_HP:     dr3_quick_set_boss_hp((int)q->arg); dr3_log_write("[scn] %lu ms: bosshp %lu", now, q->arg); ++dr3_seq_pc; continue;
+        case SEQ_RECORD:      dr3_scn_rec_every = (int)q->arg; dr3_log_write("[scn] %lu ms: record every %d frame(s) (%d recorded so far)", now, dr3_scn_rec_every, dr3_scn_rec_frames); ++dr3_seq_pc; continue;
         case SEQ_QUICK_BOSS:
             ++dr3_seq_pc;
             dr3_log_write("[scn] %lu ms: quickboss phase %lu", now, q->arg);
@@ -516,6 +520,13 @@ static int dr3_scn_save_bmp(const char *name, const uint32_t *fb, int fb_w, int 
 void dr3_scenario_present(const uint32_t *fb, int fb_w, int fb_h, const dr3_lut32_t *lut)
 {
     ++dr3_scn_frames;
+
+    if ((dr3_scn_rec_every > 0) && ((dr3_scn_frames % (unsigned long)dr3_scn_rec_every) == 0)) {
+        char vname[32];
+        ++dr3_scn_rec_frames;
+        snprintf(vname, sizeof(vname), "v_%04d.bmp", dr3_scn_rec_frames);
+        dr3_scn_save_bmp(vname, fb, fb_w, fb_h, lut);
+    }
 
     if (dr3_scn_shot_pending[0]) {
         const int ok = dr3_scn_save_bmp(dr3_scn_shot_pending, fb, fb_w, fb_h, lut);
