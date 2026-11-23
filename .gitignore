@@ -46,6 +46,7 @@ dr3_controls.txt
 # Original copyrighted Death Rally data & saves - never commit
 *.BPA
 *.bpa
+!assets/3ds/romfs/TRA.BPA
 *.HAF
 *.haf
 CINEM/

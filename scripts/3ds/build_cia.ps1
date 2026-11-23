@@ -23,6 +23,7 @@ $BuildDir  = Join-Path $Repo 'build\3ds'
 $ElfPath    = Join-Path $BuildDir 'dRally_3ds.elf'
 $SmdhPath   = Join-Path $BuildDir 'dRally_3ds.smdh'
 $BnrPath    = Join-Path $BuildDir 'dRally_3ds.bnr'
+$RomfsDir   = Join-Path $AssetsDir 'romfs'
 $RsfPath    = Join-Path $AssetsDir 'dRally_3ds.rsf'
 $IconPath   = Join-Path $AssetsDir 'icon.png'
 $BannerPng  = Join-Path $AssetsDir 'banner.png'
@@ -108,22 +109,30 @@ if ($DownloadBannertool -and -not $Bannertool) {
     }
 }
 
-Write-Host "[1/3] Building Death Rally SMDH icon + metadata..."
+Write-Host "[1/4] Building Death Rally SMDH icon + metadata..."
 & $Smdhtool --create "Death Rally" "Death Rally - 30th Anniversary Edition" "LunaSkyx / Remedy" $IconPath $SmdhPath
 if ($LASTEXITCODE -ne 0) { throw "smdhtool failed with exit code $LASTEXITCODE" }
 
 $HasBanner = $false
 if ($Bannertool -and (Test-Path $BannerPng) -and (Test-Path $BannerWav)) {
-    Write-Host "[2/3] Compiling 3DS Home Menu 3D banner + V8 audio via bannertool..."
+    Write-Host "[2/4] Compiling 3DS Home Menu 3D banner + stereo audio via bannertool..."
     & $Bannertool makebanner -i $BannerPng -a $BannerWav -o $BnrPath
     if ($LASTEXITCODE -ne 0) { throw "bannertool failed with exit code $LASTEXITCODE" }
     $HasBanner = $true
 } else {
-    Write-Host "[2/3] Skipping 3D banner.bnr (bannertool.exe not found locally)."
+    Write-Host "[2/4] Skipping 3D banner.bnr (bannertool.exe not found locally)."
     Write-Host "      Tip: run with -DownloadBannertool on an internet-connected shell to embed banner.png + banner.wav."
 }
 
-Write-Host "[3/3] Packaging CIA via makerom..."
+$HasRomfs = $false
+if ((Test-Path $RomfsDir) -and ((Get-ChildItem -Path $RomfsDir -File -ErrorAction SilentlyContinue).Count -gt 0)) {
+    Write-Host "[3/4] Embedding built-in 3DS RomFS (Battle Arena TRA.BPA) via makerom..."
+    $HasRomfs = $true
+} else {
+    Write-Host "[3/4] Skipping RomFS (no files in $RomfsDir)."
+}
+
+Write-Host "[4/4] Packaging CIA via makerom..."
 $makeromArgs = @(
     '-f', 'cia',
     '-o', $OutCia,
@@ -135,6 +144,9 @@ $makeromArgs = @(
 )
 if ($HasBanner) {
     $makeromArgs += @('-banner', $BnrPath)
+}
+if ($HasRomfs) {
+    $makeromArgs += @("-DROMFS=$RomfsDir")
 }
 
 & $Makerom @makeromArgs
@@ -154,4 +166,5 @@ Write-Host ""
 Write-Host "SUCCESS: $OutCia ($sizeKB KB)"
 Write-Host "  TitleID : 0004000000D4A100 (ProductCode: CTR-P-DRLY)"
 Write-Host "  Icon    : Death Rally custom 48x48 SMDH"
-Write-Host "  Banner  : $(if ($HasBanner) { 'Embedded 3D banner.bnr + V8 audio jingle' } else { 'SMDH icon only (run with -DownloadBannertool to embed 3D banner + audio)' })"
+Write-Host "  Banner  : $(if ($HasBanner) { 'Embedded 3D banner.bnr + 44.1kHz stereo jingle' } else { 'SMDH icon only (run with -DownloadBannertool to embed 3D banner + audio)' })"
+Write-Host "  RomFS   : $(if ($HasRomfs) { 'Embedded Battle Arena (romfs:/TRA.BPA)' } else { 'None (external TRA.BPA required on SD)' })"

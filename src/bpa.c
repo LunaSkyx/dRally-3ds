@@ -1,6 +1,6 @@
 #include "bpa.h"
 
-#if defined(__3DS__) && defined(DR3_CHAOS)
+#if defined(__3DS__) && (defined(DR3_CHAOS) || defined(DR3_USE_GFX))
 #include "platform_3ds/dr3_log.h"
 #endif
 
@@ -159,14 +159,26 @@ BPA * bpa_open(const char * bpa_fname){
     strcpy(bpa->file, bpa_fname);
     bpa->entry = 0;
     
-    if((bpa->fd = fopen(bpa_fname, "rb")) != (FILE *)0){
-    
-        fread(&bpa->header, 1, sizeof(bpa_header_t), bpa->fd);
-        bpa->header.n = SDL_SwapLE32(bpa->header.n);
-        for (int i = 0; i < bpa->header.n; i++)
-        {
-            bpa->header.fat[i].size = SDL_SwapLE32(bpa->header.fat[i].size);
+    bpa->fd = fopen(bpa_fname, "rb");
+#if defined(__3DS__) && defined(DR3_USE_GFX)
+    if(bpa->fd == (FILE *)0){
+        char rom_path[64];
+        snprintf(rom_path, sizeof(rom_path), "romfs:/%s", bpa_fname);
+        bpa->fd = fopen(rom_path, "rb");
+        if(bpa->fd != (FILE *)0){
+            dr3_log("[dr3] bpa: loaded %s from built-in RomFS", bpa_fname);
         }
+    }
+#endif
+    if(bpa->fd == (FILE *)0){
+        return (BPA *)0;
+    }
+
+    fread(&bpa->header, 1, sizeof(bpa_header_t), bpa->fd);
+    bpa->header.n = SDL_SwapLE32(bpa->header.n);
+    for (int i = 0; i < bpa->header.n; i++)
+    {
+        bpa->header.fat[i].size = SDL_SwapLE32(bpa->header.fat[i].size);
     }
     
     sane = bpa_sanity(bpa);

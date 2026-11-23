@@ -65,10 +65,14 @@ int main(int argc, char * argv[]){
 #if defined(__3DS__) && defined(DR3_USE_GFX)
 	dr3_log("[dr3] display init returned");
 
+	/* Mount embedded RomFS (provides built-in Battle Arena TRA.BPA when absent on SD) */
+	dr3_romfs_init();
+
 	/* the engine dereferences a failed fopen, so list what is missing instead of crashing.
 	   DR3_USE_GFX keeps this out of the MSVC check build, which has no libctru (same as the
 	   dr3_bottom hooks in drally_linux_c.c) */
 	if (!dr3_files_ok_or_wait()) {
+		dr3_romfs_exit();
 		dRally_Display_clean();
 		dRally_System_clean();
 		return 1;
@@ -91,6 +95,9 @@ int main(int argc, char * argv[]){
 #endif
 
 	dRally_Sound_quit();
+#if defined(__3DS__) && defined(DR3_USE_GFX)
+	dr3_romfs_exit();
+#endif
 	dRally_Display_clean();
 	dRally_System_clean();
 
