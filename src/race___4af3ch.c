@@ -181,6 +181,8 @@ void race___4af3ch(void){
 
 		s_35e[n].XLocation = (float)(int)(TRX_WIDTH-1-(int)(double)s_35e[n].XLocation);
 		s_35e[n].YLocation = (float)(int)(TRX_HEIGHT-1-(int)(double)s_35e[n].YLocation);
+		s_35e[n].__14e = s_35e[n].XLocation;
+		s_35e[n].__152 = s_35e[n].YLocation;
 		s_35e[n].ImgIndex = (s_35e[n].ImgIndex+48)%96;
 		s_35e[n].__156 = (float)(3.75*(double)(int)s_35e[n].ImgIndex);
 		s_35e[n].Direction = (float)(3.75*(double)(int)s_35e[n].ImgIndex);

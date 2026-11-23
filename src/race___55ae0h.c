@@ -119,6 +119,14 @@ void race___55ae0h(void){
     while(++n < NUM_OF_CARS){
 
         ecx = B(TRX_VAI+TRX_WIDTH_QTR*((int)s_35e[n].Y1__112>>0x2)+((int)s_35e[n].X1__10e>>0x2));
+        edx = B(TRX_VAI+TRX_WIDTH_QTR*((int)s_35e[n].Y2__122>>0x2)+((int)s_35e[n].X2__11e>>0x2));
+        D(esp+0x4) = B(TRX_VAI+TRX_WIDTH_QTR*((int)s_35e[n].YLocation>>0x2)+((int)s_35e[n].XLocation>>0x2));
+
+#if defined(DR3_CHAOS)
+        s_35e[n].__0 = (__DWORD__)dr3_race_update_checkpoint(
+            (int)s_35e[n].__0, (int)D(___243cech),
+            (int)ecx, (int)edx, (int)D(esp+0x4));
+#else
         ebx = s_35e[n].__0+1;
 
         if(ecx == ebx){
@@ -127,16 +135,14 @@ void race___55ae0h(void){
         }
         else {
 
-            edx = B(TRX_VAI+TRX_WIDTH_QTR*((int)s_35e[n].Y2__122>>0x2)+((int)s_35e[n].X2__11e>>0x2));
             if(edx == ebx) s_35e[n].__0++;
         }
-
-        D(esp+0x4) = B(TRX_VAI+TRX_WIDTH_QTR*((int)s_35e[n].YLocation>>0x2)+((int)s_35e[n].XLocation>>0x2));
 
         if(D(esp+0x4) == D(___243cech)){
             
             if((int)D(___243cech) > (int)s_35e[n].__0) s_35e[n].__0 = 0;
         }
+#endif
     }
 
 #if !defined(DR3_CHAOS)
@@ -283,14 +289,20 @@ void race___55ae0h(void){
             ebp = 0;
             n = -1;
             while(++n < NUM_OF_CARS){
-
+#if defined(DR3_CHAOS)
+                if((int)s_94[n].__18 <= 0) continue;
+#endif
                 edx = s_35e[n].__0+D(___243cech)*s_35e[n].Lap;
                 if(((int)edx > (int)ebp)&&(n != MY_CAR_IDX)) ebp = edx;
             }
 
             eax = s_35e[MY_CAR_IDX].__0+D(___243cech)*(s_35e[MY_CAR_IDX].Lap+1);
 
-            if(((int)ebp > (int)eax)&&(D(___196ab0h) == 0)){
+            if(((int)ebp > (int)eax)&&(D(___196ab0h) == 0)
+#if defined(DR3_CHAOS)
+               &&(s_35e[MY_CAR_IDX].Finished == 0)&&((int)s_94[MY_CAR_IDX].__18 > 0)
+#endif
+            ){
 
                 D(___196ab0h) = 1;
                 dRally_Sound_pushEffect(2, SFX_YOUVE_BEEN_LAPPED, 0, 0x10000, 0x50000, 0x8000);

@@ -3,6 +3,8 @@
 #include "drally_structs_fixed.h"
 #if defined(DR3_CHAOS)
 #include "platform_3ds/dr3_chaos.h"
+#include "platform_3ds/dr3_anniv_prog.h"
+#include "platform_3ds/dr3_arena.h"
 #include "platform_3ds/dr3_log.h"
 #endif
 
@@ -68,15 +70,18 @@ __DWORD__ ___32230h(void){
 
 		{
 			int dr3_duel_sab = 0;
+			int dr3_anniv_sab = 0;
 #if defined(DR3_CHAOS)
 			/*
-			 * In a 1v1 Duel (whether rolled by the wheel or chosen directly), the opponent is
-			 * dr3_chaos_duel_rival() rather than one of the 4 racers in ___1a0ef8h.  Also allow
-			 * sabotage even if the player leads in points, since a 1v1 Duel is not the final boss.
+			 * In 30th Anniversary (Duel, Standard, Destroy 'Em All, Arena), the Adversary never
+			 * replaces car 0 when the player leads in points (!dr3_adversary_active() in ___33010h.c),
+			 * so Sabotage works even when the player is rank 1.  In a 1v1 Duel it hits the duel rival;
+			 * in Standard/DM/Arena it hits the highest-ranked opponent in the matched race field.
 			 */
-			dr3_duel_sab = (dr3_chaos_active() && (dr3_chaos_mode() == DR3_CHAOS_MODE_DUEL) && (D(___1a1028h) != 3));
+			dr3_anniv_sab = (dr3_chaos_active() && (D(___1a1028h) != 3));
+			dr3_duel_sab  = (dr3_anniv_sab && (dr3_chaos_mode() == DR3_CHAOS_MODE_DUEL));
 #endif
-		if(((int)esi >= (int)s_6c[D(___1a1ef8h)].points) || dr3_duel_sab){
+		if(((int)esi >= (int)s_6c[D(___1a1ef8h)].points) || dr3_anniv_sab){
 
 			if(D(___185a14h_UseWeapons) != 0){
 
@@ -94,6 +99,36 @@ __DWORD__ ___32230h(void){
 							dr3_target = (dr3_me + 1) % 0x14;
 						/* Lock this exact sabotaged rival so ___33010h() puts him in the 1v1 Duel */
 						dr3_chaos_duel_rival_set(dr3_target);
+					}
+					else if(dr3_anniv_sab){
+						const int dr3_me = (int)D(___1a1ef8h);
+						const int dr3_tier = (dr3_me >= 0 && dr3_me < 20)
+						                   ? dr3_anniv_tier((int)s_6c[dr3_me].car, (int)s_6c[dr3_me].rank) : 0;
+						const int dr3_ext = dr3_chaos_arena() ? dr3_arena_extras(4, dr3_chaos_extra_cars())
+						                                      : dr3_chaos_extra_cars();
+						int dr3_fsize = dr3_chaos_extra_cars_override()
+						              ? (4 + dr3_ext)
+						              : dr3_anniv_field_size_ex(dr3_tier, dr3_chaos_arena(), dr3_extreme_active());
+						int dr3_cars[20], dr3_ranks[20], dr3_matched[20];
+						int dr3_mcnt, dr3_r, dr3_best_rk = 999;
+
+						if(dr3_chaos_arena() && dr3_fsize > DR3_ARENA_CARS_MAX) dr3_fsize = DR3_ARENA_CARS_MAX;
+						if(dr3_fsize > DR3_CHAOS_RACERS) dr3_fsize = DR3_CHAOS_RACERS;
+						if(dr3_fsize < 4) dr3_fsize = 4;
+
+						for(dr3_r = 0; dr3_r < 20; ++dr3_r){
+							dr3_cars[dr3_r]  = (int)s_6c[dr3_r].car;
+							dr3_ranks[dr3_r] = (int)s_6c[dr3_r].rank;
+						}
+						dr3_mcnt = dr3_anniv_select_field(dr3_me, dr3_fsize, dr3_cars, dr3_ranks, 20, dr3_matched);
+						for(dr3_r = 1; dr3_r < dr3_mcnt; ++dr3_r){
+							const int dr3_cand = dr3_matched[dr3_r];
+							if((dr3_cand >= 0) && (dr3_cand < 20) && (dr3_cand != dr3_me) &&
+							   ((int)s_6c[dr3_cand].rank < dr3_best_rk)){
+								dr3_best_rk = (int)s_6c[dr3_cand].rank;
+								dr3_target  = dr3_cand;
+							}
+						}
 					}
 #endif
 					if(dr3_target < 0){

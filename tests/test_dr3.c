@@ -3163,6 +3163,47 @@ static void test_race_rank_positions(void)
         CHECK(dr3_chaos_duel_points(0, 5, 4, 2, 6) == 0, "duel invalid winner rank returns 0");
         CHECK(dr3_chaos_duel_points(5, 0, 4, 2, 6) == 0, "duel invalid loser rank returns 0");
     }
+
+    /* Case 5: Checkpoint progression & Toxic Dump finish-line anti-wipe (dr3_race_update_checkpoint) */
+    {
+        int chk = 0;
+        int c;
+        /* Normal sequential 28-checkpoint lap */
+        for (c = 1; c <= 28; ++c) {
+            chk = dr3_race_update_checkpoint(chk, 28, c, c, (c > 1) ? (c - 1) : 28);
+            CHECK(chk == c, "sequential checkpoint %d reached (got %d)", c, chk);
+        }
+        /* Front corners enter chk 1 while center v_mid is still on finish line chk 28: MUST NOT wipe to 0 */
+        chk = dr3_race_update_checkpoint(0, 28, 1, 1, 28);
+        CHECK(chk == 1, "crossing start line with v_mid=28 advances to 1, not wiped to 0 (got %d)", chk);
+        chk = dr3_race_update_checkpoint(1, 28, 1, 1, 28);
+        CHECK(chk == 1, "staying on chk 1 while v_mid=28 keeps 1, not wiped to 0 (got %d)", chk);
+
+        /* Toxic Dump bug: at end of lap (cur_chk = 27), front corners step past thin 16px VAI==28 strip into VAI==1
+           or VAI==0 curb while car center v_mid lands on VAI==28. Must complete lap (28), NOT wipe to 0! */
+        chk = dr3_race_update_checkpoint(27, 28, 1, 1, 28);
+        CHECK(chk == 28, "end-of-lap v_mid=28 with front corners on 1 completes lap (28), not wiped to 0 (got %d)", chk);
+        chk = dr3_race_update_checkpoint(27, 28, 0, 0, 28);
+        CHECK(chk == 28, "end-of-lap v_mid=28 with front corners on curb 0 completes lap (28) (got %d)", chk);
+
+        /* Stepping completely over a thin finish line from cur_chk=27 (or 26) directly into VAI==1 */
+        chk = dr3_race_update_checkpoint(27, 28, 1, 1, 1);
+        CHECK(chk == 28, "stepping over thin finish line 27->1 credits lap completion 28 first (got %d)", chk);
+        chk = dr3_race_update_checkpoint(26, 28, 1, 2, 1);
+        CHECK(chk == 28, "stepping over finish line 26->1 credits lap completion 28 first (got %d)", chk);
+
+        /* Mid-lap bump / curb skip of 1 or 2 checkpoints catches up instead of freezing for the rest of the lap */
+        chk = dr3_race_update_checkpoint(12, 28, 14, 14, 12);
+        CHECK(chk == 14, "skipping chk 13 (12->14) catches up to 14 (got %d)", chk);
+        chk = dr3_race_update_checkpoint(14, 28, 17, 0, 17);
+        CHECK(chk == 17, "skipping chk 15..16 (14->17) catches up to 17 (got %d)", chk);
+
+        /* Reversing across start/finish line at start of lap (cur_chk = 0..2) cannot jump to 27 or 28 */
+        CHECK(dr3_race_update_checkpoint(0, 28, 28, 28, 28) == 0, "start grid on VAI=28 stays at 0");
+        CHECK(dr3_race_update_checkpoint(0, 28, 26, 27, 26) == 0, "start grid on VAI=26..27 stays at 0");
+        CHECK(dr3_race_update_checkpoint(1, 28, 28, 28, 28) == 1, "reversing from chk 1 onto VAI=28 cannot complete lap");
+        CHECK(dr3_race_update_checkpoint(2, 28, 27, 28, 28) == 2, "reversing from chk 2 onto VAI=28 cannot complete lap");
+    }
 }
 
 int main(void)

@@ -73,4 +73,23 @@ typedef struct dr3_race_car_s {
 
 void dr3_race_rank_positions(const dr3_race_car_t *cars, int count, int *out_pos);
 
+/*
+ * Checkpoint progression update for race___55ae0h.c.
+ *
+ * The original DOS loop only incremented s_35e[n].__0 when front corner 1 (v1) or front corner 2 (v2)
+ * equaled (cur_chk + 1) exactly, never checked the car center (v_mid) for advancing __0, and then
+ * unconditionally wiped s_35e[n].__0 = 0 whenever (v_mid == nchk && s_35e[n].__0 < nchk).
+ *
+ * That caused two catastrophic bugs in 20-car races (especially on narrow finish strips like Toxic Dump
+ * where VAI == 28 is only 16-20 px wide):
+ *   1. If a car's front corners (12 px ahead of center) stepped past or clipped the curb edge of
+ *      VAI == nchk into VAI == 1 while cur_chk == nchk - 1, and the car center (v_mid) landed on
+ *      VAI == nchk, the original code saw (v_mid == nchk && 28 > 27) and WIPED __0 from 27 to 0
+ *      without incrementing Lap!
+ *   2. If a car missed a single checkpoint mid-lap due to traffic bumping, curb hopping, or a seam,
+ *      (v == cur_chk + 1) never matched for the rest of the lap, freezing __0 and then wiping it to 0
+ *      at the finish line, dropping the player to last place and triggering a false "You've been lapped!".
+ */
+int dr3_race_update_checkpoint(int cur_chk, int nchk, int v1, int v2, int v_mid);
+
 #endif /* DR3_RESULTS_H */

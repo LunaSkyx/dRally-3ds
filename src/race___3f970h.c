@@ -354,6 +354,14 @@ void race___3f970h(void){
 
 		if((int)D(___1de580h[n].raw+0x1c) > 0x384) D(___1de580h[n].raw+0x1c) = 0x384;
 		D(___1de580h[n].raw+0x18) = 0x400*(0x64-D(___1de7d0h[n].raw+0x10));
+#if defined(DR3_CHAOS)
+		dr3_chaos_hp_max[n] = 0x400 * 0x64;
+		if((int)D(___1de7d0h[n].raw+0x10) > 0){
+			dr3_log("[dr3] sabotage: car %d (%s) starts race with %d%% damage -> hp %d/%d",
+			        n, ___1de7d0h[n].name, (int)D(___1de7d0h[n].raw+0x10),
+			        (int)D(___1de580h[n].raw+0x18), dr3_chaos_hp_max[n]);
+		}
+#endif
 		D(___1de580h[n].raw+0x20) = D(___1de7d0h[n].raw+0x20);
 		D(___1de580h[n].raw+0x24) = D(___1de7d0h[n].raw+0x24);
 		D(___1de580h[n].raw+0x28) = D(___1de7d0h[n].raw+0x28);		// LOAD BOUGHT MINES AGAIN
@@ -451,6 +459,9 @@ void race___3f970h(void){
 			F32(___1de580h[0].raw+0xc) = 0;
 			D(___1de580h[0].raw+0x1c) = ___3f610h_ints[___1de7d0h[1].dfclty][5]+___3f670h_ints[___1de7d0h[1].dfclty][4];
 			D(___1de580h[0].raw+0x18) = 0x400*(0x64-D(___1de7d0h[0].raw+0x10));
+#if defined(DR3_CHAOS)
+			dr3_chaos_hp_max[0] = 0x400 * 0x64;
+#endif
 
 			if((int)D(___1de580h[0].raw+0x1c) > 0x384) D(___1de580h[0].raw+0x1c) = 0x384;
 

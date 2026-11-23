@@ -139,3 +139,39 @@ void dr3_race_rank_positions(const dr3_race_car_t *cars, int count, int *out_pos
 		out_pos[order[i]] = i + 1;
 	}
 }
+
+int dr3_race_update_checkpoint(int cur_chk, int nchk, int v1, int v2, int v_mid)
+{
+	const int samples[3] = { v1, v2, v_mid };
+	int max_jump;
+	int best;
+	int i;
+
+	if (nchk <= 1) return cur_chk;
+	if (cur_chk < 0) cur_chk = 0;
+	if (cur_chk >= nchk) return nchk;
+
+	/* Allow up to +3 checkpoint catch-up (~10% of a lap) when bumped across a corner/curb seam */
+	max_jump = (nchk >= 8) ? 3 : 1;
+	best = cur_chk;
+
+	for (i = 0; i < 3; ++i) {
+		const int v = samples[i];
+		const int diff = v - cur_chk;
+
+		if ((v <= 0) || (v > nchk)) continue;
+
+		if ((diff >= 1) && (diff <= max_jump)) {
+			if (v > best) best = v;
+		} else if ((nchk >= 6) && (cur_chk >= (nchk - 2)) && ((v == 1) || (v == 2))) {
+			/*
+			 * Car was at the final sector (nchk - 1 or nchk - 2) and stepped completely across a thin
+			 * VAI == nchk finish line directly into VAI == 1..2: credit nchk so race___55ae0h counts
+			 * the completed lap on this tick (and advances 0 -> 1 on the next tick).
+			 */
+			best = nchk;
+		}
+	}
+
+	return best;
+}

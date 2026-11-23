@@ -724,6 +724,7 @@ void dr3_arena_setup(void)
             }
             else {
                 S94(n, 0x18) = dr3_boss_p1_enemy_hp();
+                dr3_chaos_hp_max[n] = S94(n, 0x18);
                 S94(n, 0x28) = dr3_extreme_active() ? 2 : 1;
             }
         }
@@ -731,6 +732,7 @@ void dr3_arena_setup(void)
             if (n == 0) {
                 /* Giant Boss Deliverator: 3x HP (4x EXTREME), full ammo/turbo, 8+ starting mines */
                 S94(n, 0x18) = dr3_boss_p3_hp_max();
+                dr3_chaos_hp_max[n] = S94(n, 0x18);
                 S94(n, 0x34) = DR3_ARENA_AMMO_MAX;
                 if (S94(n, 0x28) < DR3_BOSS_P3_START_MINES) S94(n, 0x28) = DR3_BOSS_P3_START_MINES;
             }
