@@ -116,6 +116,7 @@ void ___3a968h_cdecl(__DWORD__);
 __BYTE__ dRally_Sound_setPosition(__DWORD__ pos_n);
 void dRally_Sound_setMasterVolume(__DWORD__ vol);
 void ___12cb8h__VESA101_PRESENTSCREEN(void);
+void ___1398ch__VESA101_PRESENTRECTANGLE(__DWORD__ offset, __POINTER__ src, __DWORD__ w, __DWORD__ h);
 void __WAIT_5(void);
 void ___60a84h(void);
 __DWORD__ ___60b60h(__DWORD__, __DWORD__, __POINTER__, __DWORD__);
@@ -988,11 +989,13 @@ void ___33010h_cdecl(int NumCars){
 	}
 #endif
 
-	/* Ensure rows 0..73 on DefaultScreenBuffer have the clean background / Death Rally logo restored,
-	 * clearing the old Y=16 dr3_spin_header from ___3266ch.c (which helper000 does not wipe, as it wipes rows 73..478). */
-	memcpy(___1a1100h__VESA101h_DefaultScreenBuffer, ___1a1138h__VESA101_BACKGROUND, 0x280 * 73);
+	/* Ensure rows 0..75 on both DefaultScreenBuffer and VESA101_ACTIVESCREEN have the clean background / Death Rally
+	 * logo restored before the wipe starts, clearing the old Y=16..75 dr3_spin_header from ___3266ch.c (which helper000
+	 * does not wipe, as it only updates rows 73..478 of VESA101_ACTIVESCREEN). */
+	memcpy(___1a1100h__VESA101h_DefaultScreenBuffer, ___1a1138h__VESA101_BACKGROUND, 0x280 * 76);
 
 	___1a112ch__VESA101_ACTIVESCREEN_PTR = ___1a1100h__VESA101h_DefaultScreenBuffer;
+	___1398ch__VESA101_PRESENTRECTANGLE(0, ___1a1100h__VESA101h_DefaultScreenBuffer, 0x280, 76);
 	___3a968h_cdecl(-1);
 
 #if defined(DR3_CHAOS)
