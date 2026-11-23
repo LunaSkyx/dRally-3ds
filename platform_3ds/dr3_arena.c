@@ -643,8 +643,8 @@ int dr3_arena_banner_now(const char **line1, const char **line2)
         outside = dr3_arena_ring_outside(s[me].XLocation, s[me].YLocation, TRX_WIDTH / 2, TRX_HEIGHT / 2, dr3_arena_ring_radius(ticks));
     }
 
-    /* Opening grudge callout during the ring grace period (ticks 30..490 = ~0.4s..7.0s, before ring closes at 12s) */
-    if ((dr3_grudge_car >= 0) && (dr3_grudge_name[0] != '\0') && (ticks >= 30) && (ticks < 490)) {
+    /* Opening grudge callout after the traffic lights clear (ticks 195..545 = ~2.8s..7.8s, before ring closes at 12s) */
+    if ((dr3_grudge_car >= 0) && (dr3_grudge_name[0] != '\0') && (ticks >= 195) && (ticks < 545)) {
         *line1 = dr3_grudge_name;
         *line2 = "IS MAD AT YOU!";
         return 3;

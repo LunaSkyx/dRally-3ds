@@ -19,6 +19,8 @@ static uint32_t *dr3_fb;
 static int       dr3_fb_w;
 static int       dr3_fb_h;
 static int       dr3_fb_ready;
+static u64       dr3_last_swap_tick;
+static uint32_t  dr3_top_offscreen[240 * 400] __attribute__((aligned(8)));
 
 /*
  * Per-mode lookup tables.  The original inner loops computed "y * sh / dh" for every one of the
@@ -51,10 +53,10 @@ static uint32_t dr3_finv[DR3_MAP_MAX];  /* filtered: 65536 / (fx1 - fx0) - must 
  * special about the 3DS here is only the target: the hardware framebuffer is stored rotated, so x
  * runs along a row (stride = the row width) and y runs backwards from its last row (stride -1).
  */
-static void dr3_fb_tint_cars(const uint8_t *src, int sw, int sh, int src_pitch, int dw, int dh,
+static void dr3_fb_tint_cars(uint32_t *dst_fb, const uint8_t *src, int sw, int sh, int src_pitch, int dw, int dh,
                              int row_off, const dr3_lut32_t *lut)
 {
-    dr3_carcolour_tint_cars(dr3_fb + (dh - 1), dw, dh, dr3_fb_w, -1,
+    dr3_carcolour_tint_cars(dst_fb + (dh - 1), dw, dh, dr3_fb_w, -1,
                             src, sw, sh, src_pitch, row_off, lut);
 }
 
@@ -154,6 +156,7 @@ void dr3_fb_present(const uint8_t *src, int sw, int sh, int src_pitch,
     const int dw = dr3_fb_h;                  /* 400 */
     const int dh = dr3_fb_w;                  /* 240 */
     const uint32_t *lutpx = lut->px;
+    uint32_t * const target = ((dr3_fb_w == 240) && (dr3_fb_h == 400)) ? dr3_top_offscreen : fb;
 
     if (dw > DR3_MAP_MAX || dh > DR3_MAP_MAX) return;
 
@@ -168,7 +171,7 @@ void dr3_fb_present(const uint8_t *src, int sw, int sh, int src_pitch,
             /* average the source columns a target pixel covers - the game's dither patterns alias into
                vertical stripes with plain nearest neighbour */
             for (x = 0; x < dw; ++x) {
-                uint32_t *      drow   = fb + (size_t)x * (size_t)dr3_fb_w + (dh - 1);
+                uint32_t *      drow   = target + (size_t)x * (size_t)dr3_fb_w + (dh - 1);
                 const int       sx0    = dr3_fx0[x];
                 const int       sx1    = dr3_fx1[x];
                 const uint32_t  inv    = dr3_finv[x];
@@ -215,7 +218,7 @@ void dr3_fb_present(const uint8_t *src, int sw, int sh, int src_pitch,
         else if ((sw == dw) && (sh == dh)) {
             /* native 1:1 400x240 race framebuffer: zero scaling, zero stretching, rotated direct copy */
             for (x = 0; x < dw; ++x) {
-                uint32_t *      drow = fb + (size_t)x * (size_t)dr3_fb_w + (dh - 1);
+                uint32_t *      drow = target + (size_t)x * (size_t)dr3_fb_w + (dh - 1);
                 const uint8_t * sptr = src + x;
                 for (y = 0; y < dh; ++y) {
                     *drow-- = lutpx[*sptr];
@@ -225,12 +228,12 @@ void dr3_fb_present(const uint8_t *src, int sw, int sh, int src_pitch,
         }
         else if ((sw == 320) && (dw == 400) && (sh == dh)) {
             /* 320x240 VGA13 (cutscenes / info): 320 -> 400 columns, rows 1:1 */
-            dr3_blit_rot_5_4(fb, dr3_fb_w, dh, src, sw, src_pitch, lutpx);
+            dr3_blit_rot_5_4(target, dr3_fb_w, dh, src, sw, src_pitch, lutpx);
         }
         else {
             for (x = 0; x < dw; ++x) {
                 const int       sx     = dr3_sx[x];
-                uint32_t *      drow   = fb + (size_t)x * (size_t)dr3_fb_w + (dh - 1);
+                uint32_t *      drow   = target + (size_t)x * (size_t)dr3_fb_w + (dh - 1);
                 const uint8_t * sptr   = src + sx;
                 int             sy_cur = -1;
 
@@ -281,11 +284,30 @@ void dr3_fb_present(const uint8_t *src, int sw, int sh, int src_pitch,
 
                 const unsigned long long dr3_t = dr3_chaos_tick();
 
-                dr3_fb_tint_cars(src, sw, sh, src_pitch, dw, dh, row_off, lut);
+                dr3_fb_tint_cars(target, src, sw, sh, src_pitch, dw, dh, row_off, lut);
                 dr3_chaos_time(DR3_CT_TINT, dr3_t);
             }
         }
 #endif
+        if (target != fb) {
+            /*
+             * Pace hardware buffer swaps to the 3DS top screen's 60 Hz VBlank (~4,468,531 ARM11 ticks = 16.67 ms).
+             * When a frame finishes faster than 16.67 ms (e.g. during the pre-race intro, standing start countdown,
+             * or in the object-free Battle Arena where the engine's 70 Hz timer ticks every 14.28 ms), calling
+             * gfxScreenSwapBuffers() twice before a hardware VBlank occurs would flip libctru's backbuffer pointer
+             * back onto the live frontbuffer currently being scanned out to the LCD.
+             */
+            if (dr3_last_swap_tick != 0) {
+                const u64 now_tick = svcGetSystemTick();
+                if ((now_tick - dr3_last_swap_tick) < 4460000ull) {
+                    gspWaitForVBlank();
+                }
+            }
+            fb = (uint32_t *)gfxGetFramebuffer(GFX_TOP, GFX_LEFT, &w, &h);
+            if (!fb) return;
+            dr3_fb = fb;
+            memcpy(fb, target, (size_t)dr3_fb_w * (size_t)dr3_fb_h * sizeof(uint32_t));
+        }
         dr3_prof_add(DR3_SLOT_BLIT, dr3_prof_us(blit_t0));
     }
 
@@ -305,6 +327,7 @@ void dr3_fb_present(const uint8_t *src, int sw, int sh, int src_pitch,
         const unsigned long long dr3_t  = dr3_chaos_tick();
 
         gfxScreenSwapBuffers(GFX_TOP, false);
+        dr3_last_swap_tick = svcGetSystemTick();
         dr3_prof_add(DR3_SLOT_SWAP, dr3_prof_us(t));
         dr3_chaos_time(DR3_CT_SWAP, dr3_t);
     }

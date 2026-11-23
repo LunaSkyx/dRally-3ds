@@ -193,9 +193,10 @@ void race___45d3ch(void){
 			}
 		}
 
-		__VGA13_PRESENTSCREEN__();
-
-		if(angle >= 90.0) break;
+		if(angle >= 90.0){
+			___58c60h();
+			break;
+		}
 
 		n = -1;
 		while(++n <= (int)D(___243898h)) dangle *= 1.02;
@@ -287,7 +288,6 @@ void race___45d3ch(void){
 
 #if defined(DR3_CHAOS)
 		dr3_carcolour_set_fade(256, 0, 0x100 - i);
-		__VGA13_PRESENTSCREEN__();
 #else
 		n = -1;
 		while(++n < 0x100){
@@ -311,7 +311,6 @@ void race___45d3ch(void){
 
 #if defined(DR3_CHAOS)
 		dr3_carcolour_set_fade(256, 0, i);
-		__VGA13_PRESENTSCREEN__();
 #else
 		n = -1;
 		while(++n < 0x100){
@@ -359,7 +358,6 @@ void race___45d3ch(void){
 
 #if defined(DR3_CHAOS)
 		dr3_carcolour_set_fade(256, (i * 256 + 15) / 31, 0);
-		__VGA13_PRESENTSCREEN__();
 #endif
 
 		___58c60h();
@@ -415,7 +413,6 @@ void race___46a10h(void){
 
 			D(___243898h) = 0;
 			D(___243874h) = D(___243898h);
-			___58c60h();
 
 			F64(esp+0x50) = 150.0-(double)F32(esp+0x58);
 
@@ -484,7 +481,7 @@ void race___46a10h(void){
 				}
 			}
 
-			__VGA13_PRESENTSCREEN__();
+			___58c60h();
 
 			n = -1;
 			while(++n <= (int)D(___243898h)){
