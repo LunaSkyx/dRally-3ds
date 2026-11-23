@@ -360,16 +360,23 @@ void race___4dcach(void){
 						 * 8 cars ram it), dr3_wall_separate_pair ensures the wall-pinned car cannot be
 						 * shoved into solid wall ((TRX_MAS & 0xf) < 4) and rebounds the outer car away.
 						 */
-						dr3_wall_separate_pair(
-							(const unsigned char *)TRX_MAS,
-							TRX_WIDTH, TRX_HEIGHT,
-							&s_35e[n].XLocation, &s_35e[n].YLocation,
-							&s_35e[n].__fc, &s_35e[n].__100,
-							wall_n, wall_dx_n, wall_dy_n,
-							&s_35e[k].XLocation, &s_35e[k].YLocation,
-							&s_35e[k].__fc, &s_35e[k].__100,
-							wall_k, wall_dx_k, wall_dy_k,
-							(bl1 || bl2));
+						{
+							/* s_35e is #pragma pack(1): float fields are unaligned, so work on aligned copies (ARM faults otherwise) */
+							float xn = s_35e[n].XLocation, yn = s_35e[n].YLocation, fcn = s_35e[n].__fc, f1n = s_35e[n].__100;
+							float xk = s_35e[k].XLocation, yk = s_35e[k].YLocation, fck = s_35e[k].__fc, f1k = s_35e[k].__100;
+
+							dr3_wall_separate_pair(
+								(const unsigned char *)TRX_MAS,
+								TRX_WIDTH, TRX_HEIGHT,
+								&xn, &yn, &fcn, &f1n,
+								wall_n, wall_dx_n, wall_dy_n,
+								&xk, &yk, &fck, &f1k,
+								wall_k, wall_dx_k, wall_dy_k,
+								(bl1 || bl2));
+
+							s_35e[n].XLocation = xn; s_35e[n].YLocation = yn; s_35e[n].__fc = fcn; s_35e[n].__100 = f1n;
+							s_35e[k].XLocation = xk; s_35e[k].YLocation = yk; s_35e[k].__fc = fck; s_35e[k].__100 = f1k;
+						}
 					}
 
 					F32(esp+0x30) = (float)dRMath_abs((double)s_35e[n].Direction-(double)s_35e[k].Direction);

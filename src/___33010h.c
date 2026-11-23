@@ -820,7 +820,7 @@ void ___33010h_cdecl(int NumCars){
 	itoa_watcom106(NUM_OF_LAPS, esp+0x74, 0xa);
 	strcat(esp+0x4c, esp+0x74);
 #endif
-	___12e78h_cdecl(___1a10b8h, ___185c7ah, esp+0x4c, 0x3800d);
+	___12e78h_cdecl(___1a10b8h, ___185c7ah, esp+0x4c, 0x3800d+10*0x280);	/* 10 rows lower: clear of the map picture / logo */
 	strcpy(esp+0x4c, "PRIZE MONEY: ");
 
 #if defined(DR_MULTIPLAYER)
@@ -873,7 +873,7 @@ void ___33010h_cdecl(int NumCars){
 #endif // DR_MULTIPLAYER
 
 	eax = ___251e8h_cdecl(esp+0x4c);
-	___12e78h_cdecl(___1a10b8h, ___185c7ah, esp+0x4c, 0x3816b-eax);
+	___12e78h_cdecl(___1a10b8h, ___185c7ah, esp+0x4c, 0x3816b-eax+10*0x280);
 
 /* ROSTER FACES ******************************************************************************** */
 	if(D(___1a1028h) != 3){

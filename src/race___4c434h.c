@@ -384,20 +384,25 @@ void race___4c434h(void){
 				}
 			}
 
+			{
+			/* s_35e is #pragma pack(1): work on aligned copies (unaligned float* faults on real ARM) */
+			float w_x = s_35e[car_idx].XLocation, w_y = s_35e[car_idx].YLocation;
+			float w_vx = s_35e[car_idx].__15a, w_vy = s_35e[car_idx].__15e;
+			float w_fc = s_35e[car_idx].__fc, w_f1 = s_35e[car_idx].__100, w_sp = s_35e[car_idx].__b0;
+
 			probes = dr3_wall_resolve_step(
 				(const unsigned char *)ebxp,
 				(const unsigned char *)TRX_MAS,
 				TRX_WIDTH, TRX_HEIGHT,
-				&s_35e[car_idx].XLocation,
-				&s_35e[car_idx].YLocation,
-				&s_35e[car_idx].__15a,
-				&s_35e[car_idx].__15e,
-				&s_35e[car_idx].__fc,
-				&s_35e[car_idx].__100,
-				&s_35e[car_idx].__b0,
+				&w_x, &w_y, &w_vx, &w_vy, &w_fc, &w_f1, &w_sp,
 				(int)s_35e[car_idx].__192,
 				&init_hit,
 				&final_hit);
+
+			s_35e[car_idx].XLocation = w_x; s_35e[car_idx].YLocation = w_y;
+			s_35e[car_idx].__15a = w_vx;    s_35e[car_idx].__15e = w_vy;
+			s_35e[car_idx].__fc = w_fc;     s_35e[car_idx].__100 = w_f1; s_35e[car_idx].__b0 = w_sp;
+			}
 
 #if defined(DR3_CHAOS)
 			dr3_chaos_spins = probes;

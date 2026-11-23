@@ -769,20 +769,23 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 								cur_hit = prev_hit;
 							}
 							if(cur_hit.count > 0){
+								float w_x = s_35e[k].XLocation, w_y = s_35e[k].YLocation;
+								float w_fc = s_35e[k].__fc, w_f1 = s_35e[k].__100;
+
 								dr3_wall_resolve_step(
 									sp,
 									(const unsigned char *)TRX_MAS,
 									TRX_WIDTH, TRX_HEIGHT,
-									&s_35e[k].XLocation,
-									&s_35e[k].YLocation,
-									&zero_vx,
-									&zero_vy,
-									&s_35e[k].__fc,
-									&s_35e[k].__100,
+									&w_x, &w_y,
+									&zero_vx, &zero_vy,
+									&w_fc, &w_f1,
 									NULL,
 									(int)s_35e[k].__192,
 									NULL,
 									&cur_hit);
+
+								s_35e[k].XLocation = w_x; s_35e[k].YLocation = w_y;
+								s_35e[k].__fc = w_fc;     s_35e[k].__100 = w_f1;
 							}
 						}
 					}
