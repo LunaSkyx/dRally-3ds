@@ -82,3 +82,60 @@ void dr3_results_rows(int *rows, int racers, const int *car_seat, const int *car
 		if (rows[r] < 0) rows[r] = 0;
 	}
 }
+
+static int dr3_race_car_better(const dr3_race_car_t *a, const dr3_race_car_t *b)
+{
+	const int a_dead = (!a->finished && (a->hp <= 0));
+	const int b_dead = (!b->finished && (b->hp <= 0));
+
+	if (a_dead != b_dead) return !a_dead;
+
+	if (a_dead) {
+		if (a->dead_order != b->dead_order) return a->dead_order > b->dead_order;
+		return a->old_pos < b->old_pos;
+	}
+
+	if (a->lap != b->lap) return a->lap > b->lap;
+
+	if (a->finished != b->finished) return a->finished > b->finished;
+
+	if (a->finished) {
+		if (a->finish_seq != b->finish_seq) {
+			if (a->finish_seq <= 0) return 0;
+			if (b->finish_seq <= 0) return 1;
+			return a->finish_seq < b->finish_seq;
+		}
+		return a->old_pos < b->old_pos;
+	}
+
+	if (a->checkpoint != b->checkpoint) return a->checkpoint > b->checkpoint;
+
+	return a->old_pos < b->old_pos;
+}
+
+void dr3_race_rank_positions(const dr3_race_car_t *cars, int count, int *out_pos)
+{
+	int order[64];
+	int i, j;
+
+	if (!cars || !out_pos || (count <= 0)) return;
+	if (count > 64) count = 64;
+
+	for (i = 0; i < count; ++i) order[i] = i;
+
+	/* Stable insertion sort: count <= 30, preserves index order on identical keys */
+	for (i = 1; i < count; ++i) {
+		const int key = order[i];
+
+		j = i - 1;
+		while ((j >= 0) && dr3_race_car_better(&cars[key], &cars[order[j]])) {
+			order[j + 1] = order[j];
+			--j;
+		}
+		order[j + 1] = key;
+	}
+
+	for (i = 0; i < count; ++i) {
+		out_pos[order[i]] = i + 1;
+	}
+}

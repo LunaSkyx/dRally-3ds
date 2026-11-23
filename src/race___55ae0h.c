@@ -1,5 +1,8 @@
 #include "drally.h"
 #include "platform_3ds/dr3_chaos.h"
+#if defined(DR3_CHAOS)
+#include "platform_3ds/dr3_results.h"
+#endif
 #include "sfx.h"
 #include "drally_structs_free.h"
 
@@ -28,11 +31,73 @@
 	extern __BYTE__ ___243cdch[];
 	extern __BYTE__ ___1de7d0h[];
 	extern __BYTE__ ___196ab0h[];
+#if defined(DR3_CHAOS)
+	extern __BYTE__ ___243ce4h[];
+	extern int ___243178h[DR3_MAX_CARS];
+#endif
 #if defined(DR_MULTIPLAYER)
 	extern __DWORD__ ___19bd60h;
 #endif // DR_MULTIPLAYER
 
 void dRally_Sound_pushEffect(__BYTE__ channel, __BYTE__ n, __DWORD__ unk, __DWORD__ a0, __DWORD__ a1, __DWORD__ a2);
+
+#if defined(DR3_CHAOS)
+static int dr3_race_finish_seq[DR3_MAX_CARS];
+static int dr3_race_finish_next;
+
+void dr3_race_finish_reset(void){
+
+	int n;
+
+	dr3_race_finish_next = 0;
+	for(n = 0; n < DR3_MAX_CARS; ++n) dr3_race_finish_seq[n] = 0;
+}
+
+void dr3_race_rank_refresh(void){
+
+	dr3_race_car_t  cars[DR3_MAX_CARS];
+	int             pos[DR3_MAX_CARS];
+	int             n, m, count, dead_n;
+	struct_35e_t *  s_35e;
+
+	/* Battle Arena ranks strictly by survival order (dr3_arena_note_deaths / dr3_arena_final_places) */
+	if(dr3_chaos_arena()) return;
+
+	count = NUM_OF_CARS;
+	if(count <= 0) return;
+	if(count > DR3_MAX_CARS) count = DR3_MAX_CARS;
+
+	s_35e  = (struct_35e_t *)___1e6ed0h;
+	dead_n = (int)D(___243ce4h);
+	if(dead_n < 0) dead_n = 0;
+	if(dead_n > DR3_MAX_CARS) dead_n = DR3_MAX_CARS;
+
+	for(n = 0; n < count; ++n){
+
+		int dead_ord = -1;
+
+		for(m = 0; m < dead_n; ++m){
+
+			if(___243178h[m] == n){ dead_ord = m; break; }
+		}
+
+		cars[n].hp         = (int)D(___1de580h + 0x94 * n + 0x18);
+		cars[n].lap        = (int)s_35e[n].Lap;
+		cars[n].checkpoint = (int)s_35e[n].__0;
+		cars[n].finished   = (int)s_35e[n].Finished;
+		cars[n].finish_seq = dr3_race_finish_seq[n];
+		cars[n].dead_order = dead_ord;
+		cars[n].old_pos    = (int)s_35e[n].Position;
+	}
+
+	dr3_race_rank_positions(cars, count, pos);
+
+	for(n = 0; n < count; ++n){
+
+		s_35e[n].Position = (__BYTE__)pos[n];
+	}
+}
+#endif
 
 // POSITION, LAP COUNTER
 void race___55ae0h(void){
@@ -74,6 +139,7 @@ void race___55ae0h(void){
         }
     }
 
+#if !defined(DR3_CHAOS)
     j = -1;
     while(++j < NUM_OF_CARS){
 
@@ -100,6 +166,7 @@ void race___55ae0h(void){
             }
         }
     }
+#endif
 
     n = -1;
     while(++n < NUM_OF_CARS){
@@ -108,7 +175,13 @@ void race___55ae0h(void){
 
             if(D(___196dd4h) != 0){
             
-                s_35e[n].Finished = 1;
+                if(s_35e[n].Finished == 0){
+                    s_35e[n].Finished = 1;
+#if defined(DR3_CHAOS)
+                    if((n >= 0) && (n < DR3_MAX_CARS) && (dr3_race_finish_seq[n] == 0))
+                        dr3_race_finish_seq[n] = ++dr3_race_finish_next;
+#endif
+                }
                 s_94[n].__4 = 0.0f;
             }
             else {
@@ -169,7 +242,13 @@ void race___55ae0h(void){
                     if((int)s_35e[n].Lap > DR3_CHAOS_HUD_LAP_MAX) s_35e[n].Lap = DR3_CHAOS_HUD_LAP_MAX;
                 }
                 else {
-                    s_35e[n].Finished = 1;
+                    if(s_35e[n].Finished == 0){
+                        s_35e[n].Finished = 1;
+#if defined(DR3_CHAOS)
+                        if((n >= 0) && (n < DR3_MAX_CARS) && (dr3_race_finish_seq[n] == 0))
+                            dr3_race_finish_seq[n] = ++dr3_race_finish_next;
+#endif
+                    }
                     s_35e[n].Lap = NUM_OF_LAPS;
 
                     if(n == MY_CAR_IDX){
@@ -181,11 +260,19 @@ void race___55ae0h(void){
                     s_94[n].__4 = 0.0f;
                     D(___196dd4h) = 1;
 
+#if defined(DR3_CHAOS)
+                    if(!strcmp(s_54[n].__0, "DUKE NUKEM")&&(dr3_race_finish_seq[n] == 1)) dRally_Sound_pushEffect(2, SFX_HAIL_TO_THE_KING, 0, 0x10000, 0x50000, 0x8000);
+#else
                     if(!strcmp(s_54[n].__0, "DUKE NUKEM")&&(s_35e[n].Position == 1)) dRally_Sound_pushEffect(2, SFX_HAIL_TO_THE_KING, 0, 0x10000, 0x50000, 0x8000);
+#endif
                 }
             }
         }
     }
+
+#if defined(DR3_CHAOS)
+    dr3_race_rank_refresh();
+#endif
 
 #if defined(DR_MULTIPLAYER)
     if(___19bd60h == 0){

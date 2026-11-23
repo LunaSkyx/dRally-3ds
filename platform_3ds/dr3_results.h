@@ -44,4 +44,33 @@
  */
 void dr3_results_rows(int *rows, int racers, const int *car_seat, const int *car_place, int cars);
 
+/*
+ * Exact live & final race ranking for standard/duel/chaos races (race___55ae0h.c, race___56170h.c).
+ *
+ * The original DOS pairwise swap checked (j.chk > i.chk && j.lap >= i.lap) without skipping wrecked or
+ * finished cars, and race___56170h swapped wrecked cars by car array index (0..N-1).  In large fields
+ * with lapped cars and wrecks, that teleported low-index lapped cars ahead of lead-lap cars and scrambled
+ * final ranks/points.
+ *
+ * Total order (strict, permutation 1..count):
+ *   1. Alive or finished cars always beat wrecked cars (hp <= 0 && !finished).
+ *   2. Wrecked cars: higher dead_order (wrecked later) ranks higher; dead_order 0 = last place (count).
+ *   3. Alive cars: higher lap always beats lower lap (lapped cars stay behind lead-lap cars even if they
+ *      cross the finish line after the leader triggers D(___196dd4h)).
+ *   4. Same lap: finished beats unfinished; two finished cars keep finish_seq order (earlier wins).
+ *   5. Same lap, both unfinished: higher checkpoint beats lower checkpoint.
+ *   6. Exact tie: smaller old_pos keeps previous relative order (preserves grid order, avoids jitter).
+ */
+typedef struct dr3_race_car_s {
+	int hp;
+	int lap;
+	int checkpoint;
+	int finished;
+	int finish_seq;
+	int dead_order;
+	int old_pos;
+} dr3_race_car_t;
+
+void dr3_race_rank_positions(const dr3_race_car_t *cars, int count, int *out_pos);
+
 #endif /* DR3_RESULTS_H */
