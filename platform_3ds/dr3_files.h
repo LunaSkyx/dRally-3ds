@@ -16,4 +16,11 @@
    for and 0 is returned - the caller then leaves through the normal shutdown path. */
 int dr3_files_ok_or_wait(void);
 
+/* Mount/unmount the built-in 3DS RomFS (holds fallback assets such as TRA.BPA). */
+void dr3_romfs_init(void);
+void dr3_romfs_exit(void);
+
+/* Show a fatal file/asset error cleanly on the bottom screen and wait for a button press. */
+void dr3_files_fatal_error(const char *err);
+
 #endif /* DR3_FILES_H */

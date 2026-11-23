@@ -30,12 +30,12 @@ Pick **30th Anniversary** (Normal) or **30th Anniv EXTREME** (Very Hard) on the 
 
 ## Installation
 
-> **Requires original Death Rally game files** (not included). The custom Battle Arena track (`TRA.BPA`) is included in the release zip.
+> **Requires original Death Rally game files** (not included). The custom Battle Arena track (`TRA.BPA`) is **built directly into the `.cia` and `.3dsx` RomFS**, so you don't need to copy it manually!
 
-1. Place your original Death Rally files (`ENGINE.BPA`, `IBFILES.BPA`, `MENU.BPA`, `MUSICS.BPA`, `TR0.BPA`–`TR9.BPA`, `CDROM.INI`, and `CINEM/`) plus `TRA.BPA` from the release into:
+1. Place your original Death Rally files (`ENGINE.BPA`, `IBFILES.BPA`, `MENU.BPA`, `MUSICS.BPA`, `TR0.BPA`–`TR9.BPA`, `CDROM.INI`, and `CINEM/`) into:
    - `sdmc:/3ds/dRally_3ds/`
 2. Launch using either:
-   - **CIA**: Install `dRally_3ds.cia` with FBI and launch from the Home Menu.
+   - **CIA**: Scan the QR code on the GitHub Releases page in FBI (or install `dRally_3ds.cia`) and launch from the Home Menu.
    - **3DSX**: Copy `dRally_3ds.3dsx` into `sdmc:/3ds/dRally_3ds/` and launch via Homebrew Launcher.
 3. Audio requires `sdmc:/3ds/dspfirm.cdc` (dump once via Luma3DS Rosalina menu).
 

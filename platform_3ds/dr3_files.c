@@ -66,20 +66,38 @@ static void dr3_files_log(void)
     }
 }
 
+static int dr3_romfs_ready;
+
+void dr3_romfs_init(void)
+{
+    Result rc;
+
+    if (dr3_romfs_ready) return;
+    rc = romfsInit();
+    if (R_SUCCEEDED(rc)) {
+        dr3_romfs_ready = 1;
+        dr3_log("[dr3] romfs mounted (built-in TRA.BPA available)");
+    } else {
+        dr3_log("[dr3] romfsInit returned 0x%08lx (no embedded RomFS)", (unsigned long)rc);
+    }
+}
+
+void dr3_romfs_exit(void)
+{
+    if (!dr3_romfs_ready) return;
+    romfsExit();
+    dr3_romfs_ready = 0;
+}
+
 /*
- * The console on the bottom screen is 40x30 characters.  A row that does not fit wraps and scrolls the
- * whole screen - the heading would go with it, on the one screen that has to tell a new user why the
- * game did not start.  dr3_bottom.c keeps its block below the console width for the same reason, so
- * every row here goes through dr3_files_row() and the list of names is cut off when it would not fit.
+ * The console on the bottom screen is 40x30 characters.  Keep every printed line <= 38 visible
+ * characters so nothing wraps or scrolls the header off-screen.
  */
 #define DR3_FILES_TEXT_W 38
-#define DR3_FILES_ROWS   30
-#define DR3_FILES_HEAD   8                          /* header rows + a blank + "Not found (...)" */
-#define DR3_FILES_FOOT   2                          /* a blank + "Press A to quit." */
-#define DR3_FILES_LIST_MAX (DR3_FILES_ROWS - DR3_FILES_HEAD - DR3_FILES_FOOT)
 
-/* one row of the screen, cut to the console width instead of wrapped */
-static void dr3_files_row(const char *fmt, ...)
+static void dr3_files_wait(void);
+
+static void dr3_files_row(const char *ansi, const char *fmt, ...)
 {
     char    row[DR3_FILES_TEXT_W + 1];
     va_list ap;
@@ -88,58 +106,108 @@ static void dr3_files_row(const char *fmt, ...)
     vsnprintf(row, sizeof(row), fmt, ap);
     va_end(ap);
 
-    printf("%s\n", row);
+    if (ansi && ansi[0]) printf("%s%s\x1b[0m\n", ansi, row);
+    else printf("%s\n", row);
 }
 
 /* the folder the game looked in - when the files ended up elsewhere its tail is the useful part */
 static void dr3_files_row_cwd(void)
 {
-    const char *label = "looked in: ";
+    const char *label = "Checked: ";
     const char *path  = dr3_cwd();
     const int   max   = DR3_FILES_TEXT_W - (int)strlen(label);
 
     if ((int)strlen(path) > max) path += strlen(path) - max;
 
-    dr3_files_row("%s%s", label, path);
+    dr3_files_row("\x1b[37m", "%s%s", label, path);
 }
 
 static void dr3_files_show(void)
 {
-    const int missing = dr3_files_missing();
-    int       shown   = 0;
-    int       i;
+    const int   missing = dr3_files_missing();
+    const char *miss_list[DR3_REQUIRED_COUNT];
+    int         miss_n = 0;
+    int         i;
+
+    for (i = 0; i < DR3_REQUIRED_COUNT; ++i) {
+        if (!dr3_file_ok(dr3_required[i])) miss_list[miss_n++] = dr3_required[i];
+    }
 
     if (!dr3_bottom_console_ensure()) consoleInit(GFX_BOTTOM, NULL);
 
     printf("\x1b[2J\x1b[H");
 
-    dr3_files_row("Death Rally - files missing");
-    dr3_files_row("Needs the files of an original copy,");
-    dr3_files_row("next to dRally_3ds.3dsx in:");
-    dr3_files_row("  sdmc:/3ds/drally/");
-    dr3_files_row("  (all .BPA, CDROM.INI, CINEM/*.HAF)");
-    dr3_files_row_cwd();
+    dr3_files_row("\x1b[1;31m", "======================================");
+    dr3_files_row("\x1b[1;33m", "  DEATH RALLY - 30TH ANNIVERSARY 3DS");
+    dr3_files_row("\x1b[1;31m", "======================================");
     printf("\n");
 
-    dr3_files_row("Not found (%d of %d):", missing, DR3_REQUIRED_COUNT);
+    dr3_files_row("\x1b[1;31m", "Original PC game files are missing!");
+    dr3_files_row("\x1b[37m",   "Copy your Death Rally (1996) files");
+    dr3_files_row("\x1b[37m",   "(UPPERCASE) to your 3DS SD card:");
+    dr3_files_row("\x1b[1;36m", "  sdmc:/3ds/dRally_3ds/");
+    dr3_files_row_cwd();
+    if (dr3_romfs_ready) {
+        dr3_files_row("\x1b[1;32m", "(Battle Arena TRA.BPA is built-in!)");
+    }
+    printf("\n");
 
-    for (i = 0; i < DR3_REQUIRED_COUNT; ++i) {
-        if (dr3_file_ok(dr3_required[i])) continue;
+    dr3_files_row("\x1b[1;33m", "Not found (%d of %d):", missing, DR3_REQUIRED_COUNT);
 
-        /* more names than rows: the log has the rest (dr3_files_log already wrote them) */
-        if ((missing > DR3_FILES_LIST_MAX) && (shown == DR3_FILES_LIST_MAX - 1)) {
-            dr3_files_row("  ... and %d more (log)", missing - shown);
-            break;
+    /* Pack missing filenames cleanly into 2 columns (<= 38 chars/row) so all 18 fit with zero scroll */
+    for (i = 0; i < miss_n; i += 2) {
+        if (i + 1 < miss_n) {
+            dr3_files_row("\x1b[37m", "  %-17s %s", miss_list[i], miss_list[i + 1]);
+        } else {
+            dr3_files_row("\x1b[37m", "  %s", miss_list[i]);
         }
-
-        dr3_files_row("  %s", dr3_required[i]);
-        ++shown;
     }
 
     printf("\n");
-    dr3_files_row("Press A to quit.");
+    dr3_files_row("\x1b[1;36m", "Press A, B, START, or tap to exit.");
 
     dr3_bottom_flush();
+}
+
+void dr3_files_fatal_error(const char *err)
+{
+    const char *msg = (err && err[0]) ? err : "Unknown asset error.";
+
+    dr3_log("[dr3] FATAL ERROR: %s", msg);
+    dr3_log_flush();
+
+    if (!dr3_bottom_console_ensure()) consoleInit(GFX_BOTTOM, NULL);
+
+    printf("\x1b[2J\x1b[H");
+    dr3_files_row("\x1b[1;31m", "======================================");
+    dr3_files_row("\x1b[1;33m", "  DEATH RALLY - ASSET ERROR");
+    dr3_files_row("\x1b[1;31m", "======================================");
+    printf("\n");
+
+    /* Wrap long error text cleanly across up to 3 lines */
+    {
+        const char *p = msg;
+        int         line;
+        for (line = 0; line < 3 && *p; ++line) {
+            char chunk[DR3_FILES_TEXT_W + 1];
+            int  len = (int)strlen(p);
+            if (len > DR3_FILES_TEXT_W) len = DR3_FILES_TEXT_W;
+            memcpy(chunk, p, (size_t)len);
+            chunk[len] = 0;
+            dr3_files_row("\x1b[1;31m", "%s", chunk);
+            p += len;
+        }
+    }
+
+    printf("\n");
+    dr3_files_row("\x1b[37m",   "Please verify your game files in:");
+    dr3_files_row("\x1b[1;36m", "  sdmc:/3ds/dRally_3ds/");
+    dr3_files_row_cwd();
+    printf("\n");
+    dr3_files_row("\x1b[1;36m", "Press A, B, START, or tap to exit.");
+
+    dr3_bottom_flush();
+    dr3_files_wait();
 }
 
 static void dr3_files_wait(void)

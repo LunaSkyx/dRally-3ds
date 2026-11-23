@@ -163,6 +163,8 @@ APP_TITLE   ?= Death Rally
 APP_DESC    := Death Rally - 30th Anniversary Edition
 APP_AUTHOR  := LunaSkyx / Remedy
 APP_ICON    ?= assets/3ds/icon.png
+ROMFS_DIR   ?= assets/3ds/romfs
+ROMFS_FILES := $(wildcard $(ROMFS_DIR)/*)
 
 all: $(OUTPUT).3dsx
 
@@ -173,9 +175,13 @@ $(OUTPUT).smdh: $(APP_ICON) Makefile.3ds
 	@echo "  SMDH   $(notdir $@)"
 	@smdhtool --create "$(APP_TITLE)" "$(APP_DESC)" "$(APP_AUTHOR)" $(APP_ICON) $@
 
-$(OUTPUT).3dsx: $(OUTPUT).elf $(OUTPUT).smdh
+$(OUTPUT).3dsx: $(OUTPUT).elf $(OUTPUT).smdh $(ROMFS_FILES)
 	@echo "  TOOL   3dsxtool $@"
-	@3dsxtool $< $@ --smdh=$(OUTPUT).smdh
+	@if [ -d "$(ROMFS_DIR)" ] && [ -n "$(ROMFS_FILES)" ]; then \
+		3dsxtool $< $@ --smdh=$(OUTPUT).smdh --romfs=$(ROMFS_DIR); \
+	else \
+		3dsxtool $< $@ --smdh=$(OUTPUT).smdh; \
+	fi
 
 $(OUTPUT).elf: $(ALL_OBJS)
 	@echo "  LINK   $(notdir $@)"

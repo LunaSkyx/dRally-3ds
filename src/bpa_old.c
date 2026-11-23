@@ -1,5 +1,8 @@
 #include "drally.h"
 #include "bpa.h"
+#if defined(__3DS__) && defined(DR3_USE_GFX)
+#include "platform_3ds/dr3_files.h"
+#endif
 
 #pragma pack(push,1)
 
@@ -87,5 +90,8 @@ void ___42944h(const char * err){
 	__VGA3_SETMODE();
 	printf("DEATH RALLY Error: %s\n", err);
 	printf("Please consult DRHELP.EXE for more information on how to resolve this problem.\n");
+#if defined(__3DS__) && defined(DR3_USE_GFX)
+	dr3_files_fatal_error(err);
+#endif
 	exit(0x70);
 }

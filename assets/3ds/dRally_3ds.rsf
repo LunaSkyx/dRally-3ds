@@ -9,6 +9,9 @@ TitleInfo:
   UniqueId                : 0x0D4A1
   Category                : Application
 
+RomFs:
+  RootPath                : $(ROMFS)
+
 Option:
   UseOnSD                 : true
   FreeProductCode         : true
