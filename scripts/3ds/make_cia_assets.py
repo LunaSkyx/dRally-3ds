@@ -215,19 +215,23 @@ def make_banner():
 
 
 def make_banner_wav():
-    """Synthesizes a clean 2.0s 22050Hz 16-bit mono plucked-guitar + 3DS chime banner jingle."""
+    """Synthesizes a clean 1.5s 44100Hz 16-bit STEREO rolled-chord 3DS Home Menu banner jingle.
+
+    3DS Home Menu / bannertool CWAV expects standard 44100Hz 16-bit stereo PCM (matching working
+    homebrew CIAs like ftpd and Checkpoint: INFO size 0x60, enc=1, sr=44100, ch=2).
+    """
     import random
 
-    sr = 22050
-    dur = 2.0
+    sr = 44100
+    dur = 1.5
     n = int(sr * dur)
     rng = random.Random(1996)
 
-    def ks_pluck(freq, length_s, bright=0.45, decay=0.996):
+    def ks_pluck(freq, length_s, bright=0.45, decay=0.9978):
         nsamp = int(length_s * sr)
         period = max(2, int(round(sr / freq)))
         exc = [rng.uniform(-1.0, 1.0) for _ in range(period)]
-        for _ in range(3):
+        for _ in range(4):
             exc = [0.5 * exc[k] + 0.5 * exc[k - 1] for k in range(period)]
         mean = sum(exc) / float(period)
         exc = [v - mean for v in exc]
@@ -237,76 +241,82 @@ def make_banner_wav():
         for i in range(period, nsamp + period):
             buf[i] = decay * (bright * buf[i - period] + inv_b * buf[i - period - 1])
         out = buf[:nsamp]
-        att = int(0.004 * sr)
+        att = int(0.005 * sr)
         for i in range(min(att, nsamp)):
             out[i] *= i / float(att)
         return out
 
-    def bell_chime(freq, length_s, amp=0.16):
+    def warm_chime(freq, length_s, amp=0.12):
         nsamp = int(length_s * sr)
         w1 = 2.0 * math.pi * freq / sr
         w2 = w1 * 2.0
-        w3 = w1 * 3.0
         out = [0.0] * nsamp
         for i in range(nsamp):
             t = i / float(sr)
-            env = (t / 0.012 if t < 0.012 else 1.0) * math.exp(-t * 2.9)
-            sig = (
-                0.65 * math.sin(w1 * i)
-                + 0.25 * math.sin(w2 * i) * math.exp(-t * 4.2)
-                + 0.10 * math.sin(w3 * i) * math.exp(-t * 6.5)
-            )
-            out[i] = sig * env * amp
+            env = (t / 0.015 if t < 0.015 else 1.0) * math.exp(-t * 3.0)
+            out[i] = (0.75 * math.sin(w1 * i) + 0.25 * math.sin(w2 * i) * math.exp(-t * 4.5)) * env * amp
         return out
 
-    mix = [0.0] * n
+    left = [0.0] * n
+    right = [0.0] * n
 
-    def add_at(t0, sig, gain=1.0):
+    def add_stereo(t0, sig, gain=1.0, pan=0.0):
+        # pan in [-1.0 .. +1.0]
+        gl = gain * math.cos((pan + 1.0) * math.pi * 0.25)
+        gr = gain * math.sin((pan + 1.0) * math.pi * 0.25)
         i0 = int(t0 * sr)
         i1 = min(n, i0 + len(sig))
         for k in range(i1 - i0):
-            mix[i0 + k] += sig[k] * gain
+            s = sig[k]
+            left[i0 + k] += s * gl
+            right[i0 + k] += s * gr
 
-    # Crisp 4-step ascending D-minor / D5 rock-arcade guitar sting
-    add_at(0.04, ks_pluck(146.83, 0.52, bright=0.45, decay=0.994), 0.52)
-    add_at(0.04, ks_pluck(293.66, 0.46, bright=0.50, decay=0.993), 0.36)
-    add_at(0.18, ks_pluck(174.61, 0.52, bright=0.45, decay=0.994), 0.50)
-    add_at(0.18, ks_pluck(220.00, 0.46, bright=0.50, decay=0.993), 0.36)
-    add_at(0.32, ks_pluck(220.00, 0.56, bright=0.48, decay=0.995), 0.50)
-    add_at(0.32, ks_pluck(261.63, 0.50, bright=0.52, decay=0.994), 0.38)
+    # Single smooth, lush rolled Dadd9/D5 chord strum (6 strings over 110ms) + gentle crystal shimmer
+    strings = [
+        (0.030, 146.83, 0.56, -0.35, 0.9985),  # D3
+        (0.052, 220.00, 0.48, -0.15, 0.9982),  # A3
+        (0.074, 293.66, 0.52,  0.00, 0.9980),  # D4
+        (0.096, 329.63, 0.40,  0.18, 0.9978),  # E4 (add9 warmth)
+        (0.118, 440.00, 0.42,  0.32, 0.9975),  # A4
+        (0.140, 587.33, 0.38,  0.42, 0.9972),  # D5
+    ]
+    for t0, freq, g, pan, dec in strings:
+        add_stereo(t0, ks_pluck(freq, dur - t0 - 0.02, bright=0.46, decay=dec), gain=g, pan=pan)
 
-    # Triumphant ringing D5 chord + soft 3DS crystal bell shimmer
-    add_at(0.47, ks_pluck(146.83, 1.48, bright=0.42, decay=0.9975), 0.58)
-    add_at(0.47, ks_pluck(220.00, 1.48, bright=0.45, decay=0.9968), 0.46)
-    add_at(0.47, ks_pluck(293.66, 1.48, bright=0.48, decay=0.9965), 0.52)
-    add_at(0.49, ks_pluck(440.00, 1.42, bright=0.50, decay=0.9958), 0.38)
-    add_at(0.51, ks_pluck(587.33, 1.38, bright=0.46, decay=0.9955), 0.34)
-    add_at(0.47, bell_chime(587.33, 1.48, amp=0.16), 1.0)
-    add_at(0.49, bell_chime(880.00, 1.42, amp=0.08), 1.0)
+    add_stereo(0.096, warm_chime(587.33, dur - 0.12, amp=0.14), gain=1.0, pan=-0.25)
+    add_stereo(0.140, warm_chime(880.00, dur - 0.16, amp=0.09), gain=1.0, pan=0.25)
 
-    # Gentle high-pass (~60Hz) to keep tiny 3DS speakers crisp and free of DC/sub-bass mud
-    hp = [0.0] * n
-    alpha = 0.985
-    for i in range(1, n):
-        hp[i] = alpha * (hp[i - 1] + mix[i] - mix[i - 1])
+    # Gentle high-pass (~55Hz) + smooth 0.30s tail fade-out to pure zero
+    def finish_chan(ch):
+        hp = [0.0] * n
+        alpha = 0.992
+        for i in range(1, n):
+            hp[i] = alpha * (hp[i - 1] + ch[i] - ch[i - 1])
+        fo = int(0.30 * sr)
+        for k in range(fo):
+            hp[n - fo + k] *= ((fo - 1 - k) / float(fo)) ** 1.6
+        return hp
 
-    # Smooth fade-out over the last 0.28s
-    fo = int(0.28 * sr)
-    for k in range(fo):
-        hp[n - fo + k] *= ((fo - 1 - k) / float(fo)) ** 1.5
+    left = finish_chan(left)
+    right = finish_chan(right)
 
-    # Normalize to comfortable 3DS Home Menu peak (~0.64, soft-knee headroom, zero clipping)
-    pk = max(abs(v) for v in hp) or 1.0
-    scale = 0.64 / pk
-    samples = [int(max(-32767, min(32767, v * scale * 32767.0))) for v in hp]
+    pk = max(max(abs(v) for v in left), max(abs(v) for v in right)) or 1.0
+    scale = 0.58 / pk
+
+    interleaved = []
+    for i in range(n):
+        lv = int(max(-32767, min(32767, left[i] * scale * 32767.0)))
+        rv = int(max(-32767, min(32767, right[i] * scale * 32767.0)))
+        interleaved.append(lv)
+        interleaved.append(rv)
 
     wav_path = os.path.join(OUT_DIR, "banner.wav")
     with wave.open(wav_path, "wb") as wf:
-        wf.setnchannels(1)
+        wf.setnchannels(2)
         wf.setsampwidth(2)
         wf.setframerate(sr)
-        wf.writeframes(struct.pack("<" + "h" * len(samples), *samples))
-    print(f"Saved banner.wav ({dur:.1f}s, {sr}Hz mono 16-bit PCM)")
+        wf.writeframes(struct.pack("<" + "h" * len(interleaved), *interleaved))
+    print(f"Saved banner.wav ({dur:.1f}s, {sr}Hz stereo 16-bit PCM)")
 
 
 if __name__ == "__main__":
