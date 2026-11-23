@@ -120,6 +120,14 @@ void dr3_carcolour_build(uint32_t out[10], int r, int g, int b, const dr3_lut32_
 void dr3_carcolour_build_vga6(uint32_t out[10], int r, int g, int b, const dr3_lut32_t *lut);
 
 /*
+ * Sets the race intro / exit fade state for dr3_carcolour_tint_cars() (race___45d3ch.c):
+ *   brightness_256 : 0..256 overall brightness scale (256 = 100% normal race brightness)
+ *   color_256      : 0..256 opponent colour saturation (0 = grayscale matching intro track, 256 = full driver colour)
+ *   player_flash   : 0..256 player car highlight flash during intro (0 = normal, 256 = 1.7x bright highlight)
+ */
+void dr3_carcolour_set_fade(int brightness_256, int color_256, int player_flash);
+
+/*
  * Re-colours the colour pixels of the cars of the frame: for every source pixel whose mask byte is set
  * (the engine marked every pixel its car sprite blit wrote - dr3_chaos.h) and whose value is in the
  * palette's car ramp, the matching shade of that car's colour is written.  The mapping from the source

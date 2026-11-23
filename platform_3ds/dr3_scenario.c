@@ -45,7 +45,7 @@ typedef struct {
 /* ---- sequential steps (run in file order; "until" blocks the sequence until its condition holds) ---- */
 enum { SEQ_KEY_TAP, SEQ_KEY_DOWN, SEQ_KEY_UP, SEQ_UNTIL, SEQ_SLEEP, SEQ_SHOT, SEQ_LOG, SEQ_QUIT, SEQ_QUICK,
        SEQ_PERF_START, SEQ_PERF_REPORT, SEQ_AUTOPILOT, SEQ_BPROBE_START, SEQ_BPROBE_REPORT, SEQ_BOTTOM_LEGACY, SEQ_RACED, SEQ_PLAYER_HP,
-       SEQ_QUICK_BOSS, SEQ_BOSS_HP, SEQ_BOTTOM_TAP };
+       SEQ_QUICK_BOSS, SEQ_BOSS_HP, SEQ_BOTTOM_TAP, SEQ_PLAYER_DRUG, SEQ_PLAYER_RANK };
 enum { COND_READY, COND_EVENT, COND_RACE_FRAMES, COND_FRAMES };
 
 typedef struct {
@@ -243,6 +243,8 @@ static void dr3_seq_parse(char *p, int lineno)
     else if (strcmp(p, "perf start") == 0)    dr3_seq_new(SEQ_PERF_START);
     else if (strncmp(p, "autopilot ", 10) == 0) { q = dr3_seq_new(SEQ_AUTOPILOT); if (q) q->arg = (strcmp(p + 10, "on") == 0); }
     else if (sscanf(p, "playerhp %lu", &n) == 1) { q = dr3_seq_new(SEQ_PLAYER_HP); if (q) q->arg = n; }
+    else if (sscanf(p, "playerdrug %lu", &n) == 1) { q = dr3_seq_new(SEQ_PLAYER_DRUG); if (q) q->arg = n; }
+    else if (sscanf(p, "playerrank %lu", &n) == 1) { q = dr3_seq_new(SEQ_PLAYER_RANK); if (q) q->arg = n; }
     else if (sscanf(p, "bosshp %lu", &n) == 1)   { q = dr3_seq_new(SEQ_BOSS_HP);   if (q) q->arg = n; }
     else if (sscanf(p, "quickboss %lu", &n) == 1) { q = dr3_seq_new(SEQ_QUICK_BOSS); if (q) q->arg = n; }
     else if (strcmp(p, "raced") == 0)         dr3_seq_new(SEQ_RACED);      /* the career counts as raced: the wheel of the sign up screen is armed */
@@ -385,6 +387,8 @@ static void dr3_seq_tick(unsigned long now)
         case SEQ_LOG:      dr3_log_write("[scn] %lu ms / frame %lu: %s", now, dr3_scn_frames, q->text); ++dr3_seq_pc; continue;
         case SEQ_QUIT:     ++dr3_seq_pc; dr3_scn_finish("quit step"); return;
         case SEQ_PLAYER_HP:   dr3_quick_set_player_hp((int)q->arg); dr3_log_write("[scn] %lu ms: playerhp %lu", now, q->arg); ++dr3_seq_pc; continue;
+        case SEQ_PLAYER_DRUG: dr3_quick_set_player_drug((int)q->arg); dr3_log_write("[scn] %lu ms: playerdrug %lu", now, q->arg); ++dr3_seq_pc; continue;
+        case SEQ_PLAYER_RANK: dr3_quick_set_player_rank((int)q->arg); dr3_log_write("[scn] %lu ms: playerrank %lu", now, q->arg); ++dr3_seq_pc; continue;
         case SEQ_BOSS_HP:     dr3_quick_set_boss_hp((int)q->arg); dr3_log_write("[scn] %lu ms: bosshp %lu", now, q->arg); ++dr3_seq_pc; continue;
         case SEQ_QUICK_BOSS:
             ++dr3_seq_pc;

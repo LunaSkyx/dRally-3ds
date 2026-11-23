@@ -825,8 +825,85 @@ static uint16_t dr3_tint_inv_cnt[DR3_TINT_INV_MAX];
 
 static int           dr3_shades_valid;
 static int           dr3_shades_rs = -1, dr3_shades_gs = -1, dr3_shades_bs = -1, dr3_shades_as = -1;
+static int           dr3_fade_bright = 256, dr3_fade_color = 256, dr3_fade_flash = 0;
+static int           dr3_shades_bright = -1, dr3_shades_color = -1, dr3_shades_flash = -1, dr3_shades_my_car = -2;
 static unsigned char dr3_shades_col[DR3_MAX_CARS][3];
 static uint32_t      dr3_shades_cache[DR3_MAX_CARS * 10];
+
+void dr3_carcolour_set_fade(int brightness_256, int color_256, int player_flash)
+{
+    if (brightness_256 < 0)   brightness_256 = 0;
+    if (brightness_256 > 256) brightness_256 = 256;
+    if (color_256 < 0)        color_256 = 0;
+    if (color_256 > 256)      color_256 = 256;
+    if (player_flash < 0)     player_flash = 0;
+    if (player_flash > 256)   player_flash = 256;
+
+    dr3_fade_bright = brightness_256;
+    dr3_fade_color  = color_256;
+    dr3_fade_flash  = player_flash;
+}
+
+static void dr3_carcolour_build_vga6_fade(uint32_t out[10], int r, int g, int b, const dr3_lut32_t *lut,
+                                          int bright_256, int color_256, int flash_256)
+{
+    int i;
+
+    if ((bright_256 >= 256) && (color_256 >= 256) && (flash_256 <= 0)) {
+        dr3_carcolour_build_vga6(out, r, g, b, lut);
+        return;
+    }
+
+    for (i = 0; i < 10; ++i) {
+
+        double val[3];
+        int    px[3], c;
+
+        val[0] = (i < 5) ? (0.18 * i + 0.1) * (double)r
+                         : 12.6 * (double)(i - 5) + (1.0 - 0.2 * (double)(i - 5)) * (double)r;
+        val[1] = (i < 5) ? (0.18 * i + 0.1) * (double)g
+                         : 12.6 * (double)(i - 5) + (1.0 - 0.2 * (double)(i - 5)) * (double)g;
+        val[2] = (i < 5) ? (0.18 * i + 0.1) * (double)b
+                         : 12.6 * (double)(i - 5) + (1.0 - 0.2 * (double)(i - 5)) * (double)b;
+
+        for (c = 0; c < 3; ++c) {
+            int v = (int)val[c];
+            if (v < 0)  v = 0;
+            if (v > 63) v = 63;
+            px[c] = v;
+        }
+
+        if (color_256 < 256) {
+            const int lum = (299 * px[0] + 588 * px[1] + 113 * px[2]) / 1000;
+            for (c = 0; c < 3; ++c)
+                px[c] = (px[c] * color_256 + lum * (256 - color_256) + 128) >> 8;
+        }
+
+        if (flash_256 > 0) {
+            const int keep = 256 - flash_256;
+            for (c = 0; c < 3; ++c) {
+                int v = (keep * px[c] + (17 * flash_256 * px[c]) / 10 + 128) >> 8;
+                if (v > 63) v = 63;
+                px[c] = v;
+            }
+        }
+
+        if (bright_256 < 256) {
+            for (c = 0; c < 3; ++c)
+                px[c] = (px[c] * bright_256) >> 8;
+        }
+
+        for (c = 0; c < 3; ++c) {
+            int v = px[c];
+            if (v < 0)  v = 0;
+            if (v > 63) v = 63;
+            px[c] = (v << 2) | (v >> 4);
+        }
+
+        out[i] = ((uint32_t)px[0] << lut->rs) | ((uint32_t)px[1] << lut->gs) |
+                 ((uint32_t)px[2] << lut->bs) | (0xFFu << lut->as);
+    }
+}
 
 int dr3_carcolour_tint_cars(uint32_t *dst, int dw, int dh, int dst_stride_x, int dst_stride_y,
                             const uint8_t *src, int sw, int sh, int src_pitch, int row_off,
@@ -904,19 +981,28 @@ int dr3_carcolour_tint_cars(uint32_t *dst, int dw, int dh, int dst_stride_x, int
     {
         const int lut_changed = !dr3_shades_valid || (dr3_shades_rs != lut->rs) ||
                                 (dr3_shades_gs != lut->gs) || (dr3_shades_bs != lut->bs) ||
-                                (dr3_shades_as != lut->as);
+                                (dr3_shades_as != lut->as) || (dr3_shades_bright != dr3_fade_bright) ||
+                                (dr3_shades_color != dr3_fade_color) || (dr3_shades_flash != dr3_fade_flash) ||
+                                (dr3_shades_my_car != my_car);
 
         if (lut_changed) {
             dr3_shades_rs = lut->rs;
             dr3_shades_gs = lut->gs;
             dr3_shades_bs = lut->bs;
             dr3_shades_as = lut->as;
+            dr3_shades_bright = dr3_fade_bright;
+            dr3_shades_color  = dr3_fade_color;
+            dr3_shades_flash  = dr3_fade_flash;
+            dr3_shades_my_car = my_car;
             dr3_shades_valid = 1;
         }
 
         for (i = 0; i < DR3_MAX_CARS; ++i) {
 
             const unsigned char *c = dr3_chaos_car_col[i];
+            const int is_own = (i == my_car);
+            const int car_col_256   = is_own ? 256 : dr3_fade_color;
+            const int car_flash_256 = is_own ? dr3_fade_flash : 0;
 
             if (!lut_changed && (dr3_shades_col[i][0] == c[0]) &&
                 (dr3_shades_col[i][1] == c[1]) && (dr3_shades_col[i][2] == c[2])) continue;
@@ -928,10 +1014,11 @@ int dr3_carcolour_tint_cars(uint32_t *dst, int dw, int dh, int dst_stride_x, int
             /*
              * The colour comes in the engine's own space (carcol.pal / s_54 +0x34, 0..63) and the ramp has
              * to be built *there*: the light half of it saturates that space at 63 = white, which is the
-             * shine on the car (___4a064h_cdecl).  dr3_carcolour_build_vga6 expands it the way the port
-             * shows a palette entry.
+             * shine on the car (___4a064h_cdecl).  dr3_carcolour_build_vga6_fade expands it the way the port
+             * shows a palette entry while following the race intro/outro fade & player highlight flash.
              */
-            dr3_carcolour_build_vga6(&dr3_shades_cache[i * 10], c[0], c[1], c[2], lut);
+            dr3_carcolour_build_vga6_fade(&dr3_shades_cache[i * 10], c[0], c[1], c[2], lut,
+                                          dr3_fade_bright, car_col_256, car_flash_256);
         }
     }
 

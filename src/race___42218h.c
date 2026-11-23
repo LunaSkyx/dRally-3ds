@@ -1,6 +1,9 @@
 #include "drally.h"
 #include "sfx.h"
 #include "drally_structs_free.h"
+#if defined(DR3_CHAOS)
+#include "platform_3ds/dr3_chaos.h"
+#endif
 
 	extern __BYTE__ ___196de4h[];
 	extern __BYTE__ ___243334h[];
@@ -58,9 +61,16 @@ void race___42218h(void){
 			if (cw > 0) {
 				__BYTE__* s = GEN_LAM_BPK;
 				__BYTE__* d = BACKBUFFER + x0;
+#if defined(DR3_CHAOS)
+				__BYTE__* m = dr3_chaos_car_mask + x0;
+#endif
 				j = 0x3c;
 				do {
 					memcpy(d, s, (size_t)cw);
+#if defined(DR3_CHAOS)
+					memset(m, 0, (size_t)cw);
+					m += 0x200;
+#endif
 					s += 0x50;
 					d += 0x200;
 				} while (--j);
@@ -107,9 +117,16 @@ void race___42218h(void){
 			if (cw > 0) {
 				__BYTE__* s = GEN_LAM_BPK + 0x2580;
 				__BYTE__* d = BACKBUFFER + x0;
+#if defined(DR3_CHAOS)
+				__BYTE__* m = dr3_chaos_car_mask + x0;
+#endif
 				j = 0x3c;
 				do {
 					memcpy(d, s, (size_t)cw);
+#if defined(DR3_CHAOS)
+					memset(m, 0, (size_t)cw);
+					m += 0x200;
+#endif
 					s += 0x50;
 					d += 0x200;
 				} while (--j);
@@ -149,9 +166,16 @@ void race___42218h(void){
 			if (cw > 0) {
 				__BYTE__* s = GEN_LAM_BPK + 0x12c0;
 				__BYTE__* d = BACKBUFFER + x0;
+#if defined(DR3_CHAOS)
+				__BYTE__* m = dr3_chaos_car_mask + x0;
+#endif
 				j = 0x3c;
 				do {
 					memcpy(d, s, (size_t)cw);
+#if defined(DR3_CHAOS)
+					memset(m, 0, (size_t)cw);
+					m += 0x200;
+#endif
 					s += 0x50;
 					d += 0x200;
 				} while (--j);

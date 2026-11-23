@@ -30,6 +30,12 @@ void dr3_quick_set_raced(void);
 /* sets the HP of the player's car in the running race (scenario step "playerhp N": a car that outlives the field, to test the payout) */
 void dr3_quick_set_player_hp(int hp);
 
+/* sets the drug (mushroom warp) counter of the player's car in the running race (scenario step "playerdrug N") */
+void dr3_quick_set_player_drug(int drug);
+
+/* sets the player's championship rank (1..20) before quickrace so grid placement can be tested at any position (scenario step "playerrank N") */
+void dr3_quick_set_player_rank(int rank);
+
 /* sets the HP of Boss car 0 in the running race (scenario step "bosshp N": test Phase 3 enrage & boss defeat) */
 void dr3_quick_set_boss_hp(int hp);
 

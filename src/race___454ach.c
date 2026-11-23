@@ -1,4 +1,7 @@
 #include "drally.h"
+#if defined(DR3_CHAOS)
+#include "platform_3ds/dr3_chaos.h"
+#endif
 
 	extern __BYTE__ ___196e68h[];
 	extern int * ___243314h;	// [3601]
@@ -17,7 +20,12 @@ void race___454ach(void){
 	D(___196e68h) %= 360;
 
 	n = -1;
-	while(++n < DR3_RACE_H) memcpy(VGA13_ACTIVESCREEN+DR3_RACE_W*n, BACKBUFFER+0x200*n+0x60, CURRENT_VIEWPORT_X);
+	while(++n < DR3_RACE_H){
+		memcpy(VGA13_ACTIVESCREEN+DR3_RACE_W*n, BACKBUFFER+0x200*n+0x60, CURRENT_VIEWPORT_X);
+#if defined(DR3_CHAOS)
+		memcpy(dr3_chaos_car_screen+DR3_RACE_W*n, dr3_chaos_car_mask+0x200*n+0x60, CURRENT_VIEWPORT_X);
+#endif
+	}
 
 	m = D(___196e68h);
 	j = -1;
@@ -49,6 +57,10 @@ void race___454ach(void){
 
 				W(VGA13_ACTIVESCREEN+2*(DR3_RACE_W*j+i)+CURRENT_VIEWPORT_X) = 0;
 				W(VGA13_ACTIVESCREEN+2*(DR3_RACE_W*j+i)+CURRENT_VIEWPORT_X+DR3_RACE_W) = 0;
+#if defined(DR3_CHAOS)
+				W(dr3_chaos_car_screen+2*(DR3_RACE_W*j+i)+CURRENT_VIEWPORT_X) = 0;
+				W(dr3_chaos_car_screen+2*(DR3_RACE_W*j+i)+CURRENT_VIEWPORT_X+DR3_RACE_W) = 0;
+#endif
 			}
 			else {
 
@@ -58,11 +70,19 @@ void race___454ach(void){
 
 					W(VGA13_ACTIVESCREEN+2*(DR3_RACE_W*j+i)+CURRENT_VIEWPORT_X) = 0;
 					W(VGA13_ACTIVESCREEN+2*(DR3_RACE_W*j+i)+CURRENT_VIEWPORT_X+DR3_RACE_W) = 0;
+#if defined(DR3_CHAOS)
+					W(dr3_chaos_car_screen+2*(DR3_RACE_W*j+i)+CURRENT_VIEWPORT_X) = 0;
+					W(dr3_chaos_car_screen+2*(DR3_RACE_W*j+i)+CURRENT_VIEWPORT_X+DR3_RACE_W) = 0;
+#endif
 				}
 				else {
 
 					W(VGA13_ACTIVESCREEN+2*(DR3_RACE_W*j+i)+CURRENT_VIEWPORT_X) = W(BACKBUFFER+0x60+0x200*eax+CURRENT_VIEWPORT_X+2*i+(int)edi);
 					W(VGA13_ACTIVESCREEN+2*(DR3_RACE_W*j+i)+CURRENT_VIEWPORT_X+DR3_RACE_W) = W(BACKBUFFER+0x60+0x200*eax+CURRENT_VIEWPORT_X+2*i+(int)edi+0x200);
+#if defined(DR3_CHAOS)
+					W(dr3_chaos_car_screen+2*(DR3_RACE_W*j+i)+CURRENT_VIEWPORT_X) = W(dr3_chaos_car_mask+0x60+0x200*eax+CURRENT_VIEWPORT_X+2*i+(int)edi);
+					W(dr3_chaos_car_screen+2*(DR3_RACE_W*j+i)+CURRENT_VIEWPORT_X+DR3_RACE_W) = W(dr3_chaos_car_mask+0x60+0x200*eax+CURRENT_VIEWPORT_X+2*i+(int)edi+0x200);
+#endif
 				}
 			}
 		}

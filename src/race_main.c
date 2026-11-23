@@ -1193,12 +1193,8 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 
 			if((int)s_35e[MY_CAR_IDX].Drug > 0){
 
-#if defined(DR3_CHAOS)
-				/* the drug effect re-draws the screen itself - no car mask for it (dr3_chaos.h) */
-				memset(dr3_chaos_car_screen, 0, sizeof(dr3_chaos_car_screen));
-#endif
 				race___454ach();
-				__VGA13_PRESENTSCREEN__();
+				if(D(___196dd8h) != 0) __VGA13_PRESENTSCREEN__();
 			}
 			else {
 
@@ -1223,7 +1219,13 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 				}
 #endif
 
-				__VGA13_PRESENTSCREEN__();
+				/*
+				 * On the very first frame (D(___196dd8h) == 0), the palette is still all-zero black from
+				 * race___45a24h(), and race___45d3ch() immediately follows below to clear and tilt the screen in.
+				 * Skipping the present on that frame prevents a 1-frame flash of full-brightness colored cars
+				 * floating on a pitch-black screen before the race intro animation starts.
+				 */
+				if(D(___196dd8h) != 0) __VGA13_PRESENTSCREEN__();
 				s_35e[MY_CAR_IDX].Drug = 0;
 			}
 
@@ -1235,12 +1237,12 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 
 		D(___243c60h) = 0;
 		eax = -1;
-		while(++eax < 4){
+		while(++eax < NUM_OF_CARS){
 
 			if((int)s_35e[eax].Drug > 0) s_35e[eax].Drug -= D(___243334h);
 		}
 
-		D(___243c60h) = 4;
+		D(___243c60h) = NUM_OF_CARS;
 
 		if(dRally_Race_getSettings(RACE_NOTWIDE)){
 
