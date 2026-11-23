@@ -215,61 +215,90 @@ def make_banner():
 
 
 def make_banner_wav():
-    """Synthesizes a 2.3s 22050Hz 16-bit mono Death Rally V8 rev + metal power-chord jingle."""
+    """Synthesizes a clean 2.0s 22050Hz 16-bit mono plucked-guitar + 3DS chime banner jingle."""
+    import random
+
     sr = 22050
-    dur = 2.3
+    dur = 2.0
     n = int(sr * dur)
-    samples = []
-    phase_eng = 0.0
-    phase_sub = 0.0
-    phase_ch1 = 0.0
-    phase_ch2 = 0.0
-    phase_ch3 = 0.0
+    rng = random.Random(1996)
 
-    for i in range(n):
-        t = i / float(sr)
-        # V8 engine roar: starts low rumble (55Hz), revs sharply to 145Hz at t=0.65s, settles
-        if t < 0.65:
-            f_eng = 55.0 + 95.0 * (t / 0.65) ** 1.4
-            env_eng = min(1.0, t / 0.08) * 0.55
-        elif t < 1.35:
-            f_eng = 150.0 - 45.0 * ((t - 0.65) / 0.70)
-            env_eng = 0.55 * (1.0 - 0.5 * ((t - 0.65) / 0.70))
-        else:
-            f_eng = 105.0 - 30.0 * ((t - 1.35) / 0.95)
-            env_eng = max(0.0, 0.275 * (1.0 - (t - 1.35) / 0.95))
+    def ks_pluck(freq, length_s, bright=0.45, decay=0.996):
+        nsamp = int(length_s * sr)
+        period = max(2, int(round(sr / freq)))
+        exc = [rng.uniform(-1.0, 1.0) for _ in range(period)]
+        for _ in range(3):
+            exc = [0.5 * exc[k] + 0.5 * exc[k - 1] for k in range(period)]
+        mean = sum(exc) / float(period)
+        exc = [v - mean for v in exc]
+        buf = [0.0] * (nsamp + period)
+        buf[:period] = exc
+        inv_b = 1.0 - bright
+        for i in range(period, nsamp + period):
+            buf[i] = decay * (bright * buf[i - period] + inv_b * buf[i - period - 1])
+        out = buf[:nsamp]
+        att = int(0.004 * sr)
+        for i in range(min(att, nsamp)):
+            out[i] *= i / float(att)
+        return out
 
-        phase_eng += 2.0 * math.pi * f_eng / sr
-        phase_sub += 2.0 * math.pi * (f_eng * 0.5) / sr
-        eng_raw = (
-            0.55 * math.sin(phase_eng)
-            + 0.30 * math.sin(phase_eng * 2.0)
-            + 0.20 * math.sin(phase_eng * 3.0)
-            + 0.35 * math.sin(phase_sub)
-        )
-        # Soft overdrive clip for gritty V8 rumble
-        eng = math.tanh(eng_raw * 2.4) * env_eng
-
-        # 1996 Industrial-Rock D5 Power Chord hit at t=0.58s (D3=146.83, A3=220.0, D4=293.66)
-        chord = 0.0
-        if t >= 0.55:
-            dt = t - 0.55
-            env_c = min(1.0, dt / 0.015) * math.exp(-dt * 2.3) * 0.62
-            phase_ch1 += 2.0 * math.pi * 146.83 / sr
-            phase_ch2 += 2.0 * math.pi * 220.00 / sr
-            phase_ch3 += 2.0 * math.pi * 293.66 / sr
-            raw_c = (
-                math.sin(phase_ch1)
-                + 0.8 * math.sin(phase_ch2)
-                + 0.6 * math.sin(phase_ch3)
-                + 0.35 * math.sin(phase_ch1 * 2.0)
+    def bell_chime(freq, length_s, amp=0.16):
+        nsamp = int(length_s * sr)
+        w1 = 2.0 * math.pi * freq / sr
+        w2 = w1 * 2.0
+        w3 = w1 * 3.0
+        out = [0.0] * nsamp
+        for i in range(nsamp):
+            t = i / float(sr)
+            env = (t / 0.012 if t < 0.012 else 1.0) * math.exp(-t * 2.9)
+            sig = (
+                0.65 * math.sin(w1 * i)
+                + 0.25 * math.sin(w2 * i) * math.exp(-t * 4.2)
+                + 0.10 * math.sin(w3 * i) * math.exp(-t * 6.5)
             )
-            chord = math.tanh(raw_c * 2.2) * env_c
+            out[i] = sig * env * amp
+        return out
 
-        # Master fade-out at end to guarantee zero click
-        fade = 1.0 if t < (dur - 0.12) else max(0.0, (dur - t) / 0.12)
-        val = max(-0.95, min(0.95, (eng + chord) * fade))
-        samples.append(int(val * 32767.0))
+    mix = [0.0] * n
+
+    def add_at(t0, sig, gain=1.0):
+        i0 = int(t0 * sr)
+        i1 = min(n, i0 + len(sig))
+        for k in range(i1 - i0):
+            mix[i0 + k] += sig[k] * gain
+
+    # Crisp 4-step ascending D-minor / D5 rock-arcade guitar sting
+    add_at(0.04, ks_pluck(146.83, 0.52, bright=0.45, decay=0.994), 0.52)
+    add_at(0.04, ks_pluck(293.66, 0.46, bright=0.50, decay=0.993), 0.36)
+    add_at(0.18, ks_pluck(174.61, 0.52, bright=0.45, decay=0.994), 0.50)
+    add_at(0.18, ks_pluck(220.00, 0.46, bright=0.50, decay=0.993), 0.36)
+    add_at(0.32, ks_pluck(220.00, 0.56, bright=0.48, decay=0.995), 0.50)
+    add_at(0.32, ks_pluck(261.63, 0.50, bright=0.52, decay=0.994), 0.38)
+
+    # Triumphant ringing D5 chord + soft 3DS crystal bell shimmer
+    add_at(0.47, ks_pluck(146.83, 1.48, bright=0.42, decay=0.9975), 0.58)
+    add_at(0.47, ks_pluck(220.00, 1.48, bright=0.45, decay=0.9968), 0.46)
+    add_at(0.47, ks_pluck(293.66, 1.48, bright=0.48, decay=0.9965), 0.52)
+    add_at(0.49, ks_pluck(440.00, 1.42, bright=0.50, decay=0.9958), 0.38)
+    add_at(0.51, ks_pluck(587.33, 1.38, bright=0.46, decay=0.9955), 0.34)
+    add_at(0.47, bell_chime(587.33, 1.48, amp=0.16), 1.0)
+    add_at(0.49, bell_chime(880.00, 1.42, amp=0.08), 1.0)
+
+    # Gentle high-pass (~60Hz) to keep tiny 3DS speakers crisp and free of DC/sub-bass mud
+    hp = [0.0] * n
+    alpha = 0.985
+    for i in range(1, n):
+        hp[i] = alpha * (hp[i - 1] + mix[i] - mix[i - 1])
+
+    # Smooth fade-out over the last 0.28s
+    fo = int(0.28 * sr)
+    for k in range(fo):
+        hp[n - fo + k] *= ((fo - 1 - k) / float(fo)) ** 1.5
+
+    # Normalize to comfortable 3DS Home Menu peak (~0.64, soft-knee headroom, zero clipping)
+    pk = max(abs(v) for v in hp) or 1.0
+    scale = 0.64 / pk
+    samples = [int(max(-32767, min(32767, v * scale * 32767.0))) for v in hp]
 
     wav_path = os.path.join(OUT_DIR, "banner.wav")
     with wave.open(wav_path, "wb") as wf:
