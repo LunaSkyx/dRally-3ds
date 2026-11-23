@@ -1,5 +1,9 @@
 #include "drally.h"
 #include "drmath.h"
+#if defined(DR3_CHAOS)
+#include "platform_3ds/dr3_chaos.h"
+#include "platform_3ds/dr3_blit.h"
+#endif
 
 #pragma pack(1)
 typedef struct rgb24_s {
@@ -62,9 +66,22 @@ void race___45d3ch(void){
 
 
 	memcpy(___1a3fc0h, ___1a51d0h, 0x300);
+#if defined(DR3_CHAOS)
+	/*
+	 * In DR3_CHAOS, all 20 cars share palette ramp 0 (0x0f..0x18) in the 8-bit buffer and are colored per-pixel
+	 * by dr3_carcolour_tint_cars() from dr3_chaos_car_screen.  Setting the 8-bit palette's color-keep range to an
+	 * unused range (-1) makes the 8-bit palette (including the HUD "Turbo:" header at 0x0f..0x18) start in clean
+	 * grayscale like the rest of the screen, while dr3_carcolour_set_fade() keeps only the player's car in color,
+	 * flashes the player's car, and then fades the 19 opponent cars from grayscale into their true driver colors.
+	 */
+	D(esp+0x1c) = -1;
+	D(esp+0x18) = 0;
+	D(esp+0x20) = 0;
+#else
 	D(esp+0x1c) = 0xa*D(___243ce8h)+0x18;
 	D(esp+0x18) = 0xa*D(___243ce8h)+0xf;
 	D(esp+0x20) = 0xa*D(___243ce8h)+0xf;
+#endif
 
 	i = -1;
 	while(++i < 0x20){
@@ -122,19 +139,36 @@ void race___45d3ch(void){
 		if((eax = (int)((double)0x2d8*angle)) > 0xffff) eax = 0xffff;
 		dRally_Sound_setMasterVolume(eax);
 
+#if defined(DR3_CHAOS)
+		dr3_carcolour_set_fade((int)(angle * 256.0 / 90.0 + 0.5), 0, 0);
+#endif
+
 		if(angle >= 90.0){
 			memcpy(VGA13_ACTIVESCREEN, ___1a54d0h, DR3_RACE_W * DR3_RACE_H);
+#if defined(DR3_CHAOS)
+			for(k = 0; k < DR3_RACE_H; ++k)
+				memcpy(dr3_chaos_car_screen + DR3_RACE_W * k, dr3_chaos_car_mask + 0x200 * k + 0x60, DR3_RACE_W);
+#endif
 		}
 		else {
 			for(k = 0; k < DR3_RACE_H; ++k){
 				__BYTE__ *dst_row = VGA13_ACTIVESCREEN + DR3_RACE_W * k;
+#if defined(DR3_CHAOS)
+				__BYTE__ *dst_mask = dr3_chaos_car_screen + DR3_RACE_W * k;
+#endif
 				const int sy = (sin_a > 0.001) ? (int)((double)k / sin_a) : DR3_RACE_H;
 
 				if(sy >= DR3_RACE_H){
 					memset(dst_row, 0, DR3_RACE_W);
+#if defined(DR3_CHAOS)
+					memset(dst_mask, 0, DR3_RACE_W);
+#endif
 				}
 				else {
 					const __BYTE__ *src_row = ___1a54d0h + DR3_RACE_W * sy;
+#if defined(DR3_CHAOS)
+					const __BYTE__ *src_mask = dr3_chaos_car_mask + 0x200 * sy + 0x60;
+#endif
 					int margin = (int)((double)sy * 0.45 * cos_a);
 					int span;
 					if(margin < 0) margin = 0;
@@ -143,9 +177,17 @@ void race___45d3ch(void){
 					if(margin > 0){
 						memset(dst_row, 0, (size_t)margin);
 						memset(dst_row + DR3_RACE_W - margin, 0, (size_t)margin);
+#if defined(DR3_CHAOS)
+						memset(dst_mask, 0, (size_t)margin);
+						memset(dst_mask + DR3_RACE_W - margin, 0, (size_t)margin);
+#endif
 					}
 					for(x = 0; x < span; ++x){
-						dst_row[margin + x] = src_row[(x * DR3_RACE_W) / span];
+						const int sx = (x * DR3_RACE_W) / span;
+						dst_row[margin + x] = src_row[sx];
+#if defined(DR3_CHAOS)
+						dst_mask[margin + x] = src_mask[sx];
+#endif
 					}
 				}
 			}
@@ -243,6 +285,10 @@ void race___45d3ch(void){
 	i = 0x100;
 	while(1){
 
+#if defined(DR3_CHAOS)
+		dr3_carcolour_set_fade(256, 0, 0x100 - i);
+		__VGA13_PRESENTSCREEN__();
+#else
 		n = -1;
 		while(++n < 0x100){
 
@@ -253,6 +299,7 @@ void race___45d3ch(void){
 
 			if((j <= n)&&((j+9) >= n)) __DISPLAY_SET_PALETTE_COLOR(i_b, i_g, i_r, n);
 		}
+#endif
 
 		___58c60h();
 		i -= 0x32;
@@ -262,6 +309,10 @@ void race___45d3ch(void){
 	i = 0x100;
 	while(1){
 
+#if defined(DR3_CHAOS)
+		dr3_carcolour_set_fade(256, 0, i);
+		__VGA13_PRESENTSCREEN__();
+#else
 		n = -1;
 		while(++n < 0x100){
 
@@ -272,6 +323,7 @@ void race___45d3ch(void){
 
 			if((j <= n)&&((j+9) >= n)) __DISPLAY_SET_PALETTE_COLOR(i_b, i_g, i_r, n);
 		}
+#endif
 
 		___58c60h();
 		i -= 0xa;
@@ -287,9 +339,13 @@ void race___45d3ch(void){
 		n = -1;
 		while(++n < 0x100){
 
+#if defined(DR3_CHAOS)
+			if(1){
+#else
 			j = 0xa*D(___243ce8h)+0xf;
 
 			if((j > n)||((j+9) < n)){
+#endif
 
 				i_tmp = (299*___1a3fc0h[n].r+588*___1a3fc0h[n].g+113*___1a3fc0h[n].b)/1000;
 
@@ -301,8 +357,17 @@ void race___45d3ch(void){
 			}
 		}
 
+#if defined(DR3_CHAOS)
+		dr3_carcolour_set_fade(256, (i * 256 + 15) / 31, 0);
+		__VGA13_PRESENTSCREEN__();
+#endif
+
 		___58c60h();
 	}
+
+#if defined(DR3_CHAOS)
+	dr3_carcolour_set_fade(256, 256, 0);
+#endif
 
 	D(___196e70h) = 0x3f;
 	D(___243898h) = 0;
@@ -366,6 +431,9 @@ void race___46a10h(void){
 
 			D(esp+0x48) = (int)F64(esp+0x50);
 			dRally_Sound_setMasterVolume(0x1b4*D(esp+0x48));
+#if defined(DR3_CHAOS)
+			dr3_carcolour_set_fade((int)(F64(esp+0x50) * 256.0 / 150.0 + 0.5), 256, 0);
+#endif
 			D(esp+0x48) = (int)(double)F32(esp+0x58);
 			eax = 0x257-(D(esp+0x48)-0x8);
 			D(esp+0x44) = 2*D(___243310h+4*eax);
@@ -399,11 +467,19 @@ void race___46a10h(void){
 
 						W(VGA13_ACTIVESCREEN+2*(DR3_RACE_W*j+i)) = 0;
 						W(VGA13_ACTIVESCREEN+2*(DR3_RACE_W*j+i)+DR3_RACE_W) = 0;
+#if defined(DR3_CHAOS)
+						W(dr3_chaos_car_screen+2*(DR3_RACE_W*j+i)) = 0;
+						W(dr3_chaos_car_screen+2*(DR3_RACE_W*j+i)+DR3_RACE_W) = 0;
+#endif
 					}
 					else {
 
 						W(VGA13_ACTIVESCREEN+2*(DR3_RACE_W*j+i)) = W(___1a54d0h+DR3_RACE_W*eax+edi);
 						W(VGA13_ACTIVESCREEN+2*(DR3_RACE_W*j+i)+DR3_RACE_W) = W(___1a54d0h+DR3_RACE_W*eax+edi+DR3_RACE_W);
+#if defined(DR3_CHAOS)
+						W(dr3_chaos_car_screen+2*(DR3_RACE_W*j+i)) = W(dr3_chaos_car_mask+0x60+0x200*eax+edi);
+						W(dr3_chaos_car_screen+2*(DR3_RACE_W*j+i)+DR3_RACE_W) = W(dr3_chaos_car_mask+0x60+0x200*eax+edi+0x200);
+#endif
 					}
 				}
 			}
@@ -554,6 +630,9 @@ void race___46a10h(void){
 		}
 	}
 
+#if defined(DR3_CHAOS)
+	dr3_carcolour_set_fade(256, 256, 0);
+#endif
 	D(___243898h) = 0;
 	D(___243874h) = D(___243898h);
 	D(___243894h) = 0;

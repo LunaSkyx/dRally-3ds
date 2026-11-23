@@ -6,6 +6,7 @@
 #include "dr3_quick.h"
 #include "drally.h"
 #include "drally_structs_fixed.h"
+#include "drally_structs_free.h"
 #include "dr3_chaos.h"
 #include "dr3_boss.h"
 #include "dr3_log.h"
@@ -38,6 +39,36 @@ void dr3_quick_set_player_hp(int hp)
     extern __DWORD__ MY_CAR_IDX;
 
     if (MY_CAR_IDX < DR3_MAX_CARS) D(___1de580h + 0x94 * MY_CAR_IDX + 0x18) = hp;
+}
+
+void dr3_quick_set_player_drug(int drug)
+{
+    extern __BYTE__ ___1e6ed0h[];
+    extern __DWORD__ MY_CAR_IDX;
+    struct_35e_t *s_35e = (struct_35e_t *)___1e6ed0h;
+
+    if (MY_CAR_IDX < DR3_MAX_CARS) s_35e[MY_CAR_IDX].Drug = drug;
+}
+
+void dr3_quick_set_player_rank(int rank)
+{
+    extern __BYTE__ ___1a01e0h[];
+    racer_t *s_6c = (racer_t *)___1a01e0h;
+    const int player = (int)D(___1a1ef8h);
+    int i;
+
+    if ((player < 0) || (player > 0x13)) return;
+    if (rank < 1) rank = 1;
+    if (rank > 20) rank = 20;
+
+    for (i = 0; i < 20; ++i) {
+        if (i == player) continue;
+        if ((int)s_6c[i].rank == rank) {
+            s_6c[i].rank = s_6c[player].rank;
+            break;
+        }
+    }
+    s_6c[player].rank = rank;
 }
 
 void dr3_quick_set_boss_hp(int hp)

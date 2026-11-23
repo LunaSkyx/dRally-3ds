@@ -2,6 +2,9 @@
 #include "drmath.h"
 #include "sfx.h"
 #include "drally_structs_free.h"
+#if defined(DR3_CHAOS)
+#include "platform_3ds/dr3_chaos.h"
+#endif
 
 	extern __POINTER__ BACKBUFFER;
 	extern __BYTE__ ___1d8110h[];
@@ -70,8 +73,15 @@ void race___40864h(void){
 
 	__BYTE__* s = ___1d8110h;
 	__BYTE__* d = BACKBUFFER + 0x60;
+#if defined(DR3_CHAOS)
+	__BYTE__* m = dr3_chaos_car_mask + 0x60;
+#endif
 	j = 32;
 	do {
+#if defined(DR3_CHAOS)
+		memset(m, 0, 64);
+		m += 0x200;
+#endif
 		i = 64;
 		do {
 			//if ((px = *s++) != 0) *d = px;

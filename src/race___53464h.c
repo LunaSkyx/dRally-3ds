@@ -1,6 +1,9 @@
 #include "drally.h"
 #include "drmath.h"
 #include "drally_race.h"
+#if defined(DR3_CHAOS)
+#include "platform_3ds/dr3_chaos.h"
+#endif
 
 typedef struct x2c_s {
     __DWORD__   width;     	// +00
@@ -299,16 +302,33 @@ void race___53464h(void){
 								}
 
 								int yy = height;
+#if defined(DR3_CHAOS)
+								__BYTE__ *mask_dest = dr3_chaos_car_mask + (dest - BACKBUFFER);
+#endif
 								while (yy--) {
 									int xx = width;
 									__BYTE__* s = src;
 									__BYTE__* d = dest;
+#if defined(DR3_CHAOS)
+									__BYTE__* m = mask_dest;
+#endif
 									while (xx--) {
-										if ((px = *s++) != 0) *d = px;
+										if ((px = *s++) != 0) {
+											*d = px;
+#if defined(DR3_CHAOS)
+											*m = 0;
+#endif
+										}
 										d++;
+#if defined(DR3_CHAOS)
+										m++;
+#endif
 									}
 									src += stride;
 									dest += 0x200;
+#if defined(DR3_CHAOS)
+									mask_dest += 0x200;
+#endif
 								}
 							}
 						}

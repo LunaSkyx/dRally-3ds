@@ -2,6 +2,7 @@
 #include "drmath.h"
 #include <string.h>
 #if defined(DR3_CHAOS)
+#include "platform_3ds/dr3_chaos.h"
 #include "platform_3ds/dr3_log.h"
 #endif
 
@@ -195,6 +196,7 @@ void ___5e137h(__BYTE__ A0, int Y3, int X3, int Y2, int X2, int Y1, int X1){
                 while (OBJ_XL < OBJ_XR) {
 
                     dest[0x200 * Y1 + OBJ_XL] = A0;
+                    dr3_chaos_car_mask[0x60 + 0x200 * Y1 + OBJ_XL] = 0;
                     dr3_chaos_watch(1, "object fill", OBJ_XL, Y1, A0);
                     OBJ_XL++;
                 }
@@ -214,8 +216,12 @@ void ___5e137h(__BYTE__ A0, int Y3, int X3, int Y2, int X2, int Y1, int X1){
                 OBJ_XR = dRMath_max_i(l, r) >> 0x10;
                 if (OBJ_XR > DR3_RACE_W) OBJ_XR = DR3_RACE_W;
 
-                if (OBJ_XL < OBJ_XR)
+                if (OBJ_XL < OBJ_XR) {
                     memset(dest + 0x200 * Y1 + OBJ_XL, A0, (size_t)(OBJ_XR - OBJ_XL));
+#if defined(DR3_CHAOS)
+                    memset(dr3_chaos_car_mask + 0x60 + 0x200 * Y1 + OBJ_XL, 0, (size_t)(OBJ_XR - OBJ_XL));
+#endif
+                }
 
                 Y1++;
             }
