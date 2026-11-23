@@ -46,3 +46,16 @@ int dr3_chaos_rank_money(int place, int cars)
 
     return prize;
 }
+
+int dr3_chaos_duel_points(int winner_rank, int loser_rank, int base, int step, int max_diff)
+{
+    int diff;
+
+    if ((winner_rank < 1) || (loser_rank < 1)) return 0;
+
+    diff = winner_rank - loser_rank;
+    if (diff < 0) diff = 0;
+    if (diff > max_diff) diff = max_diff;
+
+    return base + step * diff;
+}
