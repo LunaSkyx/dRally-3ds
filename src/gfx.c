@@ -130,6 +130,7 @@ void ___5e3e8h(int Z3, int Y3, int X3, int Z2, int Y2, int X2, int Z1, int Y1, i
                 while (TREE_XL < TREE_XR) {
 
                     dest[0x200 * Y1 + TREE_XL] = edx >> 0x10;
+                    dr3_chaos_car_mask[0x60 + 0x200 * Y1 + TREE_XL] = 0;
                     dr3_chaos_watch(0, "tree", TREE_XL, Y1, edx >> 0x10);
                     TREE_XL++;
                     edx += eax;
@@ -159,6 +160,9 @@ void ___5e3e8h(int Z3, int Y3, int X3, int Z2, int Y2, int X2, int Z1, int Y1, i
                         *p++ = (unsigned char)(edx >> 0x10);
                         edx += eax;
                     }
+#if defined(DR3_CHAOS)
+                    memset(dr3_chaos_car_mask + 0x60 + 0x200 * Y1 + TREE_XL, 0, (size_t)(TREE_XR - TREE_XL));
+#endif
                 }
 
                 Y1++;
