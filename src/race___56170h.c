@@ -9,6 +9,10 @@
 	extern int ___243178h[DR3_MAX_CARS];
 	extern __BYTE__ ___243c60h[];
 
+#if defined(DR3_CHAOS)
+void dr3_race_rank_refresh(void);
+#endif
+
 // UPDATE POSITION AFTER KILL
 void race___56170h(void){
 
@@ -19,6 +23,7 @@ void race___56170h(void){
 
 	s_35e = (struct_35e_t *)___1e6ed0h;
 
+#if !defined(DR3_CHAOS)
 	n = -1;
 	while(++n < (int)D(NUM_OF_CARS)){
 
@@ -40,11 +45,14 @@ void race___56170h(void){
 			}
 		}
 	}
+#else
+	(void)tmp_b;
+#endif
 
 	n = -1;
 	while(++n < (int)D(NUM_OF_CARS)){
 
-		if(D(___1de580h+0x94*n+0x18) == 0){
+		if(((int)D(___1de580h+0x94*n+0x18) <= 0) && (s_35e[n].Finished == 0)){
 
 			i = 0;
 
@@ -54,14 +62,14 @@ void race___56170h(void){
 				if(___243178h[m] == n) i = 1;
 			}
 
-			if(i == 0){
+			if((i == 0) && ((int)D(___243ce4h) < DR3_MAX_CARS)){
 			
 				___243178h[D(___243ce4h)] = n;
 				D(___243ce4h)++;
 			}
 		}
 
-		if((int)D(___1de580h+0x94*n+0x18) > 0){
+		if(((int)D(___1de580h+0x94*n+0x18) > 0) || (s_35e[n].Finished != 0)){
 
 			i = -1;
 			m = -1;
@@ -85,11 +93,15 @@ void race___56170h(void){
 		}
 	}
 
+#if defined(DR3_CHAOS)
+	dr3_race_rank_refresh();
+#else
 	m = -1;
 	while(++m < (int)D(___243ce4h)){
 
 		s_35e[___243178h[m]].Position = D(NUM_OF_CARS)-m;
 	}
+#endif
 
 	D(___243c60h) = n;
 }

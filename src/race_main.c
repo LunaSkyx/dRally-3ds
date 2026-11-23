@@ -29,6 +29,7 @@
 
 	extern __DWORD__ MY_CAR_IDX;
 	extern int NUM_OF_CARS;
+	extern int NUM_OF_LAPS;
 	extern int TRX_WIDTH;
 	extern int TRX_HEIGHT;
 	extern __POINTER__ TRX_IMA;
@@ -1371,7 +1372,18 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 #endif
 
 	n = -1;
-	while(++n < NUM_OF_CARS) s_94[n].__54 = s_35e[n].Position;
+	while(++n < NUM_OF_CARS){
+		s_94[n].__54 = s_35e[n].Position;
+#if defined(DR3_CHAOS)
+		if(dr3_log_enabled()){
+			dr3_log("[dr3] chaos: finish car %2d %-11s: pos=%2d lap=%d/%d chk=%2d fin=%d hp=%d%s",
+			        n, (const char *)(___1de7d0h + 0x54 * n), (int)s_35e[n].Position,
+			        (int)s_35e[n].Lap, NUM_OF_LAPS, (int)s_35e[n].__0,
+			        (int)s_35e[n].Finished, (int)s_94[n].__18,
+			        (n == (int)MY_CAR_IDX) ? " [PLAYER]" : "");
+		}
+#endif
+	}
 
 	___60719h();
 	dRally_Sound_stop();

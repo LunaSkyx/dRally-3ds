@@ -68,6 +68,7 @@ $Bannertool = Find-Tool 'bannertool.exe' @(
 
 if ($DownloadBannertool -and -not $Bannertool) {
     Write-Host "[bannertool] Downloading Windows bannertool release from GitHub..."
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     New-Item -ItemType Directory -Force -Path $BannertoolDir | Out-Null
     $zipPath = Join-Path $BannertoolDir 'bannertool.zip'
     $downloaded = $false

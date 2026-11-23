@@ -3088,6 +3088,73 @@ static void test_anniv_prog(void)
     CHECK(dr3_anniv_radio_query(350 + DR3_ANNIV_RADIO_HOLD_TICKS + 1, &spk, &msg, &style) == 0, "radio expires cleanly");
 }
 
+static void test_race_rank_positions(void)
+{
+    printf("- race ranking (lapped cars, wrecks, finish order)\n");
+
+    /* Case 1: Wreck in 2nd place while Player (car 3) and AI (car 0/1) are lapped on Lap 2.
+       Lead-lap Lap-3 cars MUST stay ahead of Lap-2 cars; wrecked car drops to last (8th). */
+    {
+        dr3_race_car_t cars[8] = {
+            /* 0 AI_SLOW_0 */ { 100, 2, 14, 0, 0, -1, 7 },
+            /* 1 AI_SLOW_1 */ { 100, 2, 12, 0, 0, -1, 8 },
+            /* 2 AI_FAST_2 */ { 100, 3, 10, 0, 0, -1, 3 },
+            /* 3 PLAYER    */ { 100, 2, 18, 0, 0, -1, 6 },
+            /* 4 AI_FAST_4 */ { 100, 3, 28, 0, 0, -1, 1 },
+            /* 5 AI_WRECK5 */ {   0, 3, 25, 0, 0,  0, 2 },
+            /* 6 AI_FAST_6 */ { 100, 3,  8, 0, 0, -1, 4 },
+            /* 7 AI_FAST_7 */ { 100, 3,  5, 0, 0, -1, 5 },
+        };
+        int pos[8];
+        dr3_race_rank_positions(cars, 8, pos);
+        CHECK(pos[4] == 1, "lead Lap 3 chk 28 is 1st (got %d)", pos[4]);
+        CHECK(pos[2] == 2, "Lap 3 chk 10 moves up to 2nd after wreck (got %d)", pos[2]);
+        CHECK(pos[6] == 3, "Lap 3 chk 8 moves up to 3rd (got %d)", pos[6]);
+        CHECK(pos[7] == 4, "Lap 3 chk 5 moves up to 4th (got %d)", pos[7]);
+        CHECK(pos[3] == 5, "lapped Player (Lap 2 chk 18) is 5th, NOT ahead of Lap 3 cars (got %d)", pos[3]);
+        CHECK(pos[0] == 6, "lapped AI_SLOW_0 (Lap 2 chk 14) is 6th (got %d)", pos[0]);
+        CHECK(pos[1] == 7, "lapped AI_SLOW_1 (Lap 2 chk 12) is 7th (got %d)", pos[1]);
+        CHECK(pos[5] == 8, "wrecked car is 8th/last (got %d)", pos[5]);
+    }
+
+    /* Case 2: Lapped car finishes early (D(___196dd4h)=1 -> Finished=1 on Lap 3 with finish_seq=2)
+       BEFORE a Lap-4 car crosses the line (finish_seq=3) and while another Lap-4 car is still racing. */
+    {
+        dr3_race_car_t cars[6] = {
+            /* 0 Leader Lap 4 fin #1      */ { 100, 4,  0, 1, 1, -1, 1 },
+            /* 1 Lapped Player Lap 3 fin#2*/ { 100, 3,  0, 1, 2, -1, 4 },
+            /* 2 Runner-up Lap 4 fin #3   */ { 100, 4,  0, 1, 3, -1, 2 },
+            /* 3 Lap 4 still racing chk 5 */ { 100, 4,  5, 0, 0, -1, 3 },
+            /* 4 Lapped AI Lap 3 chk 20   */ { 100, 3, 20, 0, 0, -1, 5 },
+            /* 5 Wrecked Lap 4 chk 28     */ {   0, 4, 28, 0, 0,  0, 6 },
+        };
+        int pos[6];
+        dr3_race_rank_positions(cars, 6, pos);
+        CHECK(pos[0] == 1, "Lap 4 finish #1 is 1st (got %d)", pos[0]);
+        CHECK(pos[2] == 2, "Lap 4 finish #3 beats lapped Lap 3 finish #2 -> 2nd (got %d)", pos[2]);
+        CHECK(pos[3] == 3, "Lap 4 still racing beats lapped Lap 3 finisher -> 3rd (got %d)", pos[3]);
+        CHECK(pos[1] == 4, "Lapped Lap 3 finisher beats unfinished Lap 3 car -> 4th (got %d)", pos[1]);
+        CHECK(pos[4] == 5, "Unfinished Lap 3 car is 5th (got %d)", pos[4]);
+        CHECK(pos[5] == 6, "Wrecked Lap 4 car stays last -> 6th (got %d)", pos[5]);
+    }
+
+    /* Case 3: Multiple wrecks keep reverse wreck order; grid start ties keep old_pos */
+    {
+        dr3_race_car_t cars[5] = {
+            /* 0 Grid tie old_pos 2 */ { 100, 1, 0, 0, 0, -1, 2 },
+            /* 1 Grid tie old_pos 1 */ { 100, 1, 0, 0, 0, -1, 1 },
+            /* 2 Wrecked first (0)  */ {   0, 2, 9, 0, 0,  0, 3 },
+            /* 3 Wrecked second (1) */ {   0, 1, 1, 0, 0,  1, 4 },
+            /* 4 Alive trailing     */ { 100, 1, 0, 0, 0, -1, 5 },
+        };
+        int pos[5];
+        dr3_race_rank_positions(cars, 5, pos);
+        CHECK(pos[1] == 1 && pos[0] == 2 && pos[4] == 3, "grid tie-break preserves old_pos (%d,%d,%d)", pos[1], pos[0], pos[4]);
+        CHECK(pos[3] == 4, "second wreck ranks ahead of first wreck -> 4th (got %d)", pos[3]);
+        CHECK(pos[2] == 5, "first wreck is dead last -> 5th (got %d)", pos[2]);
+    }
+}
+
 int main(void)
 {
     printf("dRally 3DS port - host tests\n\n");
@@ -3124,6 +3191,7 @@ int main(void)
     test_hp_line();
     test_dm();
     test_results_rows();
+    test_race_rank_positions();
     test_arena();
     test_chaos_boss();
     test_boss_gauntlet();

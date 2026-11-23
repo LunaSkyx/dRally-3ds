@@ -44,6 +44,10 @@
 	extern __BYTE__ ___243cd4h[];
 	extern __BYTE__ ___196df8h[];
 
+#if defined(DR3_CHAOS)
+void dr3_race_finish_reset(void);
+#endif
+
 void race___49a34h(void){
 
 	__DWORD__ 	n;
@@ -121,5 +125,6 @@ void race___49a34h(void){
 	 * The clock it reads is the one started just above (getCounter(1), 70 ticks a second).
 	 */
 	dr3_dm_reset();
+	dr3_race_finish_reset();
 #endif
 }
