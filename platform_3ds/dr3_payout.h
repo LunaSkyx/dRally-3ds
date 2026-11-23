@@ -38,4 +38,12 @@
 /* what the place `place` of a race of `cars` cars pays; 0 for a place the race never had */
 int dr3_chaos_rank_money(int place, int cars);
 
+/*
+ * Elo points for the winner of a 1v1 duel (symmetric for player wins and AI rival wins):
+ *   gain = base + step * clamp(winner_rank - loser_rank, 0, max_diff)
+ * Beating an equal or lower-ranked opponent pays base (+4); upsetting a higher-ranked opponent
+ * pays up to base + step * max_diff (+16).
+ */
+int dr3_chaos_duel_points(int winner_rank, int loser_rank, int base, int step, int max_diff);
+
 #endif

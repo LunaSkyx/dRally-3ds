@@ -3153,6 +3153,16 @@ static void test_race_rank_positions(void)
         CHECK(pos[3] == 4, "second wreck ranks ahead of first wreck -> 4th (got %d)", pos[3]);
         CHECK(pos[2] == 5, "first wreck is dead last -> 5th (got %d)", pos[2]);
     }
+
+    /* Case 4: Symmetric 1v1 Duel Elo points (both player wins AND AI rival wins) */
+    {
+        CHECK(dr3_chaos_duel_points(5, 5, 4, 2, 6) == 4, "duel equal rank pays +4");
+        CHECK(dr3_chaos_duel_points(3, 8, 4, 2, 6) == 4, "duel favorite win pays base +4");
+        CHECK(dr3_chaos_duel_points(10, 7, 4, 2, 6) == 10, "duel upset by 3 ranks pays +10");
+        CHECK(dr3_chaos_duel_points(20, 1, 4, 2, 6) == 16, "duel upset clamped at max_diff 6 pays +16");
+        CHECK(dr3_chaos_duel_points(0, 5, 4, 2, 6) == 0, "duel invalid winner rank returns 0");
+        CHECK(dr3_chaos_duel_points(5, 0, 4, 2, 6) == 0, "duel invalid loser rank returns 0");
+    }
 }
 
 int main(void)

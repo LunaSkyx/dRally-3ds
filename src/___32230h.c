@@ -1,6 +1,10 @@
 #include "drally.h"
 #include "drally_fonts.h"
 #include "drally_structs_fixed.h"
+#if defined(DR3_CHAOS)
+#include "platform_3ds/dr3_chaos.h"
+#include "platform_3ds/dr3_log.h"
+#endif
 
 	extern __BYTE__ ___1a1028h[];
 	extern __BYTE__ ___1a0ef8h[];
@@ -62,51 +66,84 @@ __DWORD__ ___32230h(void){
 	if(___19bd60h == 0){
 #endif // DR_MULTIPLAYER
 
-		if((int)esi >= (int)s_6c[D(___1a1ef8h)].points){
+		{
+			int dr3_duel_sab = 0;
+#if defined(DR3_CHAOS)
+			/*
+			 * In a 1v1 Duel (whether rolled by the wheel or chosen directly), the opponent is
+			 * dr3_chaos_duel_rival() rather than one of the 4 racers in ___1a0ef8h.  Also allow
+			 * sabotage even if the player leads in points, since a 1v1 Duel is not the final boss.
+			 */
+			dr3_duel_sab = (dr3_chaos_active() && (dr3_chaos_mode() == DR3_CHAOS_MODE_DUEL) && (D(___1a1028h) != 3));
+#endif
+		if(((int)esi >= (int)s_6c[D(___1a1ef8h)].points) || dr3_duel_sab){
 
 			if(D(___185a14h_UseWeapons) != 0){
 
 				if(s_6c[D(___1a1ef8h)].sabotage == 1){
 
-					eax = 0;
-					while(1){
+					int dr3_target = -1;
 
-						edx = B(esp+eax+0x78);
-						edx = 0x6c*edx;
-						eax++;
-						B(esp+eax+0x33) = s_6c[edx/0x6c].rank;
-						if((int)eax >= 4) break;
+#if defined(DR3_CHAOS)
+					if(dr3_duel_sab){
+						const int dr3_me = (int)D(___1a1ef8h);
+						dr3_target = dr3_chaos_duel_rival();
+						if(!dr3_chaos_duel_rival_ok(dr3_me, dr3_target))
+							dr3_target = dr3_chaos_duel_pick(dr3_me);
+						if((dr3_target < 0) || (dr3_target >= 0x14) || (dr3_target == dr3_me))
+							dr3_target = (dr3_me + 1) % 0x14;
+						/* Lock this exact sabotaged rival so ___33010h() puts him in the 1v1 Duel */
+						dr3_chaos_duel_rival_set(dr3_target);
 					}
+#endif
+					if(dr3_target < 0){
 
-					edi = B(esp+0x34);
-					if(edi == s_6c[D(___1a1ef8h)].rank) edi = B(esp+0x35);
-					esi = 0x6c*D(___1a1ef8h);
+						eax = 0;
+						while(1){
 
-					eax = 0;
-					while(1){
-
-						edx = B(esp+eax+0x34);
-
-						if((int)edx < (int)edi){
-
-							if(edx != s_6c[esi/0x6c].rank) edi = edx;
+							edx = B(esp+eax+0x78);
+							edx = 0x6c*edx;
+							eax++;
+							B(esp+eax+0x33) = s_6c[edx/0x6c].rank;
+							if((int)eax >= 4) break;
 						}
 
-						eax++;
-						if((int)eax >= 4) break;
-					}
+						edi = B(esp+0x34);
+						if(edi == s_6c[D(___1a1ef8h)].rank) edi = B(esp+0x35);
+						esi = 0x6c*D(___1a1ef8h);
 
-					esi = 0;
-					while(1){
+						eax = 0;
+						while(1){
 
-						if(edi == s_6c[B(esp+esi+0x78)].rank) break;
-						esi++;
+							edx = B(esp+eax+0x34);
+
+							if((int)edx < (int)edi){
+
+								if(edx != s_6c[esi/0x6c].rank) edi = edx;
+							}
+
+							eax++;
+							if((int)eax >= 4) break;
+						}
+
+						esi = 0;
+						while(1){
+
+							if(edi == s_6c[B(esp+esi+0x78)].rank) break;
+							esi++;
+						}
+						dr3_target = (int)B(esp+esi+0x78);
 					}
 					
 					srand_watcom106(__GET_TIMER_TICKS());
-					s_6c[B(esp+esi+0x78)].damage = (rand_watcom106()%0x19)+0x19;
-					itoa_watcom106(s_6c[B(esp+esi+0x78)].damage, esp+0x6c, 0xa);
-					strcpy(esp+0x5c, s_6c[B(esp+esi+0x78)].name);
+					s_6c[dr3_target].damage = (rand_watcom106()%0x19)+0x19;
+#if defined(DR3_CHAOS)
+					dr3_log("[dr3] sabotage: hit seat %d (%s, rank %d) for %d%% damage (duel=%d)",
+					        dr3_target, s_6c[dr3_target].name, (int)s_6c[dr3_target].rank,
+					        (int)s_6c[dr3_target].damage, dr3_duel_sab);
+#endif
+					itoa_watcom106(s_6c[dr3_target].damage, esp+0x6c, 0xa);
+					strcpy(esp+0x5c, s_6c[dr3_target].name);
 					___13248h_cdecl(D(esp+0x80), 0xa5, 0x1ca, 0xc3, 1);
 					x = 0x280*(0xa5+0x28)+D(esp+0x80)+0x38;
 					y = x/0x280;
@@ -144,6 +181,7 @@ __DWORD__ ___32230h(void){
 					return D(esp+0x7c);
 				}
 			}
+		}
 		}
 #if defined(DR_MULTIPLAYER)
 	}

@@ -1987,18 +1987,22 @@ void ___33010h_cdecl(int NumCars){
 
 						dr3_pts = 0;
 
-						if((dr3_place == 1)&&(dr3_seat == (int)D(___1a1ef8h))&&(dr3_chaos_duel_rival() >= 0)){
+						if((dr3_place == 1)&&(dr3_chaos_duel_rival() >= 0)){
 
 							/*
-							 * The smaller rank number is the better place, so the player's own rank minus the
-							 * rival's is the distance *up* - beating somebody above pays more (drally.h).
+							 * Symmetric 1v1 Duel Elo: whoever wins (player OR AI rival) earns points
+							 * based on how far up the standings they beat their opponent.
 							 */
-							int dr3_step = (int)s_6c[dr3_seat].rank - (int)s_6c[dr3_chaos_duel_rival()].rank;
+							const int dr3_me_seat = (int)D(___1a1ef8h);
+							const int dr3_loser   = (dr3_seat == dr3_me_seat) ? dr3_chaos_duel_rival() : dr3_me_seat;
 
-							if(dr3_step < 0) dr3_step = 0;
-							if(dr3_step > DR3_CHAOS_ELO_MAX_DIFF) dr3_step = DR3_CHAOS_ELO_MAX_DIFF;
-
-							dr3_pts = DR3_CHAOS_ELO_BASE + DR3_CHAOS_ELO_STEP*dr3_step;
+							if((dr3_loser >= 0)&&(dr3_loser < 0x14)&&(dr3_loser != dr3_seat)){
+								dr3_pts = dr3_chaos_duel_points((int)s_6c[dr3_seat].rank,
+								                                (int)s_6c[dr3_loser].rank,
+								                                DR3_CHAOS_ELO_BASE,
+								                                DR3_CHAOS_ELO_STEP,
+								                                DR3_CHAOS_ELO_MAX_DIFF);
+							}
 						}
 					}
 					else if(dr3_chaos_mode() == DR3_CHAOS_MODE_DM){
