@@ -981,8 +981,26 @@ void ___33010h_cdecl(int NumCars){
 	}
 /* ******************************************************************************** ROSTER FACES */
 
+#if defined(DR3_CHAOS)
+	if(dr3_chaos_active() && (D(___1a1028h) != 3)){
+		void dr3_loading_header(int mode);
+		dr3_loading_header(dr3_chaos_mode());
+	}
+#endif
+
+	/* Ensure rows 0..73 on DefaultScreenBuffer have the clean background / Death Rally logo restored,
+	 * clearing the old Y=16 dr3_spin_header from ___3266ch.c (which helper000 does not wipe, as it wipes rows 73..478). */
+	memcpy(___1a1100h__VESA101h_DefaultScreenBuffer, ___1a1138h__VESA101_BACKGROUND, 0x280 * 73);
+
 	___1a112ch__VESA101_ACTIVESCREEN_PTR = ___1a1100h__VESA101h_DefaultScreenBuffer;
 	___3a968h_cdecl(-1);
+
+#if defined(DR3_CHAOS)
+	if(dr3_chaos_active() && (D(___1a1028h) != 3)){
+		void dr3_loading_header(int mode);
+		dr3_loading_header(dr3_chaos_mode());
+	}
+#endif
 	
 #if defined(DR_MULTIPLAYER)
 	if(___19bd60h != 0){
