@@ -1,5 +1,6 @@
 #include "drally.h"
 #include "platform_3ds/dr3_chaos.h"
+#include "platform_3ds/dr3_results.h"
 #include "platform_3ds/dr3_dm.h"    /* the endgame of a deathmatch: sudden death + its banner (dr3_dm.h) */
 #include "platform_3ds/dr3_arena.h" /* the arena: the hunting AI, the places of the survivors */
 #include "platform_3ds/dr3_cash.h"  /* off-line street cash ($) pickups for normal street races */
@@ -33,6 +34,7 @@
 	extern int TRX_WIDTH;
 	extern int TRX_HEIGHT;
 	extern __POINTER__ TRX_IMA;
+	extern __POINTER__ ___243d74h;
 	extern __POINTER__ TRX_MAS;
 	extern __BYTE__ ___1a51d0h[0x300];	/* the palette of the loaded track image */
 	extern const char ___18d492h[][0xf];	/* the track names the front end shows */
@@ -716,6 +718,7 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 					if((int)0 < (int)s_35e[k].__17a) s_35e[k].__17a--;
 
 					if(s_35e[k].__14 == 1) s_35e[k].__192 += 2;
+					if((int)s_35e[k].__192 > 8) s_35e[k].__192 = 8;
 
 					if(s_35e[k].__18 == 1){
 
@@ -727,6 +730,64 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 
 						s_35e[k].YLocation = s_35e[k].__152;
 						s_35e[k].__196 += 2;
+					}
+					if((int)s_35e[k].__196 > 8) s_35e[k].__196 = 8;
+
+					/*
+					 * Final post-collision wall clamp before committing (__14e, __152):
+					 * If car-to-car nudges in race___4dcach() moved car k into a solid wall ((TRX_MAS & 0xf) < 4),
+					 * revert to the cleaner of (__14e, __152) or eject along the outward wall normal so a
+					 * 10-20 car Mega Chaos pileup can NEVER commit a wall-embedded position.
+					 */
+					if((s_35e[k].__14 != 0) || (s_35e[k].__18 != 0) || (s_35e[k].__1c != 0)){
+						const unsigned char *sp = (const unsigned char *)(___243d74h + (int)s_35e[k].ImgOffset);
+						dr3_wall_hit_t cur_hit;
+
+						dr3_wall_scan_sprite(
+							sp,
+							(const unsigned char *)TRX_MAS,
+							TRX_WIDTH, TRX_HEIGHT,
+							(int)((double)s_35e[k].XLocation - 20.0),
+							(int)((double)s_35e[k].YLocation - 20.0),
+							&cur_hit);
+
+						if(cur_hit.count > 0){
+							dr3_wall_hit_t prev_hit;
+							float zero_vx = 0.0f, zero_vy = 0.0f;
+
+							dr3_wall_scan_sprite(
+								sp,
+								(const unsigned char *)TRX_MAS,
+								TRX_WIDTH, TRX_HEIGHT,
+								(int)((double)s_35e[k].__14e - 20.0),
+								(int)((double)s_35e[k].__152 - 20.0),
+								&prev_hit);
+
+							if(prev_hit.count < cur_hit.count){
+								s_35e[k].XLocation = s_35e[k].__14e;
+								s_35e[k].YLocation = s_35e[k].__152;
+								cur_hit = prev_hit;
+							}
+							if(cur_hit.count > 0){
+								float w_x = s_35e[k].XLocation, w_y = s_35e[k].YLocation;
+								float w_fc = s_35e[k].__fc, w_f1 = s_35e[k].__100;
+
+								dr3_wall_resolve_step(
+									sp,
+									(const unsigned char *)TRX_MAS,
+									TRX_WIDTH, TRX_HEIGHT,
+									&w_x, &w_y,
+									&zero_vx, &zero_vy,
+									&w_fc, &w_f1,
+									NULL,
+									(int)s_35e[k].__192,
+									NULL,
+									&cur_hit);
+
+								s_35e[k].XLocation = w_x; s_35e[k].YLocation = w_y;
+								s_35e[k].__fc = w_fc;     s_35e[k].__100 = w_f1;
+							}
+						}
 					}
 
 					s_35e[k].__152 = s_35e[k].YLocation;
@@ -753,6 +814,28 @@ void race_main(int MyIndex, int NumCars){		// my_position_index, number_of_racer
 							dr3_chaos_wreck(k, dr3_hp_before, "the road border");
 						}
 					}
+				}
+
+				if(((int)getCounter(1) > 0xbe) && (((int)getCounter(1) % 70) == 0)){
+					int wa_k, wa_embedded = 0, wa_max_px = 0, wa_touching = 0;
+					for(wa_k = 0; wa_k < NUM_OF_CARS; ++wa_k){
+						const unsigned char *wa_sp = (const unsigned char *)(___243d74h + (int)s_35e[wa_k].ImgOffset);
+						dr3_wall_hit_t wa_hit;
+						if(s_35e[wa_k].__14 != 0) ++wa_touching;
+						dr3_wall_scan_sprite(
+							wa_sp,
+							(const unsigned char *)TRX_MAS,
+							TRX_WIDTH, TRX_HEIGHT,
+							(int)((double)s_35e[wa_k].XLocation - 20.0),
+							(int)((double)s_35e[wa_k].YLocation - 20.0),
+							&wa_hit);
+						if(wa_hit.count > 0){
+							++wa_embedded;
+							if(wa_hit.count > wa_max_px) wa_max_px = wa_hit.count;
+						}
+					}
+					dr3_log("[dr3] wall_audit: tick=%d cars=%d wall_rubs=%d embedded_in_wall=%d max_wall_px=%d",
+					        (int)getCounter(1), (int)NUM_OF_CARS, wa_touching, wa_embedded, wa_max_px);
 				}
 
 				if(s_35e[MY_CAR_IDX].__14||s_35e[MY_CAR_IDX].__18||s_35e[MY_CAR_IDX].__1c){

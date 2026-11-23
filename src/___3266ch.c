@@ -296,6 +296,19 @@ static void dr3_spin_header(int mode)
 	___12e78h_v3(___1a1108h___185c0bh, text, x + 0x20, 0x10 + 0x16);
 }
 
+void dr3_loading_header(int mode)
+{
+	const char * text = (dr3_boss_in_race()) ? dr3_boss_phase_title(dr3_boss_phase()) : dr3_spin_name_of_mode(mode);
+	int text_w = getTextWidth(FONTPROPS02, text);
+	int w = text_w + 0x40;
+	int x = (0x280 - w)/2;
+	int y = 74;
+	int h = 42;
+
+	___13248h_cdecl(x, y, w, h, 1);
+	___12e78h_v3(___1a1108h___185c0bh, text, x + 0x20, y + 12);
+}
+
 /*
  * Round 1, the rule set: the three boxes carry the three modes and the copper frame hops over them, so the
  * player sees a *mode* being drawn - the draw itself happened before, in dr3_chaos_spin_pick.

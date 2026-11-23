@@ -116,6 +116,7 @@ void ___3a968h_cdecl(__DWORD__);
 __BYTE__ dRally_Sound_setPosition(__DWORD__ pos_n);
 void dRally_Sound_setMasterVolume(__DWORD__ vol);
 void ___12cb8h__VESA101_PRESENTSCREEN(void);
+void ___1398ch__VESA101_PRESENTRECTANGLE(__DWORD__ offset, __POINTER__ src, __DWORD__ w, __DWORD__ h);
 void __WAIT_5(void);
 void ___60a84h(void);
 __DWORD__ ___60b60h(__DWORD__, __DWORD__, __POINTER__, __DWORD__);
@@ -820,7 +821,7 @@ void ___33010h_cdecl(int NumCars){
 	itoa_watcom106(NUM_OF_LAPS, esp+0x74, 0xa);
 	strcat(esp+0x4c, esp+0x74);
 #endif
-	___12e78h_cdecl(___1a10b8h, ___185c7ah, esp+0x4c, 0x3800d);
+	___12e78h_cdecl(___1a10b8h, ___185c7ah, esp+0x4c, 0x3800d+10*0x280);	/* 10 rows lower: clear of the map picture / logo */
 	strcpy(esp+0x4c, "PRIZE MONEY: ");
 
 #if defined(DR_MULTIPLAYER)
@@ -873,7 +874,7 @@ void ___33010h_cdecl(int NumCars){
 #endif // DR_MULTIPLAYER
 
 	eax = ___251e8h_cdecl(esp+0x4c);
-	___12e78h_cdecl(___1a10b8h, ___185c7ah, esp+0x4c, 0x3816b-eax);
+	___12e78h_cdecl(___1a10b8h, ___185c7ah, esp+0x4c, 0x3816b-eax+10*0x280);
 
 /* ROSTER FACES ******************************************************************************** */
 	if(D(___1a1028h) != 3){
@@ -981,8 +982,28 @@ void ___33010h_cdecl(int NumCars){
 	}
 /* ******************************************************************************** ROSTER FACES */
 
+#if defined(DR3_CHAOS)
+	if(dr3_chaos_active() && (D(___1a1028h) != 3)){
+		void dr3_loading_header(int mode);
+		dr3_loading_header(dr3_chaos_mode());
+	}
+#endif
+
+	/* Ensure rows 0..75 on both DefaultScreenBuffer and VESA101_ACTIVESCREEN have the clean background / Death Rally
+	 * logo restored before the wipe starts, clearing the old Y=16..75 dr3_spin_header from ___3266ch.c (which helper000
+	 * does not wipe, as it only updates rows 73..478 of VESA101_ACTIVESCREEN). */
+	memcpy(___1a1100h__VESA101h_DefaultScreenBuffer, ___1a1138h__VESA101_BACKGROUND, 0x280 * 76);
+
 	___1a112ch__VESA101_ACTIVESCREEN_PTR = ___1a1100h__VESA101h_DefaultScreenBuffer;
+	___1398ch__VESA101_PRESENTRECTANGLE(0, ___1a1100h__VESA101h_DefaultScreenBuffer, 0x280, 76);
 	___3a968h_cdecl(-1);
+
+#if defined(DR3_CHAOS)
+	if(dr3_chaos_active() && (D(___1a1028h) != 3)){
+		void dr3_loading_header(int mode);
+		dr3_loading_header(dr3_chaos_mode());
+	}
+#endif
 	
 #if defined(DR_MULTIPLAYER)
 	if(___19bd60h != 0){

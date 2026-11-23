@@ -204,6 +204,7 @@ void __WAIT_5(void){
 	tmp *= ___60458h;
 	tmp += __GET_FRAME_COUNTER();
 
+	__PRESENTSCREEN__();
 	while((__GET_FRAME_COUNTER() < tmp) && !dRally_Keyboard_popLastKey());
 }
 

@@ -89,8 +89,12 @@ New-Item -ItemType Directory -Force $out | Out-Null
 if (Test-Path $log) { Copy-Item $log "$out\drally_3ds.log" -Force }
 Copy-Item $Scenario "$out\scenario.txt" -Force
 if (Test-Path "$sd\dr3_shots") {
+    $ffmpeg = 'C:\Program Files\Logitech\LogiTune\resources\ffmpeg\ffmpeg.exe'
+    if ((Test-Path "$sd\dr3_shots\v_0001.bmp") -and (Test-Path $ffmpeg)) {
+        & cmd.exe /c "`"$ffmpeg`" -y -loglevel error -framerate 30 -i `"$sd\dr3_shots\v_%04d.bmp`" -vf `"scale=800:480:flags=neighbor`" -c:v libx264 -pix_fmt yuv420p -crf 18 `"$out\gameplay.mp4`""
+    }
     Add-Type -AssemblyName System.Drawing
-    foreach ($b in Get-ChildItem "$sd\dr3_shots\*.bmp") {
+    foreach ($b in Get-ChildItem "$sd\dr3_shots\*.bmp" | Where-Object { $_.Name -notmatch '^v_\d+\.bmp$' }) {
         $img = [System.Drawing.Image]::FromFile($b.FullName)
         $img.Save("$out\" + $b.BaseName + '.png', [System.Drawing.Imaging.ImageFormat]::Png)
         $img.Dispose()
